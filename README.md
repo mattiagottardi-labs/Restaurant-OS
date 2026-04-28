@@ -188,9 +188,10 @@ Write the report (≤ 5 pages, PDF format) covering:
 ├── status.sh             # sends SIGUSR1 to running process
 ├── .env                  # simulation parameters (not committed to VCS)
 ├── report.pdf            # ≤5 page project report
-├── data/
+├── resources/
 │   ├── menu.csv          # dish definitions
-│   └── resources.csv     # kitchen resource definitions
+│   ├── resources.csv     # kitchen resource definitions
+|   └── 2026-project-5    # reference pdf
 └── code/
     ├── main.c
     ├── cook.c / cook.h
