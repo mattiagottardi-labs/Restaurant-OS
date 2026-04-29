@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 typedef struct tool{
     char* name;
     int clean_time;
@@ -17,7 +16,12 @@ typedef struct dish{
     tool tools[4];
 }dish;
 
-dish** menu; //contains all dishes
+typedef struct menu{
+    dish** selection;
+    int num_dishes;
+}menu;
+
+menu Menu;//contains all dishes
 
 int get_clean_time(char* tool_name){
     for(int i = 4; i < 7; i ++){ 
@@ -41,15 +45,16 @@ tool ctot(char* arg){ //char to tool
     return temp;
 }
 
-int main(){
-    FILE *fp = fopen("Restaurant-OS/resources/2026-project-5/code", "r");
+void make_menu(char* file_location, menu Menu, int max_dishes){
+    FILE *fp = fopen(file_location, "r");
     if(!fp){ 
         perror("file cannot be opened");
-        return 1;
+        return;
     }
     char line[1024];
     fgets(line, sizeof(line), fp); // skip first line
     int j = 0;
+    Menu.selection = malloc(max_dishes * sizeof(dish));
     while(fgets(line, sizeof(line), fp)){
         dish* d = malloc(sizeof(dish));
         char* field = strtok(line, ",");
@@ -65,10 +70,10 @@ int main(){
         }
         if(strchr(d->tools[i].name, ':') != NULL){ //accounts for burner:2 by doubling burner
                                               //resulting in pot, pan, burner, burner.
-            d->tools[i+1] = d->tools[i];
+                d->tools[i+1] = d->tools[i];
         }
-    menu[j] = d;
-    j++;
+        Menu.selection[j] = d;
+        j++;
     }
-    return 0;
+
 }
