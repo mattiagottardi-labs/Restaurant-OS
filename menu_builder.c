@@ -24,19 +24,23 @@ typedef struct menu{
 menu Menu;//contains all dishes
 
 int get_clean_time(char* tool_name){
+    if(tool_name == NULL) {
+        perror("no name\n");
+    }
     for(int i = 4; i < 7; i ++){ 
-        if(strcmp(tool_name, tool_names[i])) return 2;
+        if(strcmp(tool_name, tool_names[i]) == 0) return 2;
     }
     for(int i = 8; i > 6; i --){
-         if(strcmp(tool_name, tool_names[i])) return 3;
+        if(strcmp(tool_name, tool_names[i]) == 0) return 3;
     } //minimize comparisons by checking against the least populated classes
     return 1;
 }
 
 tool ctot(char* arg){ //char to tool
     tool temp;
+    temp.name = NULL;
     for(int i = 0; i < 9; i++){
-        if(strcmp(arg, tool_names[i])){
+        if(strcmp(arg, tool_names[i]) == 0){
             temp.name = tool_names[i];
             temp.clean_time = get_clean_time(tool_names[i]);
             break;
@@ -45,7 +49,7 @@ tool ctot(char* arg){ //char to tool
     return temp;
 }
 
-void make_menu(char* file_location, menu Menu, int max_dishes){
+void make_menu(char* file_location, menu* Menu, int max_dishes){
     FILE *fp = fopen(file_location, "r");
     if(!fp){ 
         perror("file cannot be opened");
@@ -54,26 +58,29 @@ void make_menu(char* file_location, menu Menu, int max_dishes){
     char line[1024];
     fgets(line, sizeof(line), fp); // skip first line
     int j = 0;
-    Menu.selection = malloc(max_dishes * sizeof(dish));
-    while(fgets(line, sizeof(line), fp)){
+    Menu->selection = malloc(max_dishes * sizeof(dish*));
+    while(fgets(line, sizeof(line), fp) && j < max_dishes){
+        line[strcspn(line, "\n")] = 0; //insert null terminator at end of line
         dish* d = malloc(sizeof(dish));
-        char* field = strtok(line, ",");
-        d->name = field;
-        field = strtok(line, ",");
-        d->price = atof(field);
-        field = strtok(line, ","); 
+        d->name = strdup(strtok(line, ","));
+        d->price = atof(strtok(NULL, ","));
+        strtok(NULL, ","); // skip time column
+        char* tools_field = strtok(NULL, ","); // get whole tools field e.g. "pan;burner"
         int i = 0;
-        while(field){
-            d->tools[i] = ctot(field); //char to tool
-            strtok(line, ",");
+        char* tool_field = strtok(tools_field, ";"); // split tools on ;
+        while(tool_field && i < 4){
+            d->tools[i] = ctot(tool_field); //char* to tool
             i++;
+            tool_field = strtok(NULL, ";");
         }
-        if(strchr(d->tools[i].name, ':') != NULL){ //accounts for burner:2 by doubling burner
-                                              //resulting in pot, pan, burner, burner.
-                d->tools[i+1] = d->tools[i];
+        if(i > 0 && d->tools[i-1].name != NULL &&
+           strchr(d->tools[i-1].name, ':') != NULL){ //accounts for burner:2 by doubling burner
+                                                      //resulting in pot, pan, burner, burner.
+            d->tools[i] = d->tools[i-1];
         }
-        Menu.selection[j] = d;
+        Menu->selection[j] = d;
         j++;
     }
-
+    Menu->num_dishes = j;
+    fclose(fp);
 }
