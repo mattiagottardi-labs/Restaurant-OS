@@ -27,7 +27,7 @@ int get_clean_time(char* tool_name){
     for(int i = 4; i < 7; i ++){ 
         if(strcmp(tool_name, tool_names[i])) return 2;
     }
-    for(int i = 8; i > 7; i --){
+    for(int i = 8; i > 6; i --){
          if(strcmp(tool_name, tool_names[i])) return 3;
     } //minimize comparisons by checking against the least populated classes
     return 1;
