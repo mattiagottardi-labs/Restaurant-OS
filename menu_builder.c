@@ -41,6 +41,7 @@ tool ctot(char* arg){ //char to tool
     temp.name = NULL;
     for(int i = 0; i < 9; i++){
         if(strcmp(arg, tool_names[i]) == 0){
+            printf("tool found: %s\n", tool_names[i]);
             temp.name = tool_names[i];
             temp.clean_time = get_clean_time(tool_names[i]);
             break;
@@ -69,16 +70,22 @@ void make_menu(char* file_location, menu* Menu, int max_dishes){
         int i = 0;
         char* tool_field = strtok(tools_field, ";"); // split tools on ;
         while(tool_field && i < 4){
+            if(strchr(tools_field, ':') != NULL)
             d->tools[i] = ctot(tool_field); //char* to tool
             i++;
             tool_field = strtok(NULL, ";");
         }
-        if(i > 0 && d->tools[i-1].name != NULL &&
-           strchr(d->tools[i-1].name, ':') != NULL){ //accounts for burner:2 by doubling burner
+        if(strchr(d->tools[i-1].name, ':') != NULL){ //accounts for burner:2 by doubling burner
                                                       //resulting in pot, pan, burner, burner.
             d->tools[i] = d->tools[i-1];
         }
+        
         Menu->selection[j] = d;
+        printf("Dish number: %d is a: %s, costing: %.2f and requires:\t",j, d->name, d->price);
+        for(int i = 0; i < 4; i++){
+            printf("%s\t", d->tools[i].name);
+        }
+        printf("\n");
         j++;
     }
     Menu->num_dishes = j;
