@@ -12,7 +12,8 @@ char* tool_names[9] = {"burner", "cutting_board", "knife","bowl", // 1 clean tim
 
 typedef struct dish{
     char* name;
-    double price;
+    int price;
+    int time;
     tool tools[4];
 }dish;
 
@@ -43,7 +44,6 @@ tool ctot(char* arg){ //char to tool
     if (!arg) return temp;
     for(int i = 0; i < 9; i++){
         if(strcmp(arg, tool_names[i]) == 0){
-            printf("tool found: %s\n", tool_names[i]);
             temp.name = tool_names[i];
             temp.clean_time = get_clean_time(tool_names[i]);
             break;
@@ -70,28 +70,31 @@ void make_menu(char* file_location, menu* Menu, int max_dishes){
             d->tools[k].clean_time = 0;
         }
         d->name = strdup(strtok(line, ","));
-        d->price = atof(strtok(NULL, ","));
-        strtok(NULL, ","); // skip time column
+        d->price = atoi(strtok(NULL, ","));
+        d->time = atoi(strtok(NULL, ","));
         char* tools_field = strtok(NULL, ","); // get whole tools field e.g. "pan;burner"
         int i = 0;
         char* tool_field = strtok(tools_field, ";"); // split tools on ;
         while(tool_field && i < 4){
-            if(strchr(tools_field, ':') != NULL)
-            d->tools[i] = ctot(tool_field); //char* to tool
-            i++;
-            tool_field = strtok(NULL, ";");
+            if(strchr(tool_field, ':') != NULL){
+                char* p = strchr(tool_field, ':');
+                int n = atoi(p+1);
+                size_t len = p - tool_field;     // number of chars before '/'
+                char *before = malloc(len + 1);
+                memcpy(before, tool_field, len);
+                before[len] = '\0';
+                for(int k = 0; k < n ; k++){
+                    d->tools[i] = ctot(before);
+                    i++;
+                }
+                free(before);
+            }else{
+                d->tools[i] = ctot(tool_field);
+                i++;
+                tool_field = strtok(NULL, ";");
+            }
         }
-        if(d->tools[i-1].name && strchr(d->tools[i-1].name, ':')){ //accounts for burner:2 by doubling burner
-                                                      //resulting in pot, pan, burner, burner.
-            d->tools[i] = d->tools[i-1];
-        }
-        
         Menu->selection[j] = d;
-        printf("Dish number: %d is a: %s, costing: %.2f and requires:\t",j, d->name, d->price);
-        for(int i = 0; i < 4; i++){
-            printf("%s\t", d->tools[i].name);
-        }
-        printf("\n");
         j++;
     }
     Menu->num_dishes = j;
