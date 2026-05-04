@@ -26,6 +26,7 @@ menu Menu;//contains all dishes
 int get_clean_time(char* tool_name){
     if(tool_name == NULL) {
         perror("no name\n");
+        return 0;
     }
     for(int i = 4; i < 7; i ++){ 
         if(strcmp(tool_name, tool_names[i]) == 0) return 2;
@@ -39,6 +40,7 @@ int get_clean_time(char* tool_name){
 tool ctot(char* arg){ //char to tool
     tool temp;
     temp.name = NULL;
+    if (!arg) return temp;
     for(int i = 0; i < 9; i++){
         if(strcmp(arg, tool_names[i]) == 0){
             printf("tool found: %s\n", tool_names[i]);
@@ -63,6 +65,10 @@ void make_menu(char* file_location, menu* Menu, int max_dishes){
     while(fgets(line, sizeof(line), fp) && j < max_dishes){
         line[strcspn(line, "\n")] = 0; //insert null terminator at end of line
         dish* d = malloc(sizeof(dish));
+        for (int k = 0; k < 4; k++) {
+            d->tools[k].name = NULL;
+            d->tools[k].clean_time = 0;
+        }
         d->name = strdup(strtok(line, ","));
         d->price = atof(strtok(NULL, ","));
         strtok(NULL, ","); // skip time column
@@ -75,7 +81,7 @@ void make_menu(char* file_location, menu* Menu, int max_dishes){
             i++;
             tool_field = strtok(NULL, ";");
         }
-        if(strchr(d->tools[i-1].name, ':') != NULL){ //accounts for burner:2 by doubling burner
+        if(d->tools[i-1].name && strchr(d->tools[i-1].name, ':')){ //accounts for burner:2 by doubling burner
                                                       //resulting in pot, pan, burner, burner.
             d->tools[i] = d->tools[i-1];
         }

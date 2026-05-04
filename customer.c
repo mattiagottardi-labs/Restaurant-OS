@@ -4,7 +4,7 @@
 #include <time.h>
 #include <unistd.h>
 int main(){
-    char* file_location = "/home/gottardimattia/Restaurant-OS/resources/2026-project-5/code/menu.csv";
+    char* file_location = "C:\\Users\\artin\\Restaurant-OS\\resources\\2026-project-5\\code\\menu.csv";
     printf("opening file...\n");
     make_menu(file_location, &Menu, 20);
     printf("menu made, num_dishes: %d\n", Menu.num_dishes);
