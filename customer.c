@@ -14,7 +14,7 @@ order* make_order(int num_dishes){
     order *o;
     o->dishes = malloc(num_dishes*sizeof(dish));
     for(int i = 0; i < num_dishes; i++){
-        o->dishes[i] = Menu.selection[rand()%20];
+        o->dishes[i] = Menu.selection[rand()%Menu.num_dishes];
     }
     o->patience = rand()%100;
     return o;

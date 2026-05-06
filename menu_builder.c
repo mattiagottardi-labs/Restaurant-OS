@@ -3,12 +3,13 @@
 #include <string.h>
 typedef struct tool{
     char* name;
+    int quantity;
     int clean_time;
 }tool;
 
-char* tool_names[9] = {"burner", "cutting_board", "knife","bowl", // 1 clean time
-                        "pot", "pan","mixer", // 2 clean time
-                        "oven", "grill"}; // 3 clean time 
+char* tool_names[9] = {"burner", "cutting_board", "knife","bowl",
+                        "pot", "pan","mixer",
+                        "oven", "grill"};
 
 typedef struct dish{
     char* name;
@@ -24,45 +25,60 @@ typedef struct menu{
 
 menu Menu;//contains all dishes
 
-int get_clean_time(char* tool_name){
-    if(tool_name == NULL) {
-        perror("no name\n");
-        return 0;
+int get_quantity(char* tool_name, char* file_location){
+    FILE *tools_csv = fopen(file_location, "r");
+    char line[1024];
+    fgets(line, sizeof(line), tools_csv); //skip first line
+    while(fgets(line, sizeof(line), tools_csv)){
+        line[strcspn(line, "\n")] = 0;
+        if(strcmp(strtok(line, ","), tool_name) == 0){
+            return atoi(strtok(NULL, ","));
+        }
     }
-    for(int i = 4; i < 7; i ++){ 
-        if(strcmp(tool_name, tool_names[i]) == 0) return 2;
-    }
-    for(int i = 8; i > 6; i --){
-        if(strcmp(tool_name, tool_names[i]) == 0) return 3;
-    } //minimize comparisons by checking against the least populated classes
-    return 1;
+    fclose(tools_csv);
 }
 
-tool ctot(char* arg){ //char to tool
+int get_clean_time(char* tool_name, char* file_location){
+    FILE *tools_csv = fopen(file_location, "r");
+    char line[1024];
+    fgets(line, sizeof(line), tools_csv); //skip first line
+    while(fgets(line, sizeof(line), tools_csv)){
+        line[strcspn(line, "\n")] = 0;
+        if(strcmp(strtok(line, ","), tool_name) == 0){
+            strtok(NULL, ",");
+            return atoi(strtok(NULL, ","));
+        }
+    }
+    fclose(tools_csv);
+}
+
+tool ctot(char* arg, char* tools_location){ //char to tool
     tool temp;
     temp.name = NULL;
     if (!arg) return temp;
     for(int i = 0; i < 9; i++){
         if(strcmp(arg, tool_names[i]) == 0){
             temp.name = tool_names[i];
-            temp.clean_time = get_clean_time(tool_names[i]);
+            temp.quantity = get_quantity(tool_names[i], tools_location);
+            temp.clean_time = get_clean_time(tool_names[i], tools_location);
             break;
         }
     }
     return temp;
 }
 
-void make_menu(char* file_location, menu* Menu, int max_dishes){
-    FILE *fp = fopen(file_location, "r");
-    if(!fp){ 
+void make_menu(char* menu_location, char* tools_location, menu* Menu, int max_dishes){
+    FILE *menu_csv = fopen(menu_location, "r");
+
+    if(!menu_csv){ 
         perror("file cannot be opened");
         return;
     }
     char line[1024];
-    fgets(line, sizeof(line), fp); // skip first line
+    fgets(line, sizeof(line), menu_csv); // skip first line
     int j = 0;
     Menu->selection = malloc(max_dishes * sizeof(dish*));
-    while(fgets(line, sizeof(line), fp) && j < max_dishes){
+    while(fgets(line, sizeof(line), menu_csv) && j < max_dishes){
         line[strcspn(line, "\n")] = 0; //insert null terminator at end of line
         dish* d = malloc(sizeof(dish));
         for (int k = 0; k < 4; k++) {
@@ -84,12 +100,12 @@ void make_menu(char* file_location, menu* Menu, int max_dishes){
                 memcpy(before, tool_field, len);
                 before[len] = '\0';
                 for(int k = 0; k < n ; k++){
-                    d->tools[i] = ctot(before);
+                    d->tools[i] = ctot(before, tools_location);
                     i++;
                 }
                 free(before);
             }else{
-                d->tools[i] = ctot(tool_field);
+                d->tools[i] = ctot(tool_field, tools_location);
                 i++;
                 tool_field = strtok(NULL, ";");
             }
@@ -98,5 +114,5 @@ void make_menu(char* file_location, menu* Menu, int max_dishes){
         j++;
     }
     Menu->num_dishes = j;
-    fclose(fp);
+    fclose(menu_csv);
 }
