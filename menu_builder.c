@@ -1,15 +1,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+char* tool_names[9] = {"burner", "cutting_board", "knife","bowl",
+                        "pot", "pan","mixer",
+                        "oven", "grill"};
+
 typedef struct tool{
     char* name;
     int quantity;
     int clean_time;
 }tool;
-
-char* tool_names[9] = {"burner", "cutting_board", "knife","bowl",
-                        "pot", "pan","mixer",
-                        "oven", "grill"};
 
 typedef struct dish{
     char* name;

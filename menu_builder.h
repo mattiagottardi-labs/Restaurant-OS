@@ -8,12 +8,14 @@
 
 typedef struct tool {
     char* name;
+    int quantity;
     int clean_time;
 } tool;
 
 typedef struct dish {
     char* name;
-    double price;
+    int price;
+    int time;
     tool tools[4];
 } dish;
 
@@ -22,12 +24,8 @@ typedef struct menu {
     int num_dishes;
 } menu;
 
-// ── Globals ────────────────────────────────────
-
-extern char* tool_names[9];
+extern char* tool_names[9]; //global variables
 extern menu Menu;
-
-// ── Function Declarations ──────────────────────
 
 int  get_clean_time(char* tool_name);
 tool ctot(char* arg);

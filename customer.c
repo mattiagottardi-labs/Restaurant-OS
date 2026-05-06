@@ -16,6 +16,10 @@ order* make_order(int num_dishes){
     for(int i = 0; i < num_dishes; i++){
         o->dishes[i] = Menu.selection[rand()%Menu.num_dishes];
     }
-    o->patience = rand()%100;
+    int baseline;
+    for(int i = 0; i < num_dishes; i++){
+        baseline += o->dishes[i]->time;
+    }
+    o->patience = rand()%30 + baseline; //strictly greater than order time
     return o;
 }
