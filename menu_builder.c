@@ -27,6 +27,10 @@ menu Menu;//contains all dishes
 
 int get_quantity(char* tool_name, char* file_location){
     FILE *tools_csv = fopen(file_location, "r");
+    if(!tools_csv){ 
+        perror("file cannot be opened");
+        exit(1);
+    }
     char line[1024];
     fgets(line, sizeof(line), tools_csv); //skip first line
     while(fgets(line, sizeof(line), tools_csv)){
@@ -40,6 +44,10 @@ int get_quantity(char* tool_name, char* file_location){
 
 int get_clean_time(char* tool_name, char* file_location){
     FILE *tools_csv = fopen(file_location, "r");
+    if(!tools_csv){ 
+        perror("file cannot be opened");
+        exit(1);
+    }
     char line[1024];
     fgets(line, sizeof(line), tools_csv); //skip first line
     while(fgets(line, sizeof(line), tools_csv)){
