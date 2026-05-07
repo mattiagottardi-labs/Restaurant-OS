@@ -4,8 +4,8 @@
 #include <unistd.h>
 #include "clock.h"
 
-void run(int* time){
-    for(int i = 0; i < 1000; i++){ //runs for a max of 1000s
+void clock_run(int* time, int stop){
+    for(int i = 0; i < stop; i++){ //runs for a max of 1000s
         sleep(1);
         time++;
     }

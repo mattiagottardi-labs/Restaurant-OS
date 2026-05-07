@@ -7,7 +7,7 @@
 #include <unistd.h>
 
 
-order make_order(int num_dishes){
+order* make_order(int num_dishes, order_queue* order_q){
     srand(time(NULL));
     order o;
     o.dishes = malloc(num_dishes*sizeof(dish));
@@ -19,8 +19,9 @@ order make_order(int num_dishes){
         baseline += o.dishes[i]->time;
     }
     o.order_time = current_time;
-    o.patience = rand()%30 + baseline; //strictly greater than order time
-    return o;
+    o.patience = baseline + rand()%50; //strictly greater than order time
+    order_q->orders[order_q->current_index] = o;
+    return &o;
 }
 
 int* get_order_price(order* o){
@@ -30,4 +31,17 @@ int* get_order_price(order* o){
         *total_price += o->dishes[i]->price;
     }
     return total_price;
+}
+
+int customer_loop(){ //returns the score given if he recieves what he wants or not
+    srand(time(NULL));
+    int num_orders = rand()%5;
+    order* temp = make_order(num_orders, &order_q);
+    for(int i = 0; i < temp->patience; i++){
+        if(temp->done){
+            return 1; //got the order in time. TO BE UPDATED
+        }
+        sleep(1);
+    }
+    return 0;  //didnt get the order in time.
 }

@@ -44,10 +44,11 @@ static pthread_mutex_t sink_mutex = PTHREAD_MUTEX_INITIALIZER; //mutex for sink 
     return d;  
 }*/
 
-bool is_tool_available(tool* t){
-    while(kitchen[i] != NULL){
-        if(strcmp(kitchen[i]->name, t->name) == 0){
-            if(kitchen[i]->available){
+bool is_tool_available(char* tool_name, kitchen_manager* kitchen){ //cook reads tool name as string from dish, not directly as tool.
+    int i = 0;
+    while(kitchen->pools[i] != NULL){
+        if(strcmp(kitchen->pools[i]->name, tool_name) == 0){ 
+            if(kitchen->pools[i]->available){
                 return true;
             }else{
                 return false;
@@ -59,7 +60,7 @@ bool is_tool_available(tool* t){
     return false;
 }
 
-bool is_tool_dirty(tool*t){
+bool is_tool_dirty(tool* t){
     if(t->dirty_usages > 0) return true;
     else return false;
 }
@@ -79,3 +80,5 @@ void* sink_cleaning(tool* t){
     float customer_skipped = (get_order_price(o)*log2(1+(o->patience)/(1 + number_of_dishes_served)));
     float cooked_dirty = 2^()
 }*/
+//NOT A FUNCTION FOR COOK, THE CUSTOMER UPDATES SCOORE AS HE GETS THE ORDER DELIVERED TO HIM
+

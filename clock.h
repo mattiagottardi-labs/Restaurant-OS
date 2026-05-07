@@ -2,6 +2,6 @@
 #define CLOCK_H
 
 extern int current_time;
-void run(int *time);
+void clock_run(int *time, int stop);
 
 #endif
