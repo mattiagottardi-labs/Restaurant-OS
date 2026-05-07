@@ -30,7 +30,7 @@ typedef struct dish {
     char* name;
     int price;
     int time;
-    char** tools; // Points to an array of strings
+    char** tools; // no need to pass as tool, the cook will look up the correct tool pool from the string
     int num_tools_required;
 } dish;
 

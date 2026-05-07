@@ -1,11 +1,12 @@
 #ifndef ORDER_H
 #define ORDER_H
 
-#include "menu_builder.h"
+#include "kitchen.h"
 
 typedef struct order {
     dish** dishes;
     int patience;
+    int order_time;
 } order;
 
 // Creates an order with a random selection of dishes and calculates patience
