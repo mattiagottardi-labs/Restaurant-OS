@@ -24,8 +24,9 @@ typedef struct menu {
     int num_dishes;
 } menu;
 
-extern char* tool_names[9]; //global variables
+//global variables
 extern menu Menu;
+extern tool* burners;
 
 int  get_clean_time(char* tool_name);
 tool ctot(char* arg);
