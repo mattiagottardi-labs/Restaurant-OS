@@ -4,8 +4,6 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-// --- Structures ---
-
 typedef struct tool {
     char* name;
     int clean_time;
@@ -17,14 +15,19 @@ typedef struct tool_pool {
     int in_use;
     int quantity;
     char* name;
-    tool* tools; // Array of tool objects
+    tool* tools; 
 } tool_pool;
+
+typedef struct kitchen_manager {
+    tool_pool** pools;
+    int num_pools;
+} kitchen_manager;
 
 typedef struct dish {
     char* name;
     int price;
     int time;
-    char** tools; // Changed to char** to store multiple tool names
+    char** tools; // Points to an array of strings
     int num_tools_required;
 } dish;
 
@@ -33,23 +36,7 @@ typedef struct menu {
     int num_dishes;
 } menu;
 
-// --- Function Prototypes ---
-extern tool** kitchen;
-extern menu Menu;
-/**
- * Initializes the tool pools based on a CSV file.
- * Returns a pointer to an array of tool_pool pointers.
- */
-tool_pool** make_tools(char* tools_location, int max_tools);
-
-/**
- * Initializes the menu based on a CSV file.
- */
-void make_menu(char* menu_location, menu* Menu, char* tools_location, int max_dishes);
-
-/**
- * Helper to find cleaning time from the tools CSV.
- */
-int get_clean_time(const char* tool_name, const char* tools_location);
+void make_tools(char* tools_location, kitchen_manager* my_kitchen, int max_tools);
+void make_menu(char* menu_location, menu* MyMenu, int max_dishes);
 
 #endif
