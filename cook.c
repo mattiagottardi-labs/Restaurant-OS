@@ -2,7 +2,7 @@
 #include<stdlib.h>
 #include<pthread.h>
 #include "customer.h"
-#include "menu_builder.h"
+#include "kitchen.h"
 #define GAME_SPEED 1
 
 static pthread_mutex_t sink_mutex = PTHREAD_MUTEX_INITIALIZER;

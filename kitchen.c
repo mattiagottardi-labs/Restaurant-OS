@@ -2,35 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-
-menu Menu;//contains all dishes
-tool_pool** kitchen;
-
-typedef struct tool_pool{
-    bool available;
-    int in_use;
-    int quantity;
-    char* name;
-    tool* tools;
-}tool_pool;
-
-typedef struct tool{
-    char* name;
-    int clean_time;
-    int dirty_usages;
-}tool;
-
-typedef struct dish{
-    char* name;
-    int price;
-    int time;
-    char* tools; //useless to save the entire tool or to point to tools directly in the dish
-}dish;
-
-typedef struct menu{
-    dish** selection;
-    int num_dishes;
-}menu;
+#include <kitchen.h>
 
 int get_clean_time(char* tool_name, FILE* tools_csv){
     char line[1024];
@@ -42,7 +14,6 @@ int get_clean_time(char* tool_name, FILE* tools_csv){
             return atoi(strtok(NULL, ","));
         }
     }
-    fclose(tools_csv);
 }
 
 tool*ctot(char* arg, FILE* tools_csv){ //char to tool
@@ -64,17 +35,29 @@ void make_tools( char* tools_location, tool_pool** kitchen, int max_tools){
     char line[1024];
     int j = 0;
     fgets(line, sizeof(line), tools_csv); // skip first line
-    while(fgets(line, sizeof(line), tools_csv)){
+    while (fgets(line, sizeof(line), tools_csv) && j < max_tools) {
         line[strcspn(line, "\n")] = 0;
-        char* name = strtok(line, ',');
-        kitchen[j]->name = name;
-        kitchen[j]->quantity = atoi(strtok(line, ','));
-        for(int i = 0; i < kitchen[j]->quantity; i++){
-            kitchen[j]->tools = ctot(name, tools_csv);
-        }
-        kitchen[j]->available = true;
+        
+        kitchen[j] = malloc(sizeof(tool_pool));
+        char* name = strtok(line, ",");
+        int qty = atoi(strtok(NULL, ","));
+        int c_time = atoi(strtok(NULL, ","));
+
+        kitchen[j]->name = strdup(name);
+        kitchen[j]->quantity = qty;
         kitchen[j]->in_use = 0;
+        kitchen[j]->available = true;
+        
+        // Allocate the individual tools in the pool
+        kitchen[j]->tools = malloc(qty * sizeof(tool));
+        for (int i = 0; i < qty; i++) {
+            kitchen[j]->tools[i].name = strdup(name);
+            kitchen[j]->tools[i].clean_time = c_time;
+            kitchen[j]->tools[i].dirty_usages = 0;
+        }
+        j++;
     }
+    fclose(tools_csv);
 }
 
 void make_menu(char* menu_location, menu* Menu, int max_dishes){
