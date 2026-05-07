@@ -1,5 +1,6 @@
 #include "kitchen.h"
 #include "customer.h"
+#include "clock.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -13,10 +14,11 @@ order make_order(int num_dishes){
     for(int i = 0; i < num_dishes; i++){
         o.dishes[i] = Menu.selection[rand()%Menu.num_dishes];
     }
-    int baseline;
+    int baseline = 0;
     for(int i = 0; i < num_dishes; i++){
         baseline += o.dishes[i]->time;
     }
+    o.order_time = current_time;
     o.patience = rand()%30 + baseline; //strictly greater than order time
     return o;
 }
