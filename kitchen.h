@@ -34,7 +34,8 @@ typedef struct menu {
 } menu;
 
 // --- Function Prototypes ---
-
+extern tool** kitchen;
+extern menu Menu;
 /**
  * Initializes the tool pools based on a CSV file.
  * Returns a pointer to an array of tool_pool pointers.
