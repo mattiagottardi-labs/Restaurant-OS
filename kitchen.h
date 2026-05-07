@@ -4,6 +4,9 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+extern menu Menu;
+extern kitchen_manager kitchen;
+
 typedef struct tool {
     char* name;
     int clean_time;
