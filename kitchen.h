@@ -4,9 +4,6 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-extern kitchen_manager kitchen;
-extern menu Menu;
-
 typedef struct tool {
     char* name;
     int clean_time;
@@ -30,7 +27,7 @@ typedef struct dish {
     char* name;
     int price;
     int time;
-    char** tools; // no need to pass as tool, the cook will look up the correct tool pool from the string
+    char** tools; // Points to an array of strings
     int num_tools_required;
 } dish;
 

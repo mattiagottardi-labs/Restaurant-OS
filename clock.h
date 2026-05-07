@@ -2,6 +2,6 @@
 #define CLOCK_H
 
 extern int current_time;
-void run();
+void run(int *time);
 
 #endif
