@@ -10,6 +10,7 @@ typedef struct tool {
     char* name;
     int quantity;
     int clean_time;
+    int dirty_usages;
 } tool;
 
 typedef struct dish {

@@ -3,6 +3,7 @@
 #include<pthread.h>
 #include "customer.h"
 #include "menu_builder.h"
+#define GAME_SPEED 1
 
 static pthread_mutex_t sink_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t sink_cond = PTHREAD_COND_INITIALIZER;
