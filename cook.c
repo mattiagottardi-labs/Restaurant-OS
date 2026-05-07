@@ -1,19 +1,64 @@
-#include<stdio.h>
 #include<stdlib.h>
 #include<pthread.h>
+#include<stdbool.h>
 #include "customer.h"
 #include "kitchen.h"
 #define GAME_SPEED 1
 
-static pthread_mutex_t sink_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t sink_cond = PTHREAD_COND_INITIALIZER;
+static pthread_mutex_t sink_mutex = PTHREAD_MUTEX_INITIALIZER; //mutex for sink access
 
-dish* cook_loop(dish* d){
+
+
+
+
+dish* cook_loop(dish* d, customer* c){
     if(d == NULL){
         printf("No dish to cook\n");
         return 0;
     }
 
+    for(int i = 0; i < d->num_tools_required; i++){
+        if(is_tool_available(d->tools) && !is_tool_dirty(d->tools)){ //tool available and clean
+            //use tool
+            printf("Tool %s used for %s, available\n", d->tools, d->name);
+        }
+    }else if(is_tool_available(d->tools) && is_tool_dirty(d->tools)){ //tool available but dirty
+     //I need to understand if I should clean/use the tool dirty or if I should skip the client
+        if(c->patience > (t->clean_time + d->time)){ //clean the tool and the cook the dish
+            printf("Cleaning %s before cooking %s\n", d->tools, d->name);
+            sink_cleaning(d->tools);
+            printf("Tool %s used for  %s, available\n", d->tools, d->name);
+        }else{ //I need to understand if it's worth for the restaurant cooking with dirty tools or skipping the client
+            if(){
+
+            }
+        }
+
+    }else{ //tool not available --> I need to search for another dish to make until I wait for the tool to be available
+        printf("Tool not available, searching for another dish to cook\n");
+        return NULL;
+    }
+    return d;  
+}
+
+bool is_tool_available(tool* t){
+    while(kitchen[i] != NULL){
+        if(strcmp(kitchen[i]->name, t->name) == 0){
+            if(kitchen[i]->available){
+                return true;
+            }else{
+                return false;
+            }
+        }
+        i++;
+    }
+    printf("ERROR: tool not found in kitchen\n");
+    return false;
+}
+
+bool is_tool_dirty(tool*t){
+    if(t->dirty_usages > 0) return true;
+    else return false;
 }
 
 void* sink_cleaning(tool* t){
@@ -23,4 +68,9 @@ void* sink_cleaning(tool* t){
     printf("Cleaned %s\n", t->name);
     pthread_mutex_unlock(&sink_mutex);
     printf("Sink available\n");
+}
+
+
+bool is_worth_cooking(dish* d, customer* c){
+    float customer_served = (get)
 }

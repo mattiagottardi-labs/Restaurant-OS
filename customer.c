@@ -23,3 +23,12 @@ order* make_order(int num_dishes){
     o->patience = rand()%30 + baseline; //strictly greater than order time
     return o;
 }
+
+int* get_order_price(order* o){
+    int* total_price = malloc(sizeof(int));
+    *total_price = 0;
+    for(int i = 0; i < sizeof(o->dishes)/sizeof(dish); i++){
+        *total_price += o->dishes[i]->price;
+    }
+    return total_price;
+}
