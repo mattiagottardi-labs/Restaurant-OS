@@ -7,6 +7,9 @@ menu Menu;//contains all dishes
 tool_pool** kitchen;
 
 typedef struct tool_pool{
+    bool available;
+    int in_use;
+    int quantity;
     char* name;
     tool* tools;
 }tool_pool;
@@ -67,7 +70,7 @@ tool*ctot(char* arg, FILE* tools_csv){ //char to tool
     return &temp;
 }
 
-void make_tools( char* tools_location, tool_pool* kitchen, int max_tools){
+void make_tools( char* tools_location, tool_pool** kitchen, int max_tools){
     FILE* tools_csv = fopen(tools_location, "r");
     if(!tools_csv){
         printf("file not found\n");
@@ -80,11 +83,13 @@ void make_tools( char* tools_location, tool_pool* kitchen, int max_tools){
     while(fgets(line, sizeof(line), tools_csv)){
         line[strcspn(line, "\n")] = 0;
         char* name = strtok(line, ',');
-        kitchen[j].name = name;
-        int quantity = atoi(strtok(line, ','));
-        for(int i = 0; i < atoi(strtok(line, ',')); i++){
-            kitchen[j].tools = ctot(name, tools_csv);
+        kitchen[j]->name = name;
+        kitchen[j]->quantity = atoi(strtok(line, ','));
+        for(int i = 0; i < kitchen[j]->quantity; i++){
+            kitchen[j]->tools = ctot(name, tools_csv);
         }
+        kitchen[j]->available = true;
+        kitchen[j]->in_use = 0;
     }
 }
 

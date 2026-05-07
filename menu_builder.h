@@ -17,7 +17,7 @@ typedef struct dish {
     char* name;
     int price;
     int time;
-    tool tools[4];
+    tool* tools;
 } dish;
 
 typedef struct menu {
