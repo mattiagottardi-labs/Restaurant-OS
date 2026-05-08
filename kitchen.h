@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdbool.h>
+#include <pthread.h>
 
 extern menu Menu;
 extern kitchen_manager kitchen;
@@ -11,14 +12,16 @@ typedef struct tool {
     char* name;
     int clean_time;
     int dirty_usages;
+    bool in_use;
 } tool;
 
 typedef struct tool_pool {
-    _Atomic bool available;
-    int in_use;
-    int quantity;
-    char* name;
-    tool* tools; 
+    int             in_use;
+    int             quantity;
+    char*           name;
+    tool*           tools;
+    pthread_mutex_t lock;
+    pthread_cond_t  cv;
 } tool_pool;
 
 typedef struct kitchen_manager {
@@ -39,9 +42,7 @@ typedef struct menu {
     int num_dishes;
 } menu;
 
-void make_tools(char* tools_location, kitchen_manager* my_kitchen, int max_tools);
-void make_menu(char* menu_location, menu* MyMenu, int max_dishes);
-int count_tools(dish* d);
-tool_pool* find_pool(char* name, kitchen_manager* kitchen);
+void make_tools(const char* tools_location, kitchen_manager* my_kitchen, const int max_tools);
+void make_menu(const char* menu_location, menu* MyMenu, const int max_dishes);
 
 #endif

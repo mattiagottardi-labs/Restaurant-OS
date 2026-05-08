@@ -1,27 +1,126 @@
 #include<stdlib.h>
 #include<pthread.h>
 #include<stdbool.h>
+#include<string.h>
 #include "customer.h"
 #include "kitchen.h"
+#include "cook.h"
 #include "clock.h"
 #include<math.h>
-
+#define DIRTY_TRESHOLD 5 //initial approach is static, we'll adjust later.
 #define GAME_SPEED 1
 
 static pthread_mutex_t sink_mutex = PTHREAD_MUTEX_INITIALIZER; //mutex for sink access
 
+void cook_dish(dish* d, sim_clock* sim, kitchen_manager* km) {
+    tool** used = acquire_tools(d, km);
+    if (!used) return;
 
-void cook_dish(dish* d, sim_clock* sim) {
-    int ticks_remaining = d->time;
     pthread_mutex_lock(&sim->lock);
+    int ticks_remaining = d->time;
     while (ticks_remaining > 0) {
         pthread_cond_wait(&sim->tick_cv, &sim->lock);
         ticks_remaining--;
     }
     d->ready = true;
     pthread_mutex_unlock(&sim->lock);
+
+    release_tools(used, d, km, sim);
+    free(used);
 }
 
+tool* acquire_pool(tool_pool* pool) {
+    pthread_mutex_lock(&pool->lock);
+    while (pool->in_use >= pool->quantity) {
+        pthread_cond_wait(&pool->cv, &pool->lock);
+    }
+    // find a free tool slot
+    tool* picked = NULL;
+    for (int i = 0; i < pool->quantity; i++) {
+        if (!pool->tools[i].in_use) {
+            picked = &pool->tools[i];
+            picked->in_use = true; // set under pool->lock to prevent data race
+            break;
+        }
+    }
+    if (!picked) {
+        /* should never happen if in_use tracking is correct */
+        fprintf(stderr, "acquire_pool: no free tool found despite in_use < quantity\n");
+        pthread_mutex_unlock(&pool->lock);
+        return NULL;
+    }
+    pool->in_use++;
+    pthread_mutex_unlock(&pool->lock);
+    return picked;
+}
+
+void release_pool(tool_pool* pool, tool* t, sim_clock* sim) {
+    t->dirty_usages++;
+    if (t->dirty_usages >= DIRTY_TRESHOLD ){
+        // acquire sink for washing
+        pthread_mutex_lock(&sink_mutex);
+        // cook the cleaning ticks before releasing
+        pthread_mutex_lock(&sim->lock);
+        int clean_ticks = t->clean_time;
+        while (clean_ticks > 0) {
+            pthread_cond_wait(&sim->tick_cv, &sim->lock);
+            clean_ticks--;
+        }
+        t->dirty_usages = 0;
+        pthread_mutex_unlock(&sim->lock);
+        pthread_mutex_unlock(&sink_mutex);
+    }
+
+    pthread_mutex_lock(&pool->lock);
+    t->in_use = false; 
+    pool->in_use--;
+    pthread_cond_signal(&pool->cv);
+    pthread_mutex_unlock(&pool->lock);
+}
+
+tool** acquire_tools(dish* d, kitchen_manager* km) {
+    int n = count_tools(d);
+    tool** used = calloc(n + 1, sizeof(tool*));  // NULL-terminated
+    if (!used) {
+        fprintf(stderr, "acquire_tools: out of memory\n");
+        return NULL;
+    }
+    for (int i = 0; d->tools[i] != NULL; i++) {
+        tool_pool* pool = find_pool(d->tools[i], km);
+        if (!pool) continue;
+        tool* t = acquire_pool(pool);
+        if (!t) {
+            fprintf(stderr, "acquire_tools: acquire_pool returned NULL for '%s'\n", d->tools[i]);
+            continue;
+        }
+        used[i] = t;
+    }
+    return used;
+}
+
+void release_tools(tool** used, dish* d, kitchen_manager* km, sim_clock* sim) {
+    if (!used) return;
+    for (int i = 0; d->tools[i] != NULL; i++) {
+        if (!used[i]) continue; // was NULL due to failed acquire, skip
+        tool_pool* pool = find_pool(d->tools[i], km);
+        if (pool) release_pool(pool, used[i], sim);
+    }
+}
+
+int count_tools(dish* d){
+    int i = 0;
+    while(d->tools[i] != NULL) i++;
+    return i;
+}
+
+tool_pool* find_pool(const char* name, kitchen_manager* kitchen){
+    for(int i = 0; i < kitchen->num_pools; i++){
+        if(strcmp(kitchen->pools[i]->name, name)==0)
+        return kitchen->pools[i];
+    }
+    fprintf(stderr, "tool not found");
+    return NULL;
+}
 
 /*dish* cook_loop(dish* d, order* o){
     if(d == NULL){
@@ -52,42 +151,3 @@ void cook_dish(dish* d, sim_clock* sim) {
     }
     return d;  
 }*/
-
-bool is_tool_available(char* tool_name, kitchen_manager* kitchen){ //cook reads tool name as string from dish, not directly as tool.
-    int i = 0;
-    while(kitchen->pools[i] != NULL){
-        if(strcmp(kitchen->pools[i]->name, tool_name) == 0){ 
-            if(kitchen->pools[i]->available){
-                return true;
-            }else{
-                return false;
-            }
-        }
-        i++;
-    }
-    printf("ERROR: tool not found in kitchen\n");
-    return false;
-}
-
-bool is_tool_dirty(tool* t){
-    if(t->dirty_usages > 0) return true;
-    else return false;
-}
-
-void* sink_cleaning(tool* t){
-    pthread_mutex_lock(&sink_mutex);
-    usleep(t->clean_time / GAME_SPEED);
-    t->dirty_usages = 0; //set this parameter to 0 to indicate tool is clean
-    printf("Cleaned %s\n", t->name);
-    pthread_mutex_unlock(&sink_mutex);
-    printf("Sink available\n");
-}
-
-
-/*bool is_worth_cooking(dish* d, order* o){
-    float customer_served = (get_order_price(o)*(1 - (current_time - o->order_time)/o->patience)); //we need the time to serve in the ()
-    float customer_skipped = (get_order_price(o)*log2(1+(o->patience)/(1 + number_of_dishes_served)));
-    float cooked_dirty = 2^()
-}*/
-//NOT A FUNCTION FOR COOK, THE CUSTOMER UPDATES SCOORE AS HE GETS THE ORDER DELIVERED TO HIM
-

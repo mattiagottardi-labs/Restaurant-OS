@@ -33,7 +33,6 @@ void make_tools(const char* tools_location, kitchen_manager* my_kitchen,const in
             pool->name = my_strdup(name);
             pool->quantity = atoi(qty_str);
             pool->in_use = 0;
-            pool->available = true;
 
             // Initialize individual tools within the pool
             pool->tools = malloc(pool->quantity * sizeof(tool));
@@ -106,17 +105,3 @@ void make_menu(const char* menu_location, menu* Menu, const int max_dishes) {
     fclose(menu_csv);
 }
 
-int count_tools(dish* d){
-    int i = 0;
-    while(d->tools[i] != NULL) i++;
-    return i;
-}
-
-tool_pool* find_pool(const char* name, kitchen_manager* kitchen){
-    for(int i = 0; i < kitchen->num_pools; i++){
-        if(strcmp(kitchen->pools[i]->name, name)==0)
-        return kitchen->pools[i];
-    }
-    fprintf(stderr, "tool not found");
-    return NULL;
-}
