@@ -14,7 +14,7 @@ typedef struct tool {
 } tool;
 
 typedef struct tool_pool {
-    bool available;
+    _Atomic bool available;
     int in_use;
     int quantity;
     char* name;
@@ -31,7 +31,7 @@ typedef struct dish {
     int price;
     int time;
     char** tools; // Points to an array of strings
-    bool ready;
+    _Atomic bool ready;
 } dish;
 
 typedef struct menu {
@@ -41,5 +41,7 @@ typedef struct menu {
 
 void make_tools(char* tools_location, kitchen_manager* my_kitchen, int max_tools);
 void make_menu(char* menu_location, menu* MyMenu, int max_dishes);
+int count_tools(dish* d);
+tool_pool* find_pool(char* name, kitchen_manager* kitchen);
 
 #endif

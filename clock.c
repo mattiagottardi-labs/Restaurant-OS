@@ -4,10 +4,9 @@
 #include <unistd.h>
 #include "clock.h"
 
-void clock_run(int* time, int stop){
-    for(int i = 0; i < stop; i++){ //runs for a max of 1000s
-        sleep(1);
-        time++;
-    }
-    return;
+void tick_advance(sim_clock* sim) {
+    pthread_mutex_lock(&sim->lock);
+    sim->tick++;
+    pthread_cond_broadcast(&sim->tick_cv);  // wake all waiting threads
+    pthread_mutex_unlock(&sim->lock);
 }

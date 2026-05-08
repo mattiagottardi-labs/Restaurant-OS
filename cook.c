@@ -11,7 +11,16 @@
 static pthread_mutex_t sink_mutex = PTHREAD_MUTEX_INITIALIZER; //mutex for sink access
 
 
-
+void cook_dish(dish* d, sim_clock* sim) {
+    int ticks_remaining = d->time;
+    pthread_mutex_lock(&sim->lock);
+    while (ticks_remaining > 0) {
+        pthread_cond_wait(&sim->tick_cv, &sim->lock);
+        ticks_remaining--;
+    }
+    d->ready = true;
+    pthread_mutex_unlock(&sim->lock);
+}
 
 
 /*dish* cook_loop(dish* d, order* o){

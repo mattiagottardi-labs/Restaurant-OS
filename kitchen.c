@@ -9,7 +9,7 @@ char* safe_strdup(const char* s) {
     return d;
 }
 
-void make_tools(char* tools_location, kitchen_manager* my_kitchen, int max_tools) {
+void make_tools(const char* tools_location, kitchen_manager* my_kitchen,const int max_tools) {
     FILE* f = fopen(tools_location, "r");
     if (!f) {
         perror("Failed to open tools file");
@@ -51,7 +51,7 @@ void make_tools(char* tools_location, kitchen_manager* my_kitchen, int max_tools
     fclose(f);
 }
 
-void make_menu(char* menu_location, menu* Menu, int max_dishes) {
+void make_menu(const char* menu_location, menu* Menu, const int max_dishes) {
     FILE *menu_csv = fopen(menu_location, "r");
     if(!menu_csv){ 
         perror("file cannot be opened");
@@ -104,4 +104,19 @@ void make_menu(char* menu_location, menu* Menu, int max_dishes) {
     }
     Menu->num_dishes = j;
     fclose(menu_csv);
+}
+
+int count_tools(dish* d){
+    int i = 0;
+    while(d->tools[i] != NULL) i++;
+    return i;
+}
+
+tool_pool* find_pool(const char* name, kitchen_manager* kitchen){
+    for(int i = 0; i < kitchen->num_pools; i++){
+        if(strcmp(kitchen->pools[i]->name, name)==0)
+        return kitchen->pools[i];
+    }
+    fprintf(stderr, "tool not found");
+    return NULL;
 }

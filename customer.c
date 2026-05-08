@@ -4,6 +4,7 @@
 #include <math.h>
 #include "customer.h"
 #include "kitchen.h"
+#include "clock.h"
 
 order* make_order(int num_dishes) {
     order* o = malloc(sizeof(order));
@@ -17,9 +18,8 @@ order* make_order(int num_dishes) {
         free(o);
         return NULL;
     }
-    o->patience   = 0;
+    o->patience = 0;
     o->order_time = 0;
-    o->done       = false;
     return o;
 }
 
@@ -64,7 +64,7 @@ void add_customer(customer* c, customer_queue* cq) {
     if (!c || !cq) return;
     node* new_node = make_node(c);
     if (!new_node) return;
-
+    pthread_mutex_lock(&cq->lock);
     // Insert in sorted (ascending extra_patience) position
     if (!cq->start || new_node->extra_patience <= cq->start->extra_patience) {
         /* goes at the front */
@@ -80,6 +80,7 @@ void add_customer(customer* c, customer_queue* cq) {
     }
 
     cq->num_customers++;
+    pthread_mutex_unlock(&cq->lock);
 }
 
 void remove_customer(customer* c, customer_queue* cq) {
@@ -87,7 +88,7 @@ void remove_customer(customer* c, customer_queue* cq) {
 
     node* cur  = cq->start;
     node* prev = NULL;
-
+    pthread_mutex_lock(&cq->lock);
     while (cur) {
         if (cur->customer == c) {
             if (prev) {
@@ -102,25 +103,33 @@ void remove_customer(customer* c, customer_queue* cq) {
         prev = cur;
         cur = cur->next;
     }
-
+    pthread_mutex_unlock(&cq->lock);
     fprintf(stderr, "remove_customer: customer not found in queue\n");
 }
 
-float customer_loop(customer* c, customer_queue* cq) {
+float customer_loop(customer* c, customer_queue* cq, sim_clock* sim) {
     if (!c || !c->o) return 0;
-    int elapsed = 0;
-    while (!is_done(c->o)) {
-        elapsed++;
-        if (elapsed > c->patience) {
-            /* Customer gives up — remove from queue and penalise */
-            remove_customer(c, cq);
-            return -get_order_price(c->o) * log2(1+((float)c->patience/(1+count_done(c->o))));
-        }
-        sleep(1);
-    }
-    remove_customer(c, cq);
-    return get_order_price(c->o)*(1-((float)elapsed/c->patience));
 
+    int last_tick = sim->tick;
+    int elapsed   = 0;
+
+    pthread_mutex_lock(&sim->lock);
+    while (!is_done(c->o)) {
+        pthread_cond_wait(&sim->tick_cv, &sim->lock);
+
+        if (sim->tick == last_tick) continue;
+        elapsed += sim->tick - last_tick;
+        last_tick = sim->tick;
+
+        if (elapsed > c->patience) {
+            pthread_mutex_unlock(&sim->lock);
+            remove_customer(c, cq);
+            return -get_order_price(c->o) * log2(1 + ((float)c->patience / (1 + count_done(c->o))));
+        }
+    }
+    pthread_mutex_unlock(&sim->lock);
+    remove_customer(c, cq);
+    return get_order_price(c->o) * (1 - ((float)elapsed / c->patience));
 }
 
 int get_prep_time(dish** dishes){
