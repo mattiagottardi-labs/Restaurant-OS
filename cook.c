@@ -12,20 +12,20 @@
 
 static pthread_mutex_t sink_mutex = PTHREAD_MUTEX_INITIALIZER; //mutex for sink access
 
-void cook_dish(dish* d, sim_clock* sim, kitchen_manager* km) {
+void cook_dish(dish* d, sim_clock* clock, kitchen_manager* km, pthread_mutex_t sink) {
     tool** used = acquire_tools(d, km);
     if (!used) return;
 
-    pthread_mutex_lock(&sim->lock);
+    pthread_mutex_lock(&clock->lock);
     int ticks_remaining = d->time;
     while (ticks_remaining > 0) {
-        pthread_cond_wait(&sim->tick_cv, &sim->lock);
+        pthread_cond_wait(&clock->tick_cv, &clock->lock);
         ticks_remaining--;
     }
     d->ready = true;
-    pthread_mutex_unlock(&sim->lock);
+    pthread_mutex_unlock(&clock->lock);
 
-    release_tools(used, d, km, sim);
+    release_tools(used, d, km, clock, sink);
     free(used);
 }
 
@@ -39,7 +39,7 @@ tool* acquire_pool(tool_pool* pool) {
     for (int i = 0; i < pool->quantity; i++) {
         if (!pool->tools[i].in_use) {
             picked = &pool->tools[i];
-            picked->in_use = true; // set under pool->lock to prevent data race
+            picked->in_use = true;
             break;
         }
     }
@@ -54,20 +54,20 @@ tool* acquire_pool(tool_pool* pool) {
     return picked;
 }
 
-void release_pool(tool_pool* pool, tool* t, sim_clock* sim) {
+void release_pool(tool_pool* pool, tool* t, sim_clock* clock, pthread_mutex_t sink) {
     t->dirty_usages++;
     if (t->dirty_usages >= DIRTY_TRESHOLD ){
         // acquire sink for washing
-        pthread_mutex_lock(&sink_mutex);
+        pthread_mutex_lock(&sink);
         // cook the cleaning ticks before releasing
-        pthread_mutex_lock(&sim->lock);
+        pthread_mutex_lock(&clock->lock);
         int clean_ticks = t->clean_time;
         while (clean_ticks > 0) {
-            pthread_cond_wait(&sim->tick_cv, &sim->lock);
+            pthread_cond_wait(&clock->tick_cv, &clock->lock);
             clean_ticks--;
         }
         t->dirty_usages = 0;
-        pthread_mutex_unlock(&sim->lock);
+        pthread_mutex_unlock(&clock->lock);
         pthread_mutex_unlock(&sink_mutex);
     }
 
@@ -98,12 +98,12 @@ tool** acquire_tools(dish* d, kitchen_manager* km) {
     return used;
 }
 
-void release_tools(tool** used, dish* d, kitchen_manager* km, sim_clock* sim) {
+void release_tools(tool** used, dish* d, kitchen_manager* km, sim_clock* clock, pthread_mutex_t sink) {
     if (!used) return;
     for (int i = 0; d->tools[i] != NULL; i++) {
         if (!used[i]) continue; // was NULL due to failed acquire, skip
         tool_pool* pool = find_pool(d->tools[i], km);
-        if (pool) release_pool(pool, used[i], sim);
+        if (pool) release_pool(pool, used[i], clock, sink);
     }
 }
 

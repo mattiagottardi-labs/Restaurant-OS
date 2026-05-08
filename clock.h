@@ -7,6 +7,6 @@ typedef struct sim_clock {
     pthread_cond_t  tick_cv;
 } sim_clock;
 
-void tick_advance(sim_clock* sim);
+void tick_advance(sim_clock* clock);
 
 #endif
