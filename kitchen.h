@@ -31,7 +31,7 @@ typedef struct dish {
     int price;
     int time;
     char** tools; // Points to an array of strings
-    int num_tools_required;
+    bool ready;
 } dish;
 
 typedef struct menu {

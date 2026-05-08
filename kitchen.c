@@ -71,7 +71,7 @@ void make_menu(char* menu_location, menu* Menu, int max_dishes) {
         d->name = strdup(strtok(line, ","));
         d->price = atoi(strtok(NULL, ","));
         d->time = atoi(strtok(NULL, ","));
-        
+        d->ready = 0;
         char* tools_field = strtok(NULL, ","); 
         d->tools = malloc(4 * sizeof(char*)); // Space for tool names (max 4)
         int i = 0;
@@ -99,8 +99,6 @@ void make_menu(char* menu_location, menu* Menu, int max_dishes) {
             }
             tool_field = strtok(NULL, ";");
         }
-        
-        d->num_tools_required = i;
         Menu->selection[j] = d;
         j++;
     }

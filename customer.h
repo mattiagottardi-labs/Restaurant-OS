@@ -1,36 +1,43 @@
-#ifndef ORDER_H
-#define ORDER_H
+#ifndef CUSTOMER_H
+#define CUSTOMER_H
 
+#include <stdbool.h>
 #include "kitchen.h"
 
 typedef struct order {
-    dish** dishes;
-    int patience;
-    int order_time;
-    bool done;
+    dish**  dishes;
+    int     patience;
+    int     order_time;
+    bool    done;
 } order;
 
-typedef struct customer{
-    order *o;
-    int patience;
-}customer;
+typedef struct customer {
+    order* o;
+    int    patience;
+} customer;
 
-typedef struct node{
+typedef struct node {
     customer* customer;
-    node* next;
-    int extra_patience; //customer are ranked by the amount of extra patience they have, so as to do the impatient first
-}node;
+    struct node* next;
+    int extra_patience; // patience - prep_time; lower = served first
+} node;
 
-typedef struct customer_queue{ //defined as a linked list, so as to make removal of customers easy upon delivering the goods
+typedef struct customer_queue {
     node* start;
-    int num_customers;
-}customer_queue;
-//we could implement different queues with different scheduling algorithms
+    int   num_customers;
+} customer_queue;
 
 order* make_order(int num_dishes);
-int get_order_price(order* o); //price can be taken by value/copied, no need for a pointer
-int customer_loop(); // returns the score, negative if he didnt get the food, positive if he got it !! INCOMPLETE
-void add_customer(customer* c, customer_queue* cq); //should put customer into queue
-void remove_customer(customer* c, customer_queue* cq); 
-int get_prep_time(dish** dishes);
-#endif 
+int    get_order_price(order* o);
+bool   is_done(order* o);
+int    count_done(order* o);
+
+int    get_prep_time(dish** dishes);
+
+void   add_customer(customer* c, customer_queue* cq);
+void   remove_customer(customer* c, customer_queue* cq);
+
+// lifecycle — returns a score (see customer.c for scoring formula) 
+float  customer_loop(customer* c, customer_queue* cq); //THIS is what we call in main.
+
+#endif

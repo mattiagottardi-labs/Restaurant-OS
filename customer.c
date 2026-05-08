@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <math.h>
 #include "customer.h"
 #include "kitchen.h"
 
@@ -10,39 +11,52 @@ order* make_order(int num_dishes) {
         fprintf(stderr, "make_order: out of memory\n");
         return NULL;
     }
-
     o->dishes = calloc(num_dishes, sizeof(dish*));
     if (!o->dishes) {
         fprintf(stderr, "make_order: out of memory for dishes\n");
         free(o);
         return NULL;
     }
-
     o->patience   = 0;
     o->order_time = 0;
     o->done       = false;
     return o;
 }
 
+bool is_done(order* o){
+    for(int i = 0; o->dishes[i] != NULL; i++){
+        if(!o->dishes[i]->ready) return false;
+    }
+    return true;
+}
+
+int count_done(order* o){
+    int res = 0;
+    for(int i = 0; o->dishes[i] != NULL; i++){
+        if(o->dishes[i]->ready) res++;
+    }
+    return res;
+}
+
 int get_order_price(order* o) {
     if (!o || !o->dishes) return 0;
-
     int total = 0;
-    /* iterate until a NULL sentinel dish pointer */
+    /* iterate until a NULL pointer */
     for (int i = 0; o->dishes[i] != NULL; i++) {
-        total += get_dish_price(o->dishes[i]); // assumed to be defined in kitchen.h/kitchen.c
+        total += get_dish_price(o->dishes[i]);
     }
     return total;
 }
+
 static node* make_node(customer* c) {
     node* n = malloc(sizeof(node));
     if (!n) {
         fprintf(stderr, "make_node: out of memory\n");
         return NULL;
     }
-    n->customer        = c;
-    n->extra_patience  = c->patience - get_prep_time(c->o->dishes);
-    n->next            = NULL;
+    n->customer = c;
+    n->extra_patience = c->patience - get_prep_time(c->o->dishes);
+    n->next = NULL;
     return n;
 }
 
@@ -51,18 +65,18 @@ void add_customer(customer* c, customer_queue* cq) {
     node* new_node = make_node(c);
     if (!new_node) return;
 
-    /* Insert in sorted (ascending extra_patience) position */
+    // Insert in sorted (ascending extra_patience) position
     if (!cq->start || new_node->extra_patience <= cq->start->extra_patience) {
         /* goes at the front */
         new_node->next = cq->start;
-        cq->start      = new_node;
+        cq->start = new_node;
     } else {
         node* cur = cq->start;
         while (cur->next && cur->next->extra_patience < new_node->extra_patience) {
             cur = cur->next;
         }
         new_node->next = cur->next;
-        cur->next      = new_node;
+        cur->next = new_node;
     }
 
     cq->num_customers++;
@@ -86,27 +100,27 @@ void remove_customer(customer* c, customer_queue* cq) {
             return;
         }
         prev = cur;
-        cur  = cur->next;
+        cur = cur->next;
     }
 
     fprintf(stderr, "remove_customer: customer not found in queue\n");
 }
 
-int customer_loop(customer* c, customer_queue* cq) {
+float customer_loop(customer* c, customer_queue* cq) {
     if (!c || !c->o) return 0;
     int elapsed = 0;
-    while (!c->o->done) {
+    while (!is_done(c->o)) {
         elapsed++;
         if (elapsed > c->patience) {
             /* Customer gives up — remove from queue and penalise */
             remove_customer(c, cq);
-            return 0;// negative: how late we were
+            return -get_order_price(c->o) * log2(1+((float)c->patience/(1+count_done(c->o))));
         }
         sleep(1);
     }
-    int remaining_patience = c->patience - elapsed;
     remove_customer(c, cq);
-    return 1;
+    return get_order_price(c->o)*(1-((float)elapsed/c->patience));
+
 }
 
 int get_prep_time(dish** dishes){
