@@ -32,5 +32,5 @@ int get_order_price(order* o); //price can be taken by value/copied, no need for
 int customer_loop(); // returns the score, negative if he didnt get the food, positive if he got it !! INCOMPLETE
 void add_customer(customer* c, customer_queue* cq); //should put customer into queue
 void remove_customer(customer* c, customer_queue* cq); 
-
+int get_prep_time(dish** dishes);
 #endif 

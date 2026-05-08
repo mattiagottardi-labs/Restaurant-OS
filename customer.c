@@ -1,47 +1,120 @@
-#include "kitchen.h"
-#include "customer.h"
-#include "clock.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
-#include <unistd.h>
+#include <stdbool.h>
+#include "customer.h"
+#include "kitchen.h"
 
+order* make_order(int num_dishes) {
+    order* o = malloc(sizeof(order));
+    if (!o) {
+        fprintf(stderr, "make_order: out of memory\n");
+        return NULL;
+    }
 
-order* make_order(int num_dishes){
-    srand(time(NULL));
-    order o;
-    o.dishes = malloc(num_dishes*sizeof(dish));
-    for(int i = 0; i < num_dishes; i++){
-        o.dishes[i] = Menu.selection[rand()%Menu.num_dishes];
+    o->dishes = calloc(num_dishes, sizeof(dish*));
+    if (!o->dishes) {
+        fprintf(stderr, "make_order: out of memory for dishes\n");
+        free(o);
+        return NULL;
     }
-    int baseline = 0;
-    for(int i = 0; i < num_dishes; i++){
-        baseline += o.dishes[i]->time;
-    }
-    o.order_time = current_time;
-    o.patience = baseline + rand()%50; //strictly greater than order time
-    return &o;
+
+    o->patience   = 0;
+    o->order_time = 0;
+    o->done       = false;
+    return o;
 }
 
-int get_order_price(order* o){
-    int total_price = malloc(sizeof(int));
-    total_price = 0;
-    for(int i = 0; i < sizeof(o->dishes)/sizeof(dish); i++){
-        total_price += o->dishes[i]->price;
+int get_order_price(order* o) {
+    if (!o || !o->dishes) return 0;
+
+    int total = 0;
+    /* iterate until a NULL sentinel dish pointer */
+    for (int i = 0; o->dishes[i] != NULL; i++) {
+        total += get_dish_price(o->dishes[i]); // assumed to be defined in kitchen.h/kitchen.c
     }
-    return total_price;
+    return total;
+}
+static node* make_node(customer* c) {
+    node* n = malloc(sizeof(node));
+    if (!n) {
+        fprintf(stderr, "make_node: out of memory\n");
+        return NULL;
+    }
+    n->customer        = c;
+    n->extra_patience  = c->patience - get_prep_time(c->o->dishes);
+    n->next            = NULL;
+    return n;
 }
 
-int customer_loop(customer* c){ //returns the score given if he recieves what he wants or not
-    srand(time(NULL));
-    int num_dishes = rand()%5;
-    c->o = make_order(num_dishes);
-    c->patience = c->o->patience;
-    for(int i = 0; i < c->patience; i++){
-        if(c->o->done){
-            return 1; //got the order in time. TO BE UPDATED
+void add_customer(customer* c, customer_queue* cq) {
+    if (!c || !cq) return;
+    node* new_node = make_node(c);
+    if (!new_node) return;
+
+    /* Insert in sorted (ascending extra_patience) position */
+    if (!cq->start || new_node->extra_patience <= cq->start->extra_patience) {
+        /* goes at the front */
+        new_node->next = cq->start;
+        cq->start      = new_node;
+    } else {
+        node* cur = cq->start;
+        while (cur->next && cur->next->extra_patience < new_node->extra_patience) {
+            cur = cur->next;
+        }
+        new_node->next = cur->next;
+        cur->next      = new_node;
+    }
+
+    cq->num_customers++;
+}
+
+void remove_customer(customer* c, customer_queue* cq) {
+    if (!c || !cq || !cq->start) return;
+
+    node* cur  = cq->start;
+    node* prev = NULL;
+
+    while (cur) {
+        if (cur->customer == c) {
+            if (prev) {
+                prev->next = cur->next;
+            } else {
+                cq->start = cur->next;
+            }
+            free(cur);
+            cq->num_customers--;
+            return;
+        }
+        prev = cur;
+        cur  = cur->next;
+    }
+
+    fprintf(stderr, "remove_customer: customer not found in queue\n");
+}
+
+int customer_loop(customer* c, customer_queue* cq) {
+    if (!c || !c->o) return 0;
+    int elapsed = 0;
+    while (!c->o->done) {
+        elapsed++;
+        if (elapsed > c->patience) {
+            /* Customer gives up — remove from queue and penalise */
+            remove_customer(c, cq);
+            return 0;// negative: how late we were
         }
         sleep(1);
     }
-    return 0;  //didnt get the order in time.
+    int remaining_patience = c->patience - elapsed;
+    remove_customer(c, cq);
+    return 1;
+}
+
+int get_prep_time(dish** dishes){
+    int x = 0;
+    int i = 0;
+    while(dishes[i]){
+        x+= dishes[i]->time;
+        i++;
+    }
+    return x;
 }
