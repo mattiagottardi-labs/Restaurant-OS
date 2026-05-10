@@ -101,7 +101,7 @@ tool** acquire_tools(dish* d, kitchen_manager* km) {
 void release_tools(tool** used, dish* d, kitchen_manager* km, sim_clock* clock, pthread_mutex_t sink) {
     if (!used) return;
     for (int i = 0; d->tools[i] != NULL; i++) {
-        if (!used[i]) continue; // was NULL due to failed acquire, skip
+        if (!used[i]) continue; // if failed aquire skip.
         tool_pool* pool = find_pool(d->tools[i], km);
         if (pool) release_pool(pool, used[i], clock, sink);
     }
@@ -113,9 +113,9 @@ int count_tools(dish* d){
     return i;
 }
 
-tool_pool* find_pool(const char* name, kitchen_manager* kitchen){
+tool_pool* find_pool(const char* tool_name, kitchen_manager* kitchen){
     for(int i = 0; i < kitchen->num_pools; i++){
-        if(strcmp(kitchen->pools[i]->name, name)==0)
+        if(strcmp(kitchen->pools[i]->name, tool_name)==0)
         return kitchen->pools[i];
     }
     fprintf(stderr, "tool not found");
