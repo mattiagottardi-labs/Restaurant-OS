@@ -38,7 +38,7 @@ void queue_balancing(queue_manager* qm){
 void schedule_order(queue_manager* qm, customer* nc){
     if(!qm || !nc || !nc->o || !nc->o->dishes) return;
 
-    //creating the first array
+    //creating the first queue, if there are noone yet
     if(qm->num_queue == 0){
         qm->queue_array = malloc(sizeof(dish_queue*));
         qm->queue_balance = malloc(sizeof(int));
@@ -47,8 +47,46 @@ void schedule_order(queue_manager* qm, customer* nc){
         qm->num_queue = 1;
     }
 
+    //controls if the system need new queues
     queue_balancing(qm);
+
+    //find the best queue for the order
+    int best_queue_index = -1; //index of the best queue for the order
+    int min_score = INT_MAX;
+
+    //analyzes each queue and fint the best match
+    for(int i = 0; i < qm->num_queue; i++){
+        dish_queue* current_queue = qm->queue_array[i];
+        //if the queue is full, skip it
+        if(current_queue->num_dishes >= current_queue->max_capacity) continue;
+
+        int current_avg = current_queue->avg_patience;
+
+        if(current_queue->num_dishes == 0){ //this is a superb match
+            current_avg = nc->patience; //if the queue is empty, use the new order's patience as the average
+        }
+
+        int patience_diff = abs(current_avg - nc->patience); //abs to evitate negative values
+        int queue_load_penalty = qm->queue_balance[i]; //the more loaded the queue is, the higher the penalty
+        int score = patience_diff + queue_load_penalty; //this will give us a global score for the queue
+
+        if(score < min_score){
+            min_score = score;
+            best_queue_index = i;
+        }
+    }
+
+    if(best_queue_index != -1){
+        dish_queue* target_queue = qm->queue_array[best_queue_index];
+
+        target_queue->queue[target_queue->num_dishes] = nc->o->dishes; //place the order in the queue
+        target_queue->num_dishes++;
+        qm->queue_balance[best_queue_index]++;//update the queue balance
+        target_queue->avg_patience = average_calculator(target_queue); //update the average patience of the queue
     
+    }else{
+        fprintf(stderr, "Error: No suitable queue found for the order.\n");
+    }
 }
 
 
