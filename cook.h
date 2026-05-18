@@ -4,7 +4,7 @@
 #include "kitchen.h"
 #include "clock.h"
 
-#define DIRTY_THRESHOLD 5
+#define DIRTY_THRESHOLD 3
 #define GAME_SPEED      1
 
 void    cook_dish(dish* d, sim_clock* sim, kitchen_manager* km, pthread_mutex_t sink);

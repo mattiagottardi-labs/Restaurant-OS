@@ -7,7 +7,7 @@
 #include "cook.h"
 #include "clock.h"
 #include<math.h>
-#define DIRTY_TRESHOLD 5 //initial approach is static, we'll adjust later.
+#define DIRTY_TRESHOLD 3 //initial approach is static, we'll adjust later.
 #define GAME_SPEED 1
 
 static pthread_mutex_t sink_mutex = PTHREAD_MUTEX_INITIALIZER; //mutex for sink access
@@ -24,10 +24,7 @@ void cook_dish(dish* d, sim_clock* clock, kitchen_manager* km, pthread_mutex_t s
     }
     d->ready = true;
     pthread_mutex_unlock(&clock->lock);
-    
-    for(int i = 0; used[i] != NULL; i++){
-        used[i]->dirty_usages++;
-    }
+
     release_tools(used, d, km, clock, sink);
     free(used);
 }
