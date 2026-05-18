@@ -12,19 +12,48 @@
 
 static pthread_mutex_t sink_mutex = PTHREAD_MUTEX_INITIALIZER; //mutex for sink access
 
-void cook_dish(dish* d, sim_clock* clock, kitchen_manager* km, pthread_mutex_t sink) {
-    tool** used = acquire_tools(d, km);
-    if (!used) return;
+void cook_dish(dish* d, sim_clock* clock, kitchen_manager* km, pthread_mutex_t* sink) {
+    // 1. Acquire the lock for the dish
+    pthread_mutex_lock(&d->lock);
+    
+    // Check if another thread started cooking this or if it's already done
+    if (d->cooking || d->ready) {
+        pthread_mutex_unlock(&d->lock);
+        return; 
+    }
+    
+    // Set the cooking flag to true
+    d->cooking = true;
+    
+    // Unlock the dish so other threads aren't blocked while this thread waits for tools/cooking
+    pthread_mutex_unlock(&d->lock);
 
+    // 2. Acquire the required tools
+    tool** used = acquire_tools(d, km);
+    if (!used) {
+        // If tool acquisition fails, reset the cooking flag safely
+        pthread_mutex_lock(&d->lock);
+        d->cooking = false;
+        pthread_mutex_unlock(&d->lock);
+        return;
+    }
+
+    // 3. Simulate the cooking time using the simulation clock
     pthread_mutex_lock(&clock->lock);
     int ticks_remaining = d->time;
     while (ticks_remaining > 0) {
         pthread_cond_wait(&clock->tick_cv, &clock->lock);
         ticks_remaining--;
     }
-    d->ready = true;
     pthread_mutex_unlock(&clock->lock);
 
+    // 4. Update the dish status to ready and turn off cooking
+    pthread_mutex_lock(&d->lock);
+    d->ready = true;
+    d->cooking = false;
+    pthread_mutex_unlock(&d->lock);
+
+    // 5. Clean up and release resources
     release_tools(used, d, km, clock, sink);
     free(used);
 }
@@ -56,7 +85,7 @@ tool* acquire_pool(tool_pool* pool) {
 
 void release_pool(tool_pool* pool, tool* t, sim_clock* clock, pthread_mutex_t sink) {
     t->dirty_usages++;
-    if (t->dirty_usages >= DIRTY_TRESHOLD ){
+    if (t->dirty_usages >= DIRTY_TRESHOLD){
         // acquire sink for washing
         pthread_mutex_lock(&sink);
         // cook the cleaning ticks before releasing

@@ -24,7 +24,7 @@ typedef struct tool_pool {
     pthread_cond_t  cv;
 } tool_pool;
 
-typedef struct kitchen_manager {
+typedef struct kitchen_manager{
     tool_pool** pools;
     int num_pools;
 } kitchen_manager;
@@ -35,6 +35,8 @@ typedef struct dish {
     int time;
     char** tools; // Points to an array of strings
     _Atomic bool ready;
+    _Atomic bool cooking;
+    pthread_mutex_t lock;
 } dish;
 
 typedef struct menu {
