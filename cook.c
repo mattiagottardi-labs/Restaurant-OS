@@ -24,7 +24,10 @@ void cook_dish(dish* d, sim_clock* clock, kitchen_manager* km, pthread_mutex_t s
     }
     d->ready = true;
     pthread_mutex_unlock(&clock->lock);
-
+    
+    for(int i = 0; used[i] != NULL; i++){
+        used[i]->dirty_usages++;
+    }
     release_tools(used, d, km, clock, sink);
     free(used);
 }
