@@ -8,7 +8,8 @@ please notify before making structural changes.
 #include "kitchen.h"
 
 typedef struct dish_queue{
-    int num_dishes;
+    int num_dishes; // if a queue is too populated it should create a new queue and split the dishes
+                    // if no dishes in queue queue should removed
     int priority;
     int avg_patience; //should keep track of this particular queue's avg patience to fit the order to it's best placement
     dish** queue;
