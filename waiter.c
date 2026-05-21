@@ -103,7 +103,7 @@ int average_calculator(dish_queue* q){
 }
 
 dish_queue* create_new_queue(int priority){
-    dishes_queue* q = malloc(sizeof(dish_queue));
+    dish_queue* q = malloc(sizeof(dish_queue));
     if(!q) return NULL;
 
     q->num_dishes = 0;
