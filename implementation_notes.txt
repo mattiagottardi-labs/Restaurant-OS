@@ -1,0 +1,24 @@
+The current implementation of the system currently works as:
+
+
+CUSTOMER LOOP:
+- The customer generates a random order.
+- The customer places himself in the customer queue.
+- The customer waits until the order is fulfilled, or time runs out.
+- If the order is fulfilled, the customer applies bonus and returns.
+- If time runs out, the customer applies malus and returns.
+
+
+WAITER LOOP:
+- The waiter checks the customer queue.
+- If there is a customer, the waiter takes the order and places it in the correct order queue. (MLFQ)
+note:   order queues are implemented to make the cooks only worry about  
+        a reduced pool of orders with the highest priority, and choose the one closest to completion. (SJF)
+- The waiter checks the finished orders queue.
+- If there is a finished order, the waiter takes it and delivers it to the customer.
+
+
+COOK LOOP:
+- checks the order queue with the highest priority
+- chooses the order closest to completion (SJF)
+- if no order is available in the queue, checks for the next queue.
