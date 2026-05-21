@@ -3,8 +3,8 @@ this file should serve as outline for the development of the waiter mechanics
 feel free to adjust anything and comment on things you dont get.
 please notify before making structural changes.
 */
-#ifndef CUSTOMER_H
-#define CUSTOMER_H
+#ifndef WAITER_H
+#define WAITER_H
 #include "customer.h"
 #include "kitchen.h"
 
