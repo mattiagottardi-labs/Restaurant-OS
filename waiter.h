@@ -22,4 +22,4 @@ typedef struct queue_manager{
 }queue_manager;
 
 //should take the top customer, remove it from the cq tre and place his order in the best queue;
-void schedule_order(customer_queue* cq, queue_manager* qm); 
+void schedule_order(customer_queue* cq, queue_manager* qm);  

@@ -7,6 +7,7 @@
 
 typedef struct order {
     dish**  dishes;
+    int     time_to_finish;
     int     patience;
     int     order_time;
     pthread_mutex_t lock;
@@ -41,6 +42,6 @@ void   add_customer(customer* c, customer_queue* cq);
 void   remove_customer(customer* c, customer_queue* cq);
 
 // lifecycle — returns a score (see customer.c for scoring formula) 
-float  customer_loop(customer* c, customer_queue* cq); //THIS is what we call in main.
+float  customer_loop(customer* c, customer_queue* cq, sim_clock* sim); //THIS is what we call in main.
 
 #endif

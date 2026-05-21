@@ -7,6 +7,7 @@
 #include "clock.h"
 
 order* make_order(int num_dishes) {
+    srand(seed++);
     order* o = malloc(sizeof(order));
     if (!o) {
         fprintf(stderr, "make_order: out of memory\n");
@@ -18,8 +19,10 @@ order* make_order(int num_dishes) {
         free(o);
         return NULL;
     }
-    o->patience = 0;
-    o->order_time = 0;
+    o->time_to_finish = get_prep_time(o);
+    for(int i = 0; i < num_dishes; i++){
+        o->dishes[i] = Menu[rand()%20];
+    }
     return o;
 }
 
@@ -136,7 +139,7 @@ int get_prep_time(dish** dishes){
     int x = 0;
     int i = 0;
     while(dishes[i]){
-        x+= dishes[i]->time;
+        if(!dishes[i]->ready && !dishes[i]->cooking) x+= dishes[i]->time;
         i++;
     }
     return x;

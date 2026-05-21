@@ -33,9 +33,10 @@ typedef struct dish {
     char* name;
     int price;
     int time;
+    order* o;
     char** tools; // Points to an array of strings
-    _Atomic bool ready;
-    _Atomic bool cooking;
+    bool ready;
+    bool cooking;
     pthread_mutex_t lock;
 } dish;
 

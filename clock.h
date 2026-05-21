@@ -1,6 +1,9 @@
 #ifndef CLOCK_H
 #define CLOCK_H
 #include <pthread.h>
+
+int seed; //serves as replicable random input
+
 typedef struct sim_clock {
     int             tick;
     pthread_mutex_t lock;

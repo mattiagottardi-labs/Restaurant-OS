@@ -88,7 +88,7 @@ void release_pool(tool_pool* pool, tool* t, sim_clock* clock, pthread_mutex_t si
     if (t->dirty_usages >= DIRTY_TRESHOLD){
         // acquire sink for washing
         pthread_mutex_lock(&sink);
-        // cook the cleaning ticks before releasing
+        // wait the cleaning ticks before releasing
         pthread_mutex_lock(&clock->lock);
         int clean_ticks = t->clean_time;
         while (clean_ticks > 0) {
@@ -150,33 +150,3 @@ tool_pool* find_pool(const char* tool_name, kitchen_manager* kitchen){
     fprintf(stderr, "tool not found");
     return NULL;
 }
-
-/*dish* cook_loop(dish* d, order* o){
-    if(d == NULL){
-        printf("No dish to cook\n");
-        return 0;
-    }
-
-    for(int i = 0; i < d->num_tools_required; i++){
-        if(is_tool_available(d->tools) && !is_tool_dirty(d->tools)){ //tool available and clean
-            //use tool
-            printf("Tool %s used for %s, available\n", d->tools, d->name);
-        }
-    }else if(is_tool_available(d->tools) && is_tool_dirty(d->tools)){ //tool available but dirty
-     //I need to understand if I should clean/use the tool dirty or if I should skip the client
-        if(o->patience > (t->clean_time + d->time)){ //clean the tool and the cook the dish
-            printf("Cleaning %s before cooking %s\n", d->tools, d->name);
-            sink_cleaning(d->tools);
-            printf("Tool %s used for  %s, available\n", d->tools, d->name);
-        }else{ //I need to understand if it's worth for the restaurant cooking with dirty tools or skipping the client
-            if(){
-                //DA ANDARE AVANTI!!!
-            }
-        }
-
-    }else{ //tool not available --> I need to search for another dish to make until I wait for the tool to be available
-        printf("Tool not available, searching for another dish to cook\n");
-        return NULL;
-    }
-    return d;  
-}*/
