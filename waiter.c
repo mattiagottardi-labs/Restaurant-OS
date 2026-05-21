@@ -25,7 +25,7 @@ void queue_balancing(queue_manager* qm){
     //if all the queues are full, creates a new queue
     if(all_queues_overloaded && qm->num_queue < qm->max_queues){
         int new_index = qm->num_queue;
-        qm->queue_array = realloc(qm->queue_array, sizeof(dish_queue*) * (new_index + 1));
+        qm->queue_array = realloc(qm->queue_array, sizeof(order_queue*) * (new_index + 1));
         qm->queue_balance = realloc(qm->queue_balance, sizeof(int) * (new_index + 1));
      
         qm->queue_array[new_index] = create_new_queue(1);
@@ -62,7 +62,7 @@ void schedule_order(queue_manager* qm, customer* nc){
 
         int current_avg = current_queue->avg_patience;
 
-        if(current_queue->num_dishes == 0){ //this is a superb match
+        if(current_queue->num_orders == 0){ //this is a superb match
             current_avg = nc->patience; //if the queue is empty, use the new order's patience as the average
         }
 
@@ -77,10 +77,10 @@ void schedule_order(queue_manager* qm, customer* nc){
     }
 
     if(best_queue_index != -1){
-        dish_queue* target_queue = qm->queue_array[best_queue_index];
+        order_queue* target_queue = qm->queue_array[best_queue_index];
 
-        target_queue->queue[target_queue->num_dishes] = nc->o->dishes; //place the order in the queue
-        target_queue->num_dishes++;
+        target_queue->queue[target_queue->num_orders] = nc->o; //place the order in the queue
+        target_queue->num_orders++;
         qm->queue_balance[best_queue_index]++;//update the queue balance
         target_queue->avg_patience = average_calculator(target_queue); //update the average patience of the queue
     
@@ -90,27 +90,31 @@ void schedule_order(queue_manager* qm, customer* nc){
 }
 
 
-int average_calculator(dish_queue* q){
-    if(!q || q->num_dishes == 0) return 0;
+int average_calculator(order_queue* q){
+    if(!q || q->num_orders == 0) return 0;
 
     int sum = 0;
-    for(int i = 0; i < q->num_dishes; i++){
+    for(int i = 0; i < q->num_orders; i++){
         if(q->queue[i] && q->queue[i]->o){
             sum += q->queue[i]->o->patience;
         }
     }
-    return sum / q->num_dishes;
+    return sum / q->num_orders;
 }
 
-dish_queue* create_new_queue(int priority){
-    dish_queue* q = malloc(sizeof(dish_queue));
+order_queue* create_new_queue(int priority){
+    order_queue* q = malloc(sizeof(*q));
     if(!q) return NULL;
 
-    q->num_dishes = 0;
-    q->max_capacity = MAX_DISHES_PER_QUEUE;
+    q->num_orders = 0;
+    q->max_capacity = MAX_ORDERS_PER_QUEUE;
     q->priority = priority;
     q->avg_patience = 0;
-    q->queue = malloc(sizeof(dish*)*q->max_capacity);
+    q->queue = malloc(sizeof(*q->queue) * q->max_capacity);
+    if(!q->queue){
+        free(q);
+        return NULL;
+    }
     return q;
 }
 
