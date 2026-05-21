@@ -95,8 +95,8 @@ int average_calculator(dish_queue* q){
 
     int sum = 0;
     for(int i = 0; i < q->num_dishes; i++){
-        if(q->queue[i] && q->queue[i]->customer){
-            sum += q->queue[i]->customer->patience;
+        if(q->queue[i] && q->queue[i]->o){
+            sum += q->queue[i]->o->patience;
         }
     }
     return sum / q->num_dishes;
