@@ -6,7 +6,7 @@
 #include "kitchen.h"
 #include "clock.h"
 #include "waiter.h"
-#define MAX_DISHES_PER_QUEUE 10
+#define MAX_ORDERS_PER_QUEUE 10
 #define CRITICAL_LOAD_THRESHOLD 8
 
 //balancing and dynamic creation of new lists
@@ -40,7 +40,7 @@ void schedule_order(queue_manager* qm, customer* nc){
 
     //creating the first queue, if there are noone yet
     if(qm->num_queue == 0){
-        qm->queue_array = malloc(sizeof(dish_queue*));
+        qm->queue_array = malloc(sizeof(order_queue*));
         qm->queue_balance = malloc(sizeof(int));
         qm->queue_array[0] = create_new_queue(1);
         qm->queue_balance[0] = 0;
@@ -56,9 +56,9 @@ void schedule_order(queue_manager* qm, customer* nc){
 
     //analyzes each queue and fint the best match
     for(int i = 0; i < qm->num_queue; i++){
-        dish_queue* current_queue = qm->queue_array[i];
+        order_queue* current_queue = qm->queue_array[i];
         //if the queue is full, skip it
-        if(current_queue->num_dishes >= current_queue->max_capacity) continue;
+        if(current_queue->num_orders >= current_queue->max_capacity) continue;
 
         int current_avg = current_queue->avg_patience;
 
@@ -95,8 +95,8 @@ int average_calculator(order_queue* q){
 
     int sum = 0;
     for(int i = 0; i < q->num_orders; i++){
-        if(q->queue[i] && q->queue[i]->o){
-            sum += q->queue[i]->o->patience;
+        if(q->queue[i] && q->queue[i]){
+            sum += q->queue[i]->patience;
         }
     }
     return sum / q->num_orders;
