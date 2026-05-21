@@ -1,5 +1,4 @@
-The current implementation of the system currently works as:
-
+The current implementation of the different parties work as follows:
 
 CUSTOMER LOOP:
 - The customer generates a random order.
@@ -22,3 +21,38 @@ COOK LOOP:
 - checks the order queue with the highest priority
 - chooses the order closest to completion (SJF)
 - if no order is available in the queue, checks for the next queue.
+
+The data is organized in the following way:
+
+CUSTOMERS: 
+- There is a customer queue where customers wait for their orders to be taken by the waiters.
+
+ORDERS:
+- There is an order manager, which contains the order queues (MLFQ) and the finished orders queue.
+- The waiters and cooks interact with the order manager to take and place orders.
+- The order manager is responsible for managing the order queues and ensuring that orders 
+  are processed according to the MLFQ and SJF policies.
+- The order manager also handles the synchronization between the different parties, ensuring that
+  the waiters and cooks can access the order queues without conflicts.
+
+MENU:
+- The menu is a list of dishes, each with a name, preparation time, and price.
+- The menu is used by the customers to generate their orders, and by the cooks to know how long it takes to prepare each dish.
+- The menu is a global variable that can be accessed by all parties, but it is read-only to prevent conflicts.
+
+Lifetime of the program:
+- Start the program, initialize the menu and the order manager.
+- Waits for signals that enumarate the number of customer threads, waiter threads, and cook threads.
+- The threads will run indefinitely, simulating the restaurant operation.
+- The program can be terminated by a signal (e.g., SIGINT) or after a certain amount of time.
+
+SIGNALS:
+- The program can handle signals to allow for graceful shutdowns or to trigger certain actions (e.g., print statistics).
+- The .sh file is tasked with sending signals to the program to inform it about the number of 
+  customers, waiters, and cooks to create, as well as to trigger the termination of the program 
+  after a certain time, it can also be used to send signals to print statistics or perform other actions 
+  during the program's execution.
+LIST OF SIGNALS:
+//todo
+STATISTICS:
+//todo
