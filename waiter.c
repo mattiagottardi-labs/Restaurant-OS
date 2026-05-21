@@ -6,7 +6,7 @@
 #include "kitchen.h"
 #include "clock.h"
 #include "waiter.h"
-#define MAX_ORDERS_PER_QUEUE 10
+#define MAX_ORDERS_PER_QUEUE 5
 #define CRITICAL_LOAD_THRESHOLD 8
 
 //balancing and dynamic creation of new lists

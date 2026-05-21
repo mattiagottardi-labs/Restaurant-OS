@@ -11,16 +11,17 @@ please notify before making structural changes.
 typedef struct order_queue{
     int num_orders;
     int max_capacity;
-    int priority;
     int avg_patience; //should keep track of this particular queue's avg patience to fit the order to it's best placement
     order** queue;
+    order_queue* next_queue; //pointer to the next queue, if we need to create more than one
+    pthread_mutex_t lock; //enables thread safety, one must acquire the lock before modifying
 }order_queue;
 
 typedef struct queue_manager{
     int num_queue;
     int max_queues;
     int* queue_balance; //will keep track of how many dishes are already in each queue to balance it eventually.
-    order_queue** queue_array;
+    order_queue* queue_start; //pointer to the first queue in the list
 }queue_manager;
 
 //should take the top customer, remove it from the cq tre and place his order in the best queue;
