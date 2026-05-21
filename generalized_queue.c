@@ -23,6 +23,7 @@ static node* make_order_node(order* o) {
         return NULL;
     }
     n->customer = o->customer; // This node is for an order, not a customer
+    n->order = o; // Assuming you want to store the order in the node
     n->extra_patience = 0; // Not relevant for orders
     n->next = NULL;
     return n;
@@ -67,6 +68,7 @@ void remove_customer(customer* c, customer_queue* cq) {
             }
             free(cur);
             cq->num_customers--;
+            pthread_mutex_unlock(&cq->lock);
             return;
         }
         prev = cur;
@@ -83,7 +85,7 @@ order_queue * create_new_queue(){
     q->num_orders = 0;
     q->max_capacity = MAX_ORDERS_PER_QUEUE;
     q->avg_patience = 0;
-    q->queue = malloc(sizeof(*q->queue) * q->max_capacity);
+    q->lock = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
     if(!q->queue){
         free(q);
         return NULL;
