@@ -17,6 +17,7 @@ typedef struct order {
 typedef struct customer {
     order* o;
     int    patience;
+    bool served;
 } customer;
 
 typedef struct node {
@@ -26,9 +27,10 @@ typedef struct node {
 } node;
 
 typedef struct customer_queue {
-    node* start;
-    int   num_customers;
-    pthread_mutex_t lock; //enables thread safety, one must acquire the lock before modifying
+    node*           start;         // Points to the front (head) of the queue
+    node*           tail;          // Points to the back (end) of the queue
+    int             num_customers;
+    pthread_mutex_t lock;
 } customer_queue;
 
 order* make_order(int num_dishes);

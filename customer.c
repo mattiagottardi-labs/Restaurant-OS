@@ -9,20 +9,21 @@
 order* make_order(int num_dishes) {
     srand(seed++);
     order* o = malloc(sizeof(order));
-    if (!o) {
-        fprintf(stderr, "make_order: out of memory\n");
-        return NULL;
-    }
-    o->dishes = calloc(num_dishes, sizeof(dish*));
+    if (!o) return NULL;
+
+    // Allocate num_dishes + 1 to leave a guaranteed NULL sentinel at the end
+    o->dishes = calloc(num_dishes + 1, sizeof(dish*));
     if (!o->dishes) {
-        fprintf(stderr, "make_order: out of memory for dishes\n");
         free(o);
         return NULL;
     }
-    o->time_to_finish = get_prep_time(o);
+    
     for(int i = 0; i < num_dishes; i++){
-        o->dishes[i] = Menu[rand()%20];
+        o->dishes[i] = Menu[rand() % 20];
     }
+    o->dishes[num_dishes] = NULL; // Explicitly enforce NULL termination
+    
+    o->time_to_finish = get_prep_time(o);
     return o;
 }
 
@@ -87,11 +88,12 @@ void add_customer(customer* c, customer_queue* cq) {
 }
 
 void remove_customer(customer* c, customer_queue* cq) {
-    if (!c || !cq || !cq->start) return;
+    if (!c || !cq) return;
 
+    pthread_mutex_lock(&cq->lock); //lock
     node* cur  = cq->start;
     node* prev = NULL;
-    pthread_mutex_lock(&cq->lock);
+
     while (cur) {
         if (cur->customer == c) {
             if (prev) {
@@ -101,13 +103,13 @@ void remove_customer(customer* c, customer_queue* cq) {
             }
             free(cur);
             cq->num_customers--;
+            pthread_mutex_unlock(&cq->lock); //Unlock before returning
             return;
         }
         prev = cur;
         cur = cur->next;
     }
-    pthread_mutex_unlock(&cq->lock);
-    fprintf(stderr, "remove_customer: customer not found in queue\n");
+    pthread_mutex_unlock(&cq->lock); // Unlock if not found
 }
 
 float customer_loop(customer* c, customer_queue* cq, sim_clock* sim) {
@@ -115,23 +117,33 @@ float customer_loop(customer* c, customer_queue* cq, sim_clock* sim) {
 
     int last_tick = sim->tick;
     int elapsed   = 0;
+    bool ran_out_of_patience = false;
+    add_customer(c, cq);
 
-    pthread_mutex_lock(&sim->lock);
-    while (!is_done(c->o)) {
-        pthread_cond_wait(&sim->tick_cv, &sim->lock);
+    while (true) {
+        if (c->served) {
+            break;
+        }
 
-        if (sim->tick == last_tick) continue;
+        pthread_mutex_lock(&sim->lock);
+        while (sim->tick == last_tick) {
+            pthread_cond_wait(&sim->tick_cv, &sim->lock);
+        }
         elapsed += sim->tick - last_tick;
         last_tick = sim->tick;
-
+        pthread_mutex_unlock(&sim->lock); 
         if (elapsed > c->patience) {
-            pthread_mutex_unlock(&sim->lock);
-            remove_customer(c, cq);
-            return -get_order_price(c->o) * log2(1 + ((float)c->patience / (1 + count_done(c->o))));
+            ran_out_of_patience = true;
+            break;
         }
     }
-    pthread_mutex_unlock(&sim->lock);
-    remove_customer(c, cq);
+
+    if (ran_out_of_patience) {
+        // Customer leaves queue entirely on their own terms
+        remove_customer(c, cq); 
+        return -get_order_price(c->o) * log2(1 + ((float)c->patience / (1 + count_done(c->o))));
+    }
+
     return get_order_price(c->o) * (1 - ((float)elapsed / c->patience));
 }
 
