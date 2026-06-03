@@ -36,6 +36,10 @@ void queue_balancing(queue_manager* qm){
     }
 }
 
+void select_customer(customer_queue* cq){
+//ALDO MORO E MATTEOTTI GRANDI FIGURE DELLA STORIA
+}
+
 void schedule_order(queue_manager* qm, customer* nc){
     if(!qm || !nc || !nc->o || !nc->o->dishes) return;
 
