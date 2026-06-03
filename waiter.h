@@ -30,4 +30,7 @@ void queue_balancing(queue_manager* qm);
 int average_calculator(order_queue* q);
 order_queue* create_new_queue(int priority); 
 
+void give_order_to_customer(order* o, order_queue* oq);
+
+
 #endif
