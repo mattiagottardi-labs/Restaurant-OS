@@ -155,6 +155,9 @@ tool_pool* find_pool(const char* tool_name, kitchen_manager* kitchen){
 
 void push_finished(order* o, order_queue oq){
   pthread_mutex_lock(&oq->lock);
+  pthread_mutex_lock(&o->lock);
+  o->done = true;
+  pthread_mutex_unlock(&o->lock);
   oq->order_queue[oq->num_orders] = o;
   oq->num_orders++;
   pthread_mutex_unlock(&oq->lock);
