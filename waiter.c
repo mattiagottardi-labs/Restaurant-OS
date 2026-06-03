@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <math.h>
+#include<pthread.h>
 #include "customer.h"
 #include "kitchen.h"
 #include "clock.h"
@@ -40,9 +41,8 @@ void schedule_order(queue_manager* qm, customer* nc){
 
     //creating the first queue, if there are noone yet
     if(qm->num_queue == 0){
-        qm->queue_array = malloc(sizeof(order_queue*));
+        qm->queue_start = create_new_queue(MAX_ORDERS_PER_QUEUE);
         qm->queue_balance = malloc(sizeof(int));
-        qm->queue_array[0] = create_new_queue(1);
         qm->queue_balance[0] = 0;
         qm->num_queue = 1;
     }
@@ -51,70 +51,87 @@ void schedule_order(queue_manager* qm, customer* nc){
     queue_balancing(qm);
 
     //find the best queue for the order
+    order_queue* best_queue = NULL;
     int best_queue_index = -1; //index of the best queue for the order
-    int min_score = INT_MAX;
+    int min_score = INT_MAX; //is set to max because we're trying to find the lowest penalty score
 
-    //analyzes each queue and fint the best match
-    for(int i = 0; i < qm->num_queue; i++){
-        order_queue* current_queue = qm->queue_array[i];
-        //if the queue is full, skip it
-        if(current_queue->num_orders >= current_queue->max_capacity) continue;
+    order_queue* current_queue = qm->queue_start;
+    int i = 0;
 
-        int current_avg = current_queue->avg_patience;
-
-        if(current_queue->num_orders == 0){ //this is a superb match
-            current_avg = nc->patience; //if the queue is empty, use the new order's patience as the average
+    while(current_queue != NULL && i < qm->num_queue){
+        //skip the queue if it's full
+        if(current_queue->num_orders >= current_queue->max_capacity){
+            current_queue = current_queue->next_queue;
+            i++;
+            continue;
         }
 
-        int patience_diff = abs(current_avg - nc->patience); //abs to evitate negative values
-        int queue_load_penalty = qm->queue_balance[i]; //the more loaded the queue is, the higher the penalty
-        int score = patience_diff + queue_load_penalty; //this will give us a global score for the queue
+        int current_avg = current_queue->avg_patience;
+        if(current_queue->num_orders == 0){
+            current_avg = nc->patience; //if the queue is empty, we consider the new order's patience as the average
+        }
+
+        int patience_diff = abs(current_avg - nc->patience);
+        int queue_load_penalty = qm->queue_balance[i]; //penalty for the current load of the queue
+        int score = patience_diff + queue_load_penalty;
 
         if(score < min_score){
             min_score = score;
+            best_queue = current_queue;
             best_queue_index = i;
         }
+
+        current_queue = current_queue->next_queue;
+        i++;
     }
 
-    if(best_queue_index != -1){
-        order_queue* target_queue = qm->queue_array[best_queue_index];
+    //Assign the order to the best queue found
+    if(best_queue != NULL && best_queue_index != -1){
+        pthread_mutex_lock(&best_queue->lock);
+        //Recalculate avg patience before index push
+        best_queue->avg_patience = average_calculator(best_queue, nc->patience);
 
-        target_queue->queue[target_queue->num_orders] = nc->o; //place the order in the queue
-        target_queue->num_orders++;
-        qm->queue_balance[best_queue_index]++;//update the queue balance
-        target_queue->avg_patience = average_calculator(target_queue); //update the average patience of the queue
-    
-    }else{
-        fprintf(stderr, "Error: No suitable queue found for the order.\n");
+        best_queue->queue[best_queue->num_orders] = nc->o; //add the order to the queue
+        best_queue->num_orders++;
+        qm->queue_balance[best_queue_index] ++;
+
+        pthread_mutex_unlock(&best_queue->lock);
+    } else {
+        fprintf(stderr, "schedule_order: no suitable queue found for the order\n");
     }
 }
 
 
-int average_calculator(order_queue* q){
-    if(!q || q->num_orders == 0) return 0;
-
-    int sum = 0;
-    for(int i = 0; i < q->num_orders; i++){
-        if(q->queue[i] && q->queue[i]){
-            sum += q->queue[i]->patience;
-        }
-    }
-    return sum / q->num_orders;
+int average_calculator(order_queue* q, int new_patience){
+    if(!q || q->num_orders == 0) return new_patience;
+    return (q->avg_patience * q->num_orders + new_patience) / (q->num_orders + 1);
 }
 
-order_queue* create_new_queue(int priority){
-    order_queue* q = malloc(sizeof(*q));
+order_queue* create_new_queue(int max_capacity){
+    order_queue* q = malloc(sizeof(order_queue));
     if(!q) return NULL;
 
     q->num_orders = 0;
-    q->max_capacity = MAX_ORDERS_PER_QUEUE;
-    q->priority = priority;
+    q->max_capacity = max_capacity;
     q->avg_patience = 0;
-    q->queue = malloc(sizeof(*q->queue) * q->max_capacity);
+    q->queue = malloc(sizeof(order*) * max_capacity);
     if(!q->queue){
         free(q);
         return NULL;
     }
+    q->next_queue = NULL;
+    pthread_mutex_init(&q->lock, NULL);
     return q;
 }
 
+void give_order_to_customer(order* o, order_queue* oq){
+    if(!o || !oq) return; // the queue is empty, there isn't any order ready
+    pthread_mutex_lock(&oq->lock);
+
+    while(oq->num_orders > 0){
+        oq->queue[oq->num_orders - 1]->customer->served = true; //mark the customer as served
+        oq->num_orders--; //remove the order from the queue
+    }
+    pthread_mutex_unlock(&oq->lock);
+    //we implemented this in a way that the waiter empties all the queue, if there is more than a order ready
+}
