@@ -12,7 +12,6 @@
 //balancing and dynamic creation of new lists
 void queue_balancing(queue_manager* qm){
     if(!qm) return;
-
     bool all_queues_overloaded = true;
     //controls if all the existing queues are full
     for(int i = 0; i < qm->num_queue; i++){

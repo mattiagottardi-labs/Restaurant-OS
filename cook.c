@@ -72,7 +72,7 @@ tool* acquire_pool(tool_pool* pool) {
             picked = &pool->tools[i];
             picked->in_use = true;
             break;
-        }
+}
     }
     if (!picked) {
         /* should never happen if in_use tracking is correct */
@@ -161,4 +161,15 @@ void push_finished(order* o, order_queue oq){
   oq->order_queue[oq->num_orders] = o;
   oq->num_orders++;
   pthread_mutex_unlock(&oq->lock);
+}
+
+dish* pick_dish(order_queue oq){ //chooses the first dish from the order closest to finish
+  int min_time = 9999;
+  order* selected = malloc(sizeof(order));
+  for(int i = 0; oq->queue[i] != NULL; i++){
+    if(get_ttc == 0) 
+    if(get_ttc(oq->queue[i] < min_time)){
+      
+    }
+  }
 }
