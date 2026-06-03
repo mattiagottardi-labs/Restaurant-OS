@@ -5,6 +5,7 @@
 #include "customer.h"
 #include "kitchen.h"
 #include "cook.h"
+#include "waiter.h"
 #include "clock.h"
 #include<math.h>
 #define DIRTY_TRESHOLD 3 //initial approach is static, we'll adjust later.
@@ -12,7 +13,7 @@
 
 static pthread_mutex_t sink_mutex = PTHREAD_MUTEX_INITIALIZER; //mutex for sink access
 
-void cook_dish(dish* d, sim_clock* clock, kitchen_manager* km, pthread_mutex_t* sink) {
+void cook_dish(dish* d, sim_clock* clock, kitchen_manager* km, pthread_mutex_t* sink, bool last_dish, order_queue* oq) {
     // 1. Acquire the lock for the dish
     pthread_mutex_lock(&d->lock);
     
@@ -51,6 +52,7 @@ void cook_dish(dish* d, sim_clock* clock, kitchen_manager* km, pthread_mutex_t* 
     pthread_mutex_lock(&d->lock);
     d->ready = true;
     d->cooking = false;
+    if(last_dish) push_finished(d->o, oq);
     pthread_mutex_unlock(&d->lock);
 
     // 5. Clean up and release resources
@@ -149,4 +151,11 @@ tool_pool* find_pool(const char* tool_name, kitchen_manager* kitchen){
     }
     fprintf(stderr, "tool not found");
     return NULL;
+}
+
+void push_finished(order* o, order_queue oq){
+  pthread_mutex_lock(&oq->lock);
+  oq->order_queue[oq->num_orders] = o;
+  oq->num_orders++;
+  pthread_mutex_unlock(&oq->lock);
 }

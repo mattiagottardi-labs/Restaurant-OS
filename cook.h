@@ -19,4 +19,6 @@ void    release_tools(tool** used, dish* d, kitchen_manager* km, sim_clock* sim,
 int     count_tools(dish* d);
 tool_pool* find_pool(const char* name, kitchen_manager* km);
 
+void push_finished(order* o, order_queue* oq) //sends the finished order to the order queue
+
 #endif
