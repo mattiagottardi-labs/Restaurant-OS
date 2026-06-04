@@ -5,7 +5,9 @@ CUSTOMER LOOP:
 - The customer places himself in the customer queue.
 - The customer waits until the order is fulfilled, or time runs out.
 - If the order is fulfilled, the customer applies bonus and returns.
-- If time runs out, the customer applies malus and returns.
+- If time runs out, the customer joins the dissatified queue.
+- The dissatified queue is handled at the end of the simulation, and applies all the malus. 
+- Alternatively, if the score is requested at runtime, the malus calculation is done at runtime.
 
 
 WAITER LOOP:
@@ -14,6 +16,7 @@ WAITER LOOP:
 note:   order queues are implemented to make the cooks only worry about  
         a reduced pool of orders with the highest priority, and choose the one closest to completion. (SJF)
 - The waiter checks the finished orders queue.
+- The waiter is responsible for QUEUE SANITIAZATION meaning it must take care of orders whose customers are out of patience for.
 - If there is a finished order, the waiter takes it and delivers it to the customer.
 
 
