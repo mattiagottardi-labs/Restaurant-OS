@@ -111,7 +111,7 @@ void remove_customer(customer* c, customer_queue* cq) {
     pthread_mutex_unlock(&cq->lock); // Unlock if not found
 }
 
-float customer_loop(customer* c, customer_queue* cq, sim_clock* sim) {
+float customer_loop(customer* c, customer_queue* cq, sim_clock* sim, customer_queue* dq) {
     if (!c || !c->o) return 0;
 
     int last_tick = sim->tick;
@@ -140,6 +140,7 @@ float customer_loop(customer* c, customer_queue* cq, sim_clock* sim) {
     if (ran_out_of_patience) {
         // Customer leaves queue entirely on their own terms
         remove_customer(c, cq); 
+        add_customer(c, dq);
         return -get_order_price(c->o) * log2(1 + ((float)c->patience / (1 + count_done(c->o))));
     }
 

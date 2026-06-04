@@ -18,6 +18,7 @@ typedef struct customer {
     order* o;
     int    patience;
     bool served;
+    pthread_mutex_t lock;
 } customer;
 
 typedef struct node {
@@ -45,5 +46,5 @@ void   remove_customer(customer* c, customer_queue* cq);
 
 // lifecycle — returns a score (see customer.c for scoring formula) 
 float  customer_loop(customer* c, customer_queue* cq, sim_clock* sim); //THIS is what we call in main.
-
+dish* copy_dish(dish* src);
 #endif
