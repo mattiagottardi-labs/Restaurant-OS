@@ -5,7 +5,7 @@
 #include<pthread.h>
 #include "customer.h"
 #include "kitchen.h"
-#include "clock.h"
+#include "utils.h"
 #include "waiter.h"
 #define MAX_ORDERS_PER_QUEUE 5
 #define CRITICAL_LOAD_THRESHOLD 8

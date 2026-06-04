@@ -6,7 +6,7 @@
 #include "kitchen.h"
 #include "cook.h"
 #include "waiter.h"
-#include "clock.h"
+#include "utils.h"
 #include <math.h>
 
 #define DIRTY_THRESHOLD 3

@@ -4,7 +4,7 @@
 #include <math.h>
 #include "customer.h"
 #include "kitchen.h"
-#include "clock.h"
+#include "utils.h"
 
 order* make_order(int num_dishes) {
     srand(seed++);
