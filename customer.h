@@ -44,7 +44,7 @@ int    get_prep_time(dish** dishes);
 void   add_customer(customer* c, customer_queue* cq);
 void   remove_customer(customer* c, customer_queue* cq);
 
-// lifecycle — returns a score (see customer.c for scoring formula) 
-float  customer_loop(customer* c, customer_queue* cq, sim_clock* sim); //THIS is what we call in main.
+// lifecycle — updates a score (see customer.c for scoring formula) 
+void customer_loop(customer* c, customer_queue* cq, sim_clock* sim, customer_queue* dq, float* score); //THIS is what we call in main.
 dish* copy_dish(dish* src);
 #endif
