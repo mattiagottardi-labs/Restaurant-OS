@@ -7,7 +7,6 @@
 #include "utils.h"
 
 order* make_order(int num_dishes) {
-    srand(seed++);
     order* o = malloc(sizeof(order));
     if (!o) return NULL;
 
@@ -19,11 +18,11 @@ order* make_order(int num_dishes) {
     }
     
     for(int i = 0; i < num_dishes; i++){
-        o->dishes[i] = Menu[rand() % 20];
+        o->dishes[i] = copy_dish(Menu[safe_rand_range(20)]);
     }
     o->dishes[num_dishes] = NULL; // Explicitly enforce NULL termination
     
-    o->time_to_finish = get_prep_time(o);
+    o->time_to_finish = get_prep_time(o->dishes);
     return o;
 }
 
@@ -155,4 +154,14 @@ int get_prep_time(dish** dishes){
         i++;
     }
     return x;
+}
+dish* copy_dish(dish* src) {
+    dish* d = malloc(sizeof(dish));
+    if (!d) return NULL;
+    *d = *src; // shallow copy first
+    d->cooking = false;
+    d->ready = false;
+    d->last = false;
+    pthread_mutex_init(&d->lock, NULL);
+    return d;
 }
