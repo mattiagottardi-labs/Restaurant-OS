@@ -22,6 +22,7 @@ typedef struct queue_manager{
     int max_queues;
     int* queue_balance; //will keep track of how many dishes are already in each queue to balance it eventually.
     order_queue* queue_start; //pointer to the first queue in the list
+    pthread_mutex_t lock; //thr safety
 }queue_manager;
 
 //should take the top customer, remove it from the cq tre and place his order in the best queue;
