@@ -58,6 +58,7 @@ tool* acquire_pool(tool_pool* pool) {
 
 void release_pool(tool_pool* pool, tool* t, sim_clock* clock, pthread_mutex_t* sink) {
     t->dirty_usages++;
+
     if (t->dirty_usages >= DIRTY_THRESHOLD) {
         pthread_mutex_lock(sink);
         pthread_mutex_lock(&clock->lock);
@@ -71,6 +72,7 @@ void release_pool(tool_pool* pool, tool* t, sim_clock* clock, pthread_mutex_t* s
         pthread_mutex_unlock(sink);
     }
 
+    // release tool back to pool after washing (if needed)
     pthread_mutex_lock(&pool->lock);
     t->in_use = false;
     pool->in_use--;
