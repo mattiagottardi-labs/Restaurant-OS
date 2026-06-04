@@ -145,19 +145,32 @@ order_queue* pick_queue(queue_manager* qm) {
 order* pick_order(order_queue* oq) {
     pthread_mutex_lock(&oq->lock);
 
+    order* best = NULL;
+    int min_time = INT_MAX;
+
     for (int i = 0; i < oq->num_orders; i++) {
         order* o = oq->queue[i];
         if (o == NULL) continue;
+
+        // calculate remaining cook time for this order
+        int remaining = 0;
+        bool has_unclaimed = false;
         for (int j = 0; o->dishes[j] != NULL; j++) {
-            if (!o->dishes[j]->cooking && !o->dishes[j]->ready) {
-                pthread_mutex_unlock(&oq->lock);
-                return o;
+            dish* d = o->dishes[j];
+            if (!d->cooking && !d->ready) {
+                remaining += d->time;
+                has_unclaimed = true;
             }
+        }
+
+        if (has_unclaimed && remaining < min_time) {
+            min_time = remaining;
+            best = o;
         }
     }
 
     pthread_mutex_unlock(&oq->lock);
-    return NULL;
+    return best;
 }
 
 dish* pick_dish(order* o) {

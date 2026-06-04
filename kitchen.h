@@ -37,6 +37,7 @@ typedef struct dish {
     char** tools; // Points to an array of strings
     bool ready;
     bool cooking;
+    bool last;
     pthread_mutex_t lock;
 } dish;
 
