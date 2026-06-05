@@ -8,14 +8,14 @@
 typedef struct order {
     dish**  dishes;
     int     time_to_finish;
-    int     patience;
-    int     order_time;
+    customer* c;
     pthread_mutex_t lock;
-} order;
+}order;
 
 typedef struct customer {
     order* o;
     int    patience;
+    int arrival_time;
     bool served;
     pthread_mutex_t lock;
 } customer;
