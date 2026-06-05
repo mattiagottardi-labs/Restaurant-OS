@@ -103,11 +103,37 @@ void release_tools(tool** used, dish* d, kitchen_manager* km, sim_clock* clock, 
 
 // ─── queue management ────────────────────────────────────────────────────────
 
-void push_finished(order* o, order_queue* oq) {
-    pthread_mutex_lock(&oq->lock);
-    oq->queue[oq->num_orders] = o;
-    oq->num_orders++;
-    pthread_mutex_unlock(&oq->lock);
+void push_finished(order* o, order_queue* finished, order_queue* current) {
+    
+    // remove from current queue
+    pthread_mutex_lock(&current->lock);
+    for (int i = 0; i < current->num_orders; i++) {
+        if (current->queue[i] == o) {
+            for (int j = i; j < current->num_orders - 1; j++)
+                current->queue[j] = current->queue[j + 1];
+            current->queue[current->num_orders - 1] = NULL;
+            current->num_orders--;
+            break;
+        }
+    }
+    pthread_mutex_unlock(&current->lock);
+
+    // push to finished queue, growing if needed
+    pthread_mutex_lock(&finished->lock);
+    if (finished->num_orders == finished->max_capacity) {
+        int new_cap = finished->max_capacity * 2;
+        order** tmp = realloc(finished->queue, sizeof(order*) * new_cap);
+        if (!tmp) {
+            fprintf(stderr, "push_finished: out of memory\n");
+            pthread_mutex_unlock(&finished->lock);
+            return;
+        }
+        finished->queue = tmp;
+        finished->max_capacity = new_cap;
+    }
+    finished->queue[finished->num_orders] = o;
+    finished->num_orders++;
+    pthread_mutex_unlock(&finished->lock);
 }
 
 order_queue* pick_queue(queue_manager* qm) {
@@ -201,7 +227,7 @@ dish* pick_dish(order* o) {
 
 // ─── cook_dish ───────────────────────────────────────────────────────────────
 
-void cook_dish(dish* d, sim_clock* clock, kitchen_manager* km, pthread_mutex_t* sink, order_queue* finished) {
+void cook_dish(dish* d, sim_clock* clock, kitchen_manager* km, pthread_mutex_t* sink, order_queue* finished, order_queue* oq) {
     tool** used = acquire_tools(d, km);
     if (!used) {
         pthread_mutex_lock(&d->lock);
@@ -225,10 +251,9 @@ void cook_dish(dish* d, sim_clock* clock, kitchen_manager* km, pthread_mutex_t* 
     bool last = d->last;
     pthread_mutex_unlock(&d->lock);
 
-    if (last) push_finished(d->o, finished);
-
-    release_tools(used, d, km, clock, sink);
-    free(used);
+    if (last) push_finished(d->o, finished, oq);
+  release_tools(used, d, km, clock, sink);
+  free(used);
 }
 
 // ─── cook entry point ────────────────────────────────────────────────────────
@@ -243,5 +268,5 @@ void cook(queue_manager* qm, sim_clock* sim, kitchen_manager* km, order_queue* f
     dish* d = pick_dish(o);
     if (!d) return;
 
-    cook_dish(d, sim, km, &sink_mutex, finished);
+    cook_dish(d, sim, km, &sink_mutex, finished, oq);
 }

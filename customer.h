@@ -11,7 +11,6 @@ typedef struct order {
     int     patience;
     int     order_time;
     pthread_mutex_t lock;
-    pthread_cond_t ready;
 } order;
 
 typedef struct customer {
