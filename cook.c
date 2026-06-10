@@ -1,32 +1,34 @@
-#include <stdlib.h>
-#include <pthread.h>
-#include <stdbool.h>
-#include <string.h>
-#include "customer.h"
-#include "kitchen.h"
 #include "cook.h"
-#include "waiter.h"
-#include "utils.h"
-#include <math.h>
+#include "customer.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <limits.h>
 
-#define DIRTY_THRESHOLD 3
-#define GAME_SPEED 1
-
-static pthread_mutex_t sink_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-// ─── forward declarations ────────────────────────────────────────────────────
-
-order_queue* pick_queue(queue_manager* qm);
-order*       pick_order(order_queue* oq);
-dish*        pick_dish(order* o);
-void         cook(queue_manager* qm, sim_clock* sim, kitchen_manager* km, order_queue* finished);
-
-// ─── tool helpers ────────────────────────────────────────────────────────────
+/* --------------------------------------------------------------------------
+ * Tool helpers
+ * -------------------------------------------------------------------------- */
 
 int count_tools(dish* d) {
     int i = 0;
     while (d->tools[i] != NULL) i++;
     return i;
+}
+
+float get_pressure(order_list* l){
+  int tot_prio;
+  int tot_orders;
+  pthread_mutex_lock(&l->lock);
+  list_node* current = l->head;
+  for(int i = 0; i < l->size; i++){
+    if(atomic_load(&current->o->completed) || atomic_load(&current->o->expired)){
+      current = current->next;
+      continue;
+    }
+    tot_prio += get_prio(current->o, 0);
+    tot_orders++;
+  }
+  return (float) tot_prio/tot_orders;
 }
 
 tool_pool* find_pool(const char* tool_name, kitchen_manager* km) {
@@ -45,9 +47,9 @@ tool* acquire_pool(tool_pool* pool) {
 
     tool* picked = NULL;
     for (int i = 0; i < pool->quantity; i++) {
-        if (!pool->tools[i].in_use) {
+        if (!atomic_load(&pool->tools[i].in_use)) {
             picked = &pool->tools[i];
-            picked->in_use = true;
+            atomic_store(&picked->in_use, true);
             pool->in_use++;
             break;
         }
@@ -56,25 +58,25 @@ tool* acquire_pool(tool_pool* pool) {
     return picked;
 }
 
-void release_pool(tool_pool* pool, tool* t, sim_clock* clock, pthread_mutex_t* sink) {
+void release_pool(tool_pool* pool, tool* t, sim_clock* sc, kitchen_manager* km) {
     t->dirty_usages++;
-
-    if (t->dirty_usages >= DIRTY_THRESHOLD) {
-        pthread_mutex_lock(sink);
-        pthread_mutex_lock(&clock->lock);
+    bool clean_condition = t->dirty_usages >= DIRTY_THRESHOLD;
+    if (clean_condition) {
+        /* Wash at the shared sink — blocks other cooks from washing */
+        pthread_mutex_lock(&km->sink);
+        pthread_mutex_lock(&sc->lock);
         int ticks = t->clean_time;
         while (ticks > 0) {
-            pthread_cond_wait(&clock->tick_cv, &clock->lock);
+            pthread_cond_wait(&sc->tick_cv, &sc->lock);
             ticks--;
         }
         t->dirty_usages = 0;
-        pthread_mutex_unlock(&clock->lock);
-        pthread_mutex_unlock(sink);
+        pthread_mutex_unlock(&sc->lock);
+        pthread_mutex_unlock(&km->sink);
     }
 
-    // release tool back to pool after washing (if needed)
     pthread_mutex_lock(&pool->lock);
-    t->in_use = false;
+    atomic_store(&t->in_use, false);
     pool->in_use--;
     pthread_cond_signal(&pool->cv);
     pthread_mutex_unlock(&pool->lock);
@@ -89,184 +91,196 @@ tool** acquire_tools(dish* d, kitchen_manager* km) {
         if (!pool) continue;
         used[i] = acquire_pool(pool);
     }
+    used[n] = NULL;
     return used;
 }
 
-void release_tools(tool** used, dish* d, kitchen_manager* km, sim_clock* clock, pthread_mutex_t* sink) {
+void release_tools(tool** used, dish* d, kitchen_manager* km, sim_clock* sc) {
     if (!used) return;
     for (int i = 0; d->tools[i] != NULL; i++) {
         if (!used[i]) continue;
         tool_pool* pool = find_pool(d->tools[i], km);
-        if (pool) release_pool(pool, used[i], clock, sink);
+        if (pool) release_pool(pool, used[i], sc, km);
     }
+    free(used);
 }
 
-// ─── queue management ────────────────────────────────────────────────────────
+/* --------------------------------------------------------------------------
+ * get_next_order — walk priority list from head, return first order
+ *                  that has at least one dish available to claim.
+ *                  Skips fully claimed and expired orders.
+ *                  Returns NULL if nothing is available.
+ * -------------------------------------------------------------------------- */
 
-void push_finished(order* o, order_queue* finished, order_queue* current) {
-    
-    // remove from current queue
-    pthread_mutex_lock(&current->lock);
-    for (int i = 0; i < current->num_orders; i++) {
-        if (current->queue[i] == o) {
-            for (int j = i; j < current->num_orders - 1; j++)
-                current->queue[j] = current->queue[j + 1];
-            current->queue[current->num_orders - 1] = NULL;
-            current->num_orders--;
-            break;
-        }
-    }
-    pthread_mutex_unlock(&current->lock);
+order* get_next_order(order_manager* m) {
+    pthread_mutex_lock(&m->priority->lock);
 
-    // push to finished queue, growing if needed
-    pthread_mutex_lock(&finished->lock);
-    if (finished->num_orders == finished->max_capacity) {
-        int new_cap = finished->max_capacity * 2;
-        order** tmp = realloc(finished->queue, sizeof(order*) * new_cap);
-        if (!tmp) {
-            fprintf(stderr, "push_finished: out of memory\n");
-            pthread_mutex_unlock(&finished->lock);
-            return;
-        }
-        finished->queue = tmp;
-        finished->max_capacity = new_cap;
-    }
-    finished->queue[finished->num_orders] = o;
-    finished->num_orders++;
-    pthread_mutex_unlock(&finished->lock);
-}
+    list_node* prev = NULL;
+    list_node* node = m->priority->head;
 
-order_queue* pick_queue(queue_manager* qm) {
-    pthread_mutex_lock(&qm->lock);
+    while (node) {
+        order* o = node->o;
 
-    order_queue* current = qm->queue_start;
-    order_queue* prev = NULL;
+        if (atomic_load(&o->expired)) {
+            /* Defensively remove expired order from priority list */
+            list_node* to_free = node;
+            node = node->next;
+            if (prev) prev->next = node;
+            else      m->priority->head = node;
+            m->priority->size--;
+            free(to_free);
 
-    while (current != NULL) {
-        if (current->num_orders == 0) {
-            // unlink
-            if (prev == NULL)
-                qm->queue_start = current->next_queue;
-            else
-                prev->next_queue = current->next_queue;
-
-            order_queue* empty = current;
-            current = current->next_queue;
-            qm->num_queue--;
-
-            // free the queue
-            pthread_mutex_destroy(&empty->lock);
-            free(empty->queue);
-            free(empty);
+            /* Move to discarded — unlock first to avoid lock ordering issues */
+            pthread_mutex_unlock(&m->priority->lock);
+            list_insert_order(m->discarded_orders, o, 2);
+            pthread_mutex_lock(&m->priority->lock);
             continue;
         }
 
-        // first non-empty queue
-        pthread_mutex_unlock(&qm->lock);
-        return current;
+        bool has_available = false;
+        for (int i = 0; o->dishes[i] != NULL; i++) {
+            if (!atomic_load(&o->dishes[i]->cooking) &&
+                !atomic_load(&o->dishes[i]->ready)) {
+                has_available = true;
+                break;
+            }
+        }
+        if (has_available) {
+            pthread_mutex_unlock(&m->priority->lock);
+            return o;
+        }
+
+        prev = node;
+        node = node->next;
     }
 
-    pthread_mutex_unlock(&qm->lock);
+    /* All orders fully claimed or priority list empty */
+    pthread_mutex_unlock(&m->priority->lock);
     return NULL;
 }
 
-order* pick_order(order_queue* oq) {
-    pthread_mutex_lock(&oq->lock);
+/* --------------------------------------------------------------------------
+ * pick_dish — claim the unclaimed dish with fewest required tools
+ *             using CAS on d->cooking to avoid races between cooks.
+ * -------------------------------------------------------------------------- */
 
-    order* best = NULL;
-    int min_time = INT_MAX;
+dish* pick_dish(order* o) {
+    dish* best      = NULL;
+    int   min_tools = INT_MAX;
 
-    for (int i = 0; i < oq->num_orders; i++) {
-        order* o = oq->queue[i];
-        if (o == NULL) continue;
+    for (int i = 0; o->dishes[i] != NULL; i++) {
+        dish* d = o->dishes[i];
 
-        // calculate remaining cook time for this order
-        int remaining = 0;
-        bool has_unclaimed = false;
-        for (int j = 0; o->dishes[j] != NULL; j++) {
-            dish* d = o->dishes[j];
-            if (!d->cooking && !d->ready) {
-                remaining += d->time;
-                has_unclaimed = true;
-            }
-        }
+        if (atomic_load(&d->cooking) || atomic_load(&d->ready))
+            continue;
 
-        if (has_unclaimed && remaining < min_time) {
-            min_time = remaining;
-            best = o;
+        int n = count_tools(d);
+        if (n < min_tools) {
+            min_tools = n;
+            best = d;
         }
     }
 
-    pthread_mutex_unlock(&oq->lock);
+    if (!best) return NULL;
+
+    /* CAS claim — if another cook beat us return NULL */
+    bool expected = false;
+    if (!atomic_compare_exchange_strong(&best->cooking, &expected, true))
+        return NULL;
+
     return best;
 }
 
-dish* pick_dish(order* o) {
-    // count total dishes and how many are ready
-    int total = 0, ready = 0;
-    for (int j = 0; o->dishes[j] != NULL; j++) {
-        total++;
-        if (o->dishes[j]->ready) ready++;
-    }
+/* --------------------------------------------------------------------------
+ * cook_dish — acquire tools, wait clock ticks, mark ready,
+ *             check if order is complete and signal customer if so.
+ * -------------------------------------------------------------------------- */
 
-    // try to claim the first unclaimed dish
-    for (int j = 0; o->dishes[j] != NULL; j++) {
-        dish* d = o->dishes[j];
-        pthread_mutex_lock(&d->lock);
-        if (!d->cooking && !d->ready) {
-            d->cooking = true;
-            // last dish = this one plus all already ready = total
-            d->last = (ready + 1 == total);
-            pthread_mutex_unlock(&d->lock);
-            return d;
-        }
-        pthread_mutex_unlock(&d->lock);
-    }
-    return NULL;
-}
-
-// ─── cook_dish ───────────────────────────────────────────────────────────────
-
-void cook_dish(dish* d, sim_clock* clock, kitchen_manager* km, pthread_mutex_t* sink, order_queue* finished, order_queue* oq) {
+void cook_dish(dish* d, order* o, order_manager* m, sim_clock* sc, kitchen_manager* km) {
     tool** used = acquire_tools(d, km);
     if (!used) {
-        pthread_mutex_lock(&d->lock);
-        d->cooking = false;
-        pthread_mutex_unlock(&d->lock);
+        atomic_store(&d->cooking, false);
         return;
     }
 
-    // simulate cooking time
-    pthread_mutex_lock(&clock->lock);
+    /* Wait for cooking time */
+    pthread_mutex_lock(&sc->lock);
     int ticks = d->time;
     while (ticks > 0) {
-        pthread_cond_wait(&clock->tick_cv, &clock->lock);
+        pthread_cond_wait(&sc->tick_cv, &sc->lock);
         ticks--;
     }
-    pthread_mutex_unlock(&clock->lock);
+    pthread_mutex_unlock(&sc->lock);
 
-    pthread_mutex_lock(&d->lock);
-    d->ready = true;
-    d->cooking = false;
-    bool last = d->last;
-    pthread_mutex_unlock(&d->lock);
+    atomic_store(&d->ready, true);
+    atomic_store(&d->cooking, false);
 
-    if (last) push_finished(d->o, finished, oq);
-  release_tools(used, d, km, clock, sink);
-  free(used);
+    /* Decrement order remaining time */
+    atomic_fetch_sub(&o->remaining_time, d->time);
+
+    /* Check if all dishes are ready */
+    bool all_ready = true;
+    for (int i = 0; o->dishes[i] != NULL; i++) {
+        if (!atomic_load(&o->dishes[i]->ready)) {
+            all_ready = false;
+            break;
+        }
+    }
+
+    if (all_ready) {
+        /* CAS on completed — only one cook proceeds even if two finish simultaneously */
+        bool expected = false;
+        if (atomic_compare_exchange_strong(&o->completed, &expected, true)) {
+
+            /* Check expiry — customer may have timed out while we were cooking */
+            if (atomic_load(&o->expired)) {
+                list_insert_order(m->discarded_orders, o, 2);
+            } else {
+                /* Remove from priority list */
+                pthread_mutex_lock(&m->priority->lock);
+                list_node* prev = NULL;
+                list_node* node = m->priority->head;
+                while (node) {
+                    if (node->o == o) {
+                        if (prev) prev->next = node->next;
+                        else      m->priority->head = node->next;
+                        m->priority->size--;
+                        free(node);
+                        break;
+                    }
+                    prev = node;
+                    node = node->next;
+                }
+                pthread_mutex_unlock(&m->priority->lock);
+
+                /* Move to completed and signal customer */
+                list_insert_order(m->completed_orders, o, 2);
+                atomic_store(&o->c->served, true);
+            }
+        }
+    }
+
+    release_tools(used, d, km, sc);
 }
 
-// ─── cook entry point ────────────────────────────────────────────────────────
+/* --------------------------------------------------------------------------
+ * cook_loop — continuously looks for orders to cook.
+ *             Spins on get_next_order when nothing is available.
+ *             Yields on pick_dish failure to avoid hammering a fully
+ *             claimed order.
+ * -------------------------------------------------------------------------- */
 
-void cook(queue_manager* qm, sim_clock* sim, kitchen_manager* km, order_queue* finished) {
-    order_queue* oq = pick_queue(qm);
-    if (!oq) return;
+void cook_loop(order_manager* m, sim_clock* sc, kitchen_manager* km) {
+    while (atomic_load(&m->running)) {
+        order* o = get_next_order(m);
+        if (!o) continue;
 
-    order* o = pick_order(oq);
-    if (!o) return;
+        dish* d = pick_dish(o);
+        if (!d) {
+            sched_yield();
+            continue;
+        }
 
-    dish* d = pick_dish(o);
-    if (!d) return;
-
-    cook_dish(d, sim, km, &sink_mutex, finished, oq);
+        cook_dish(d, o, m, sc, km);
+    }
 }

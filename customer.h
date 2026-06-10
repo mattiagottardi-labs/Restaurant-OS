@@ -1,49 +1,54 @@
 #ifndef CUSTOMER_H
 #define CUSTOMER_H
-
 #include <stdbool.h>
 #include <pthread.h>
+#include <stdatomic.h>
 #include "kitchen.h"
 
 typedef struct order {
-    dish**  dishes;
-    int     time_to_finish;
-    customer* c;
-    pthread_mutex_t lock;
-}order;
+    dish**           dishes;
+    _Atomic int      remaining_time;
+    _Atomic bool     expired;
+    _Atomic bool     completed;
+    struct customer* c;
+    pthread_mutex_t  lock;
+} order;
 
 typedef struct customer {
-    order* o;
-    int    patience;
-    int arrival_time;
-    bool served;
+    order*          o;
+    int             patience;
+    int             arrival_time;
+    _Atomic bool    served;
+    _Atomic bool    discarded;
     pthread_mutex_t lock;
 } customer;
 
-typedef struct node {
-    customer* customer;
-    struct node* next;
-    int extra_patience; // patience - prep_time; lower = served first
-} node;
+typedef struct queue_node {
+    customer*         c;
+    struct queue_node* next;
+} queue_node;
 
 typedef struct customer_queue {
-    node*           start;         // Points to the front (head) of the queue
-    node*           tail;          // Points to the back (end) of the queue
-    int             num_customers;
+    queue_node*     head;
+    queue_node*     tail;
+    int             size;
     pthread_mutex_t lock;
 } customer_queue;
 
-order* make_order(int num_dishes);
-int    get_order_price(order* o);
-bool   is_done(order* o);
-int    count_done(order* o);
+// order creation
+order*  make_order(customer* c, menu* Menu, int num_dishes);
+dish*   copy_dish(dish* src);
+void    free_order(order* o);
 
-int    get_prep_time(dish** dishes);
+// queue
+bool      is_empty(customer_queue* q);
+void      enqueue(customer* c, customer_queue* q);
+void      dequeue(customer_queue* q);
+customer* pop(customer_queue* q);
+customer* peek(customer_queue* q);
+void      clean(customer_queue* q);
+int       get_prep_time(order* o);
+// customer lifecycle
+void customer_loop(customer* c, customer_queue* q, sim_clock* sc, _Atomic float* score);
 
-void   add_customer(customer* c, customer_queue* cq);
-void   remove_customer(customer* c, customer_queue* cq);
-
-// lifecycle — updates a score (see customer.c for scoring formula) 
-void customer_loop(customer* c, customer_queue* cq, sim_clock* sim, customer_queue* dq, float* score); //THIS is what we call in main.
-dish* copy_dish(dish* src);
 #endif

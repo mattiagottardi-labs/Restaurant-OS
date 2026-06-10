@@ -5,33 +5,37 @@ please notify before making structural changes.
 */
 #ifndef WAITER_H
 #define WAITER_H
+#include <pthread.h>
+#include <stdatomic.h>
 #include "customer.h"
 #include "kitchen.h"
 
-typedef struct order_queue{
-    int num_orders;
-    int max_capacity;
-    int avg_patience; //should keep track of this particular queue's avg patience to fit the order to it's best placement
-    order** queue;
-    order_queue* next_queue; //pointer to the next queue, if we need to create more than one
-    pthread_mutex_t lock; //enables thread safety, one must acquire the lock before modifying
-}order_queue;
+typedef struct list_node {
+    order*            o;
+    int               prio;
+    struct list_node* next;
+} list_node;
 
-typedef struct queue_manager{
-    int num_queue;
-    int max_queues;
-    int* queue_balance; //will keep track of how many dishes are already in each queue to balance it eventually.
-    order_queue* queue_start; //pointer to the first queue in the list
-    pthread_mutex_t lock; //thr safety
-}queue_manager;
+typedef struct order_list {
+    list_node*      head;
+    int             size;
+    pthread_mutex_t lock;
+} order_list;
 
-//should take the top customer, remove it from the cq tre and place his order in the best queue;
-void schedule_order(queue_manager* qm, customer* nc);
-void queue_balancing(queue_manager* qm);
-int average_calculator(order_queue* q);
-order_queue* create_new_queue(int priority); 
+typedef struct order_manager {
+    order_list*     waitlist;
+    order_list*     priority;
+    int             priority_size;
+    _Atomic bool    running;
+    order_list*     completed_orders;
+    order_list*     discarded_orders;
+    pthread_mutex_t lock;
+} order_manager;
 
-void give_order_to_customer(order* o, order_queue* oq);
-
-
+int    get_prio(order* o, int algorithm);
+void   list_insert(order_list* l, customer* c, int algorithm);
+order* list_pop(order_list* l);
+void   refill_priority(order_manager* m);
+void   waiter_loop(order_manager* m, customer_queue* q, sim_clock* sc);
+void   list_insert_order(order_list* l, order* o, int algorithm);
 #endif

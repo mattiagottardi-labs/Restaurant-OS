@@ -11,6 +11,12 @@ typedef struct sim_clock {
     pthread_cond_t  tick_cv;
 } sim_clock;
 
+typedef struct {
+    sim_clock* clock;
+    int running;
+    unsigned tick_ms;
+} clock_thread_args;
+
 void clock_init(sim_clock* sim);
 void clock_destroy(sim_clock* sim);
 void tick_advance(sim_clock* sim);

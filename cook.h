@@ -1,28 +1,27 @@
 #ifndef COOK_H
 #define COOK_H
-
+#include <pthread.h>
+#include <stdatomic.h>
 #include "kitchen.h"
-#include "utils.h"
 #include "waiter.h"
+#include "utils.h"
 
-#define DIRTY_THRESHOLD1 3
-#define DIRTY_THRESHOLD2 5
-#define GAME_SPEED      1
+#define DIRTY_THRESHOLD 3
 
-void    cook_dish(dish* d, sim_clock* sim, kitchen_manager* km, pthread_mutex_t sink);
-
-tool*   acquire_pool(tool_pool* pool);
-void    release_pool(tool_pool* pool, tool* t, sim_clock* sim, pthread_mutex_t sink);
-
-tool**  acquire_tools(dish* d, kitchen_manager* km);
-void    release_tools(tool** used, dish* d, kitchen_manager* km, sim_clock* sim, pthread_mutex_t sink);
-
-int     count_tools(dish* d);
+// tool helpers
+int        count_tools(dish* d);
 tool_pool* find_pool(const char* name, kitchen_manager* km);
+tool*      acquire_pool(tool_pool* pool);
+void       release_pool(tool_pool* pool, tool* t, sim_clock* sc, kitchen_manager* km);
+tool**     acquire_tools(dish* d, kitchen_manager* km);
+void       release_tools(tool** used, dish* d, kitchen_manager* km, sim_clock* sc);
 
-void push_finished(order* o, order_queue* oq) //sends the finished order to the order queue
+// order/dish selection
+order* get_next_order(order_manager* m);
+dish*  pick_dish(order* o);
 
-dish* pick_dish(order_queue* oq);
-order_queue* pick_queue(queue_manager* qm);
-
+// cook lifecycle
+void cook_dish(dish* d, order* o, order_manager* m, sim_clock* sc, kitchen_manager* km);
+void cook_loop(order_manager* m, sim_clock* sc, kitchen_manager* km);
+float get_pressure(order_list* l); //will estimate how hard the kitchen must work
 #endif

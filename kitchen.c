@@ -1,8 +1,8 @@
 #include "kitchen.h"
 #include <stdlib.h>
 #include <string.h>
-
-char* safe_strdup(const char* s) {
+#include <stdio.h>
+char* my_strdup(const char* s) {
     if (!s) return NULL;
     char* d = malloc(strlen(s) + 1);
     if (d) strcpy(d, s);
@@ -37,12 +37,14 @@ void make_tools(const char* tools_location, kitchen_manager* my_kitchen,const in
             // Initialize individual tools within the pool
             pool->tools = malloc(pool->quantity * sizeof(tool));
             int clean_time = atoi(time_str);
+            pthread_mutex_init(&pool->lock, NULL);
+            pthread_cond_init(&pool->cv, NULL);
             for (int i = 0; i < pool->quantity; i++) {
                 pool->tools[i].name = my_strdup(name);
                 pool->tools[i].clean_time = clean_time;
                 pool->tools[i].dirty_usages = 0;
+                atomic_store(&pool->tools[i].in_use, false);
             }
-            
             my_kitchen->pools[count++] = pool;
         }
     }
@@ -50,7 +52,7 @@ void make_tools(const char* tools_location, kitchen_manager* my_kitchen,const in
     fclose(f);
 }
 
-void make_menu(const char* menu_location, menu* Menu, const int max_dishes) {
+void make_menu(const char* menu_location, menu* Menu, const int max_dishes, const int max_tools_per_dish) {
     FILE *menu_csv = fopen(menu_location, "r");
     if(!menu_csv){ 
         perror("file cannot be opened");
@@ -70,13 +72,14 @@ void make_menu(const char* menu_location, menu* Menu, const int max_dishes) {
         d->name = strdup(strtok(line, ","));
         d->price = atoi(strtok(NULL, ","));
         d->time = atoi(strtok(NULL, ","));
-        d->ready = 0;
+        atomic_store(&d->ready, false);
+        atomic_store(&d->cooking, false);
         char* tools_field = strtok(NULL, ","); 
-        d->tools = malloc(4 * sizeof(char*)); // Space for tool names (max 4)
+        d->tools = malloc((max_tools_per_dish+1)* sizeof(char*)); // Space for tool names (max 4)
         int i = 0;
 
         char* tool_field = strtok(tools_field, ";"); 
-        while(tool_field && i < 10){
+        while(tool_field && i < max_tools_per_dish){
             char* p = strchr(tool_field, ':');
             if(p != NULL){
                 //:n case
@@ -98,6 +101,7 @@ void make_menu(const char* menu_location, menu* Menu, const int max_dishes) {
             }
             tool_field = strtok(NULL, ";");
         }
+        d->tools[max_tools_per_dish] = NULL;
         Menu->selection[j] = d;
         j++;
     }

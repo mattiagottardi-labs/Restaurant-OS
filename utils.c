@@ -19,10 +19,13 @@ void clock_destroy(sim_clock* sim) {
 
 void tick_advance(sim_clock* sim) {
     pthread_mutex_lock(&sim->lock);
+    printf("ticking %d", sim->tick);
     sim->tick++;
     pthread_cond_broadcast(&sim->tick_cv);
     pthread_mutex_unlock(&sim->lock);
 }
+
+
 
 // ─── random ──────────────────────────────────────────────────────────────────
 
