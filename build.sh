@@ -3,7 +3,7 @@
 # command is the argument passed when launching the script
 command=$1
 
-flags="-Wall -Wextra -lpthread"
+flags="-Wall -Wextra -lpthread -o program"
 
 usage() {
     echo -e "How to build the code:\n./build.sh build num_cooks num_waiters max_customers game_speed random_seed\n"
