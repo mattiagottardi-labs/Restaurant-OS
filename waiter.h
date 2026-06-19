@@ -25,7 +25,6 @@ typedef struct order_list {
 typedef struct order_manager {
     order_list*     waitlist;
     order_list*     priority;
-    int             priority_size;
     _Atomic bool    running;
     order_list*     completed_orders;
     order_list*     discarded_orders;
