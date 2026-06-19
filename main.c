@@ -18,6 +18,7 @@ char* resources_path = "/home/mgottardi/OS/rewrite/2026-project-5/code/resources
 char* menu_path = "/home/mgottardi/OS/rewrite/2026-project-5/code/menu.csv";
 
 _Atomic float score = 0;
+int seed = 100; 
 
 int main(int argc, char* argv[]){
   //create structs
@@ -30,10 +31,13 @@ int main(int argc, char* argv[]){
   make_menu(menu_path, Menu, 20, 4);
   queue_init(q);
   clock_init(sc);
+  srand(seed);
 
-  customer* C = (customer*) malloc(sizeof(customer));
-  C->o = make_order(C, Menu, 5);
-  enqueue(C, q);
+  for(int i = 0; i < 10; i++){
+    customer* C = (customer*) malloc(sizeof(customer));
+    C->o = make_order(C, Menu, safe_rand_range(5));
+    enqueue(C, q);
+  }
   print_queue(q);
   return 0;
 }
@@ -52,21 +56,25 @@ void print_customer(customer* C){
   }
 }
 
-void print_queue(customer_queue* q){
-  pthread_mutex_lock(&q->lock);
-  if(!q->head) return;
-  printf("head is there, printing QUEUE:\n");
-  queue_node* current = q->head;
-  int i = 0;
-  while(current != NULL){
-    printf("%d. ", i);
-    print_customer(current->c);
-    current = current->next;
-    i++;
-  }
-  pthread_mutex_unlock(&q->lock);
-}
+void print_queue(customer_queue* q) {
+    pthread_mutex_lock(&q->lock);
 
+    if (!q->head) {
+        printf("queue is empty\n");
+    } else {
+        printf("head is there, printing QUEUE:\n");
+        queue_node* current = q->head;
+        int i = 0;
+        while (current != NULL) {
+            printf("%d. ", i);
+            print_customer(current->c);
+            current = current->next;
+            i++;
+        }
+    }
+
+    pthread_mutex_unlock(&q->lock);
+}
 void queue_init(customer_queue* q){
   q->head = NULL;
   q->tail = NULL;
