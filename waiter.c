@@ -180,6 +180,14 @@ void list_init(order_list* ol){
 void om_init(order_manager* om){
   om->running = true;
   pthread_mutex_init(&om->lock);
+  order_list* waitlist = (order_list*) malloc(sizeof(order_list));
+  order_list* priority = (order_list*) malloc(sizeof(order_list));
+  order_list* discarded = (order_list*) malloc(sizeof(order_list));
+  order_list* completed = (order_list*) malloc(sizeof(order_list));
+  om->waitlist = waitlist;
+  om->priority = priority;
+  om->discarded = discarded;
+  om->completed = completed;
   list_init(om->waitlist);
   list_init(om->priority);
   list_init(om->completed_orders);
