@@ -30,7 +30,7 @@ char* RESOURCE_FILE;
 
 int main(int argc, char* argv[]){
   // check if sufficient numer of argument is passed
-  if(argc < 8) {
+ /* if(argc < 8) {
     perror("Too few arguemnts passed, while launching main binary!\n");
     return 1;
   }
@@ -44,27 +44,17 @@ int main(int argc, char* argv[]){
   // strings don't need atoi()
   MENU_FILE = argv[6];
   RESOURCE_FILE = argv[7];
-
+  */
   //create structs
   kitchen_manager* km = (kitchen_manager*) malloc(sizeof(kitchen_manager));
   menu* Menu = (menu*) malloc(sizeof(menu));
   sim_clock* sc = (sim_clock*) malloc(sizeof(sim_clock));
   customer_queue* q = (customer_queue*) malloc(sizeof(customer_queue));
   order_manager* om = (order_manager*) malloc(sizeof(order_manager));
-  order_list* waitlist = (order_list*) malloc(sizeof(order_list));
-  order_list* priority = (order_list*) malloc(sizeof(order_list));
-  order_list* discarded = (order_list*) malloc(sizeof(order_list));
-  order_list* completed = (order_list*) malloc(sizeof(order_list));
-  om->waitlist = waitlist;
-  om->priority = priority;
-  om->discarded = discarded;
-  om->completed = completed;
-  om->waitlist->head = NULL;
-  om->waitlist->size = 0;
-  pthread_mutex_init(&om->waitlist->lock);
   //init structs
   make_tools(resources_path, km, 10);
   make_menu(menu_path, Menu, 20, 4);
+  om_init(om);
   queue_init(q);
   clock_init(sc);
   srand(seed);
@@ -79,6 +69,7 @@ int main(int argc, char* argv[]){
   pthread_t waiters_tid[NUM_WAITERS];
   pthread_t customers_tid[TOTAL_CUSTOMERS];
 
+ /*  void* cook_arg = (cook_args) {} 
   cook_args* ptr_cook_args = {om, sc, km};
   for(int i = 0; i < NUM_COOKS; i++) {
     pthread_create(&cooks_tid[i], NULL, cook_thread(), (void*) ptr_cook_args);
@@ -93,12 +84,12 @@ int main(int argc, char* argv[]){
   for(int i = 0; i < TOTAL_CUSTOMERS; i++) {
     pthread_create(&customers_tid[i], NULL, customer_thread(), (void*) ptr_customer_args);
   }
-  
+
   list_insert()
   cook_dish()
   print_queue(q);
   return 0;
-}
+} 
 
 void print_tool_status(kitchen_manager* km){
    printf("TOOLS: \n");
@@ -129,6 +120,8 @@ void print_queue(customer_queue* q) {
             current = current->next;
             i++;
         }
+    printf("%d\n", i);
+    print_customer(current->c);
     }
 
     pthread_mutex_unlock(&q->lock);
