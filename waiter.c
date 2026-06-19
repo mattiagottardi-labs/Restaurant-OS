@@ -178,7 +178,6 @@ void list_init(order_list* ol){
 }
 
 void om_init(order_manager* om){
-  om->running = true;
   pthread_mutex_init(&om->lock, NULL);
   order_list* waitlist = (order_list*) malloc(sizeof(order_list));
   order_list* priority = (order_list*) malloc(sizeof(order_list));

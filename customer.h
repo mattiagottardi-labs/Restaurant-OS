@@ -57,6 +57,6 @@ customer* peek(customer_queue* q);
 void      clean(customer_queue* q);
 int       get_prep_time(order* o);
 // customer lifecycle
-void customer_loop(customer* c, customer_queue* q, sim_clock* sc, _Atomic float* score, int timeout);
+void customer_loop(customer* c, customer_queue* q, sim_clock* sc, _Atomic float* score);
 void* customer_thread(void* arg);
 #endif
