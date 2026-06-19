@@ -35,9 +35,10 @@ typedef struct customer_queue {
     pthread_mutex_t lock;
 } customer_queue;
 
+<<<<<<< HEAD
 typedef struct customer_args{
   customer_queue* q;
-  sim_clock* sm;
+  sim_clock* sc;
   menu* Menu;
   _Atomic float* score;
   int timeout;

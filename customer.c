@@ -231,6 +231,7 @@ void customer_loop(customer* c, customer_queue* q, sim_clock* sc, _Atomic float*
   return;
 }
 
+<<<<<<< HEAD
 void* customer_thread(void* arg){
   if(!arg) return NULL;
   customer_args* arguments = (customer_args*) arg;
