@@ -47,6 +47,8 @@ int main(int argc, char* argv[]){
   RESOURCE_FILE = argv[7];
   */
   //create structs
+  running = malloc(sizeof(bool));
+  *running = true;
   kitchen_manager* km = (kitchen_manager*) malloc(sizeof(kitchen_manager));
   menu* Menu = (menu*) malloc(sizeof(menu));
   sim_clock* sc = (sim_clock*) malloc(sizeof(sim_clock));
@@ -104,7 +106,11 @@ int main(int argc, char* argv[]){
   refill_priority(om);
   printf("PRIORITY LIST:\n");
   print_list(om->priority);
-
+  order* target_order = get_next_order(om);
+  dish* target_dish = pick_dish(target_order);
+  bool* running = malloc(sizeof(bool));
+  *running = true;
+  cook_dish(target_dish, target_order, om, sc, km, running );
   return 0;
 } 
 

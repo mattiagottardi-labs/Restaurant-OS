@@ -41,6 +41,7 @@ tool_pool* find_pool(const char* tool_name, kitchen_manager* km) {
 }
 
 tool* acquire_pool(tool_pool* pool) {
+    printf("acquiring pool %s\n", pool->name);
     pthread_mutex_lock(&pool->lock);
     while (pool->in_use >= pool->quantity)
         pthread_cond_wait(&pool->cv, &pool->lock);
@@ -59,6 +60,7 @@ tool* acquire_pool(tool_pool* pool) {
 }
 
 void release_pool(tool_pool* pool, tool* t, sim_clock* sc, kitchen_manager* km) {
+    printf("realeasing pool %s\n", pool->name);
     t->dirty_usages++;
     bool clean_condition = t->dirty_usages >= DIRTY_THRESHOLD;
     if (clean_condition) {
@@ -97,6 +99,7 @@ tool** acquire_tools(dish* d, kitchen_manager* km) {
 
 void release_tools(tool** used, dish* d, kitchen_manager* km, sim_clock* sc) {
     if (!used) return;
+    printf("releasing tools\n");
     for (int i = 0; d->tools[i] != NULL; i++) {
         if (!used[i]) continue;
         tool_pool* pool = find_pool(d->tools[i], km);
@@ -170,12 +173,15 @@ dish* pick_dish(order* o) {
 
     for (int i = 0; o->dishes[i] != NULL; i++) {
         dish* d = o->dishes[i];
-
-        if (atomic_load(&d->cooking) || atomic_load(&d->ready))
+        printf("selecting dish...");
+        if (atomic_load(&d->cooking) || atomic_load(&d->ready)){
+            printf("dish %s is being cooked or ready\n", d->name);
             continue;
+        }
 
         int n = count_tools(d);
         if (n < min_tools) {
+            printf("dish %s has been selected\n", d->name);
             min_tools = n;
             best = d;
         }
@@ -187,7 +193,7 @@ dish* pick_dish(order* o) {
     bool expected = false;
     if (!atomic_compare_exchange_strong(&best->cooking, &expected, true))
         return NULL;
-
+    printf("dish %s has been deemed best\n", best->name);
     return best;
 }
 
@@ -220,6 +226,7 @@ void cook_dish(dish* d, order* o, order_manager* m, sim_clock* sc, kitchen_manag
     }
 
     atomic_store(&d->ready, true);
+    printf("dish %s is completed", d->name);
     atomic_store(&d->cooking, false);
 
     /* Decrement order remaining time */
@@ -235,6 +242,7 @@ void cook_dish(dish* d, order* o, order_manager* m, sim_clock* sc, kitchen_manag
     }
 
     if (all_ready) {
+        printf("order completed\n");
         /* CAS on completed — only one cook proceeds even if two finish simultaneously */
         bool expected = false;
         if (atomic_compare_exchange_strong(&o->completed, &expected, true)) {
