@@ -41,6 +41,7 @@ typedef struct customer_args{
   menu* Menu;
   _Atomic float* score;
   // int timeout;
+  bool* running;
 } customer_args;
 
 // order creation
