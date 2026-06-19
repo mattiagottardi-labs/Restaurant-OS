@@ -162,6 +162,16 @@ void list_insert_order(order_list* l, order* o, int algorithm) {
     pthread_mutex_unlock(&l->lock);
 }
 
+<<<<<<< HEAD
 void   list_init(order_list* l){
 
 }
+=======
+void* waiter_thread(void* arg){
+    if(!arg) return NULL;
+    waiter_args* arguments = (waiter_args*) arg;
+    //creates waiter and runs waiter loop
+    waiter_loop(arguments->m, arguments->q, arguments->sc);
+    return NULL;
+}
+>>>>>>> ddc4c73017a04765ba0ce0f3fb32f0d5c8055e49

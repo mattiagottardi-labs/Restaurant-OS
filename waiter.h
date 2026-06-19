@@ -32,12 +32,17 @@ typedef struct order_manager {
     pthread_mutex_t lock;
 } order_manager;
 
+typedef struct waiter_args{
+    order_manager* m;
+    customer_queue* q;
+    sim_clock* sc;
+} waiter_args;
+
 int    get_prio(order* o, int algorithm);
 void   list_insert(order_list* l, customer* c, int algorithm);
 order* list_pop(order_list* l);
 void   refill_priority(order_manager* m);
 void   waiter_loop(order_manager* m, customer_queue* q, sim_clock* sc);
 void   list_insert_order(order_list* l, order* o, int algorithm);
-void   list_init(order_list* l);
-void   om_init(order_manager* om);
+void* waiter_thread(void* arg);
 #endif
