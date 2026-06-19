@@ -162,3 +162,4 @@ void list_insert_order(order_list* l, order* o, int algorithm) {
     pthread_mutex_unlock(&l->lock);
 }
 
+void   list_init(order_list* l);
