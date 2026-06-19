@@ -3,12 +3,14 @@
 file=.env
 required_index=0
 lower_bound=1
-upper_bound=99
+upper_bound=10
+max_customers_upper_bound=20
+total_customers_upper_bound=99
 missing_arg_flag=0
 
 # save all the names in order to check if there are really the needed parameters (there could be repetitions of arguments too fool the code)
-required_args=("NUM_COOKS" "NUM_WAITERS" "MAX_CUSTOMERS" "TOTAL_CUSTOMER" "GAME_SPEED" "RANDOM_SEED" "MENU_FILE" "RESOURCE_FILE")
-copy=("NUM_COOKS" "NUM_WAITERS" "MAX_CUSTOMERS" "TOTAL_CUSTOMER" "GAME_SPEED" "RANDOM_SEED" "MENU_FILE" "RESOURCE_FILE")
+required_args=("NUM_COOKS" "NUM_WAITERS" "MAX_CUSTOMERS" "TOTAL_CUSTOMERS" "GAME_SPEED" "RANDOM_SEED" "MENU_FILE" "RESOURCE_FILE")
+
 # creates associative array (dictionary)
 declare -A arg_dict
 
@@ -18,10 +20,9 @@ parse_file() {
 
         # get the argument name
         arg_name="${line%%=*}"
-        #echo $arg_name
 
         # loop through all elements in the required_args array
-        while [[ $arg_name != ${required_args[$required_index]} && $required_index -lt 8 ]]; do
+        while [[ $arg_name != ${required_args[$required_index]} && $required_index -le 7 ]]; do
             # increment the value if no match is found
             ((required_index++))
         done
@@ -32,29 +33,40 @@ parse_file() {
             missing_arg_flag=1
         else
             # drop element from array
-            unset "required_args[$required_index]"
+            unset "dropped_required_args[$required_index]"
 
             # reindex the array, since unset leaves a hole in the array
-            required_args=("${required_args[@]}")
+            dropped_required_args=("${dropped_required_args[@]}")
 
             if [[ $line =~ [0-9]+ ]]; then
                 # use parameter expansion: everything dropped up to = sign
                 arg_number="${line#*=}"
 
                 # check if the number read is positive and in a reasonable range
-                if [[ $arg_number -ge $lower_bound && $arg_number -le $upper_bound ]]; then
-                    arg_dict[$arg_name]=$arg_number
+                if [[ $arg_number -ge $lower_bound ]]; then
+                    if [[ $arg_name = "MAX_CUSTOMERS" && $arg_number -le max_customers_upper_bound ]]; then
+                        arg_dict[$arg_name]=$arg_number
+                    elif [[ $arg_name = "TOTAL_CUSTOMERS" && $arg_number -le total_customers_upper_bound ]]; then
+                        arg_dict[$arg_name]=$arg_number
+                    elif [[ $arg_number -le upper_bound ]]; then
+                        arg_dict[$arg_name]=$arg_number
+                    else
+                        echo "Number: $arg_number too large!"
+                    fi
                 else
                     echo "Number: $arg_number out of range!"
+                    arg_dict[$arg_name]=-1
                 fi
             else
                 arg_string="${line#*=}"
                 #echo "NaN argument: $arg_string"
-                echo "Name: $arg_name"
+                #echo "Name: $arg_name"
                 arg_dict[$arg_name]=$arg_string
             fi
             echo -e "$arg_name\t=\t${arg_dict[$arg_name]}"
         fi
+
+        dropped_required_args=("${required_args[@]}")
 
         required_index=0
     done < $file
@@ -93,7 +105,7 @@ for arg in "$@"; do
         --env-file=*)
             file="${arg#*=}"
             check_file
-            echo "$file overrode .env arguments"  
+            echo "$file overrode .env arguments"
             ;;
 
         --num-cooks=*)
@@ -109,7 +121,7 @@ for arg in "$@"; do
             ;;
 
         --total-customers=*)
-            arg_dict["TOTAL_CUSTOMER"]="${arg#*=}"
+            arg_dict["TOTAL_CUSTOMERS"]="${arg#*=}"
             ;;
 
         --game-speed=*)
@@ -137,6 +149,7 @@ done
 #-----------------------------------------------------------------------------------------------------------------------#
 
 # 4) print the final arguments that will be passed to the main binary
+echo "Final arguments that will be passed to the main binary:"
 for j in {0..7}; do
-    echo -e "${copy[$j]}\t=\t${arg_dict[${copy[$j]}]}"
+    echo -e "${required_args[$j]}\t=\t${arg_dict[${required_args[$j]}]}"
 done
