@@ -116,8 +116,6 @@ void print_queue(customer_queue* q) {
             current = current->next;
             i++;
         }
-    printf("%d\n", i);
-    print_customer(current->c);
     }
 
     pthread_mutex_unlock(&q->lock);
@@ -128,5 +126,4 @@ void queue_init(customer_queue* q){
   q->size = 0;
   pthread_mutex_init(&q->lock, NULL);
 }
-
 
