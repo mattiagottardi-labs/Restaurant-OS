@@ -184,7 +184,7 @@ void clean(customer_queue* q) {
  * 4. Update score atomically
  * -------------------------------------------------------------------------- */
 
-void customer_loop(customer* c, customer_queue* q, sim_clock* sc, _Atomic float* score) {
+void customer_loop(customer* c, customer_queue* q, sim_clock* sc, _Atomic float* score, int timeout) {
 
     /* Wait until arrival time */
     pthread_mutex_lock(&sc->lock);
@@ -196,7 +196,7 @@ void customer_loop(customer* c, customer_queue* q, sim_clock* sc, _Atomic float*
     printf("enqueued\n");
     int wait_start = sc->tick;
 
-    while (!atomic_load(&c->served)) {
+    while (!atomic_load(&c->served) && (sc->tick - wait_start) < timeout) {
         printf("hello from customer\n");
         pthread_mutex_lock(&sc->lock);
         pthread_cond_wait(&sc->tick_cv, &sc->lock);
@@ -236,5 +236,7 @@ void* customer_thread(void* arg){
   customer_args* arguments = (customer_args*) arg;
   //creates customer and order, thus goes into customer loop
   customer* C = (customer*) malloc(sizeof(customer));
-  C->o = make_order(C, arguments->Menu, safe_rand_range(4)+1);
+  C->o = make_order(C, arguments->Menu, safe_rand_range(5));
+  customer_loop(C, arguments->q, arguments->sc, arguments->score, arguments->timeout);
+  return NULL;
 }
