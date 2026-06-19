@@ -103,8 +103,8 @@ void refill_priority(order_manager* m) {
  *               Defers refill_priority and cook interaction to later.
  * -------------------------------------------------------------------------- */
 
-void waiter_loop(order_manager* m, customer_queue* q, sim_clock* sc) {
-    while (atomic_load(&m->running)) {
+void waiter_loop(order_manager* m, customer_queue* q, sim_clock* sc, bool* running) {
+    while (running) {
         pthread_mutex_lock(&sc->lock);
         pthread_cond_wait(&sc->tick_cv, &sc->lock);
         pthread_mutex_unlock(&sc->lock);

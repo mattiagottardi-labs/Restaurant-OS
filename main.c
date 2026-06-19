@@ -52,7 +52,7 @@ int main(int argc, char* argv[]){
   customer_queue* q = (customer_queue*) malloc(sizeof(customer_queue));
   order_manager* om = (order_manager*) malloc(sizeof(order_manager));
   //init structs
-  make_tools(resources_path, km,10);
+  make_tools(resources_path, km, 10);
   make_menu(menu_path, Menu, 20, 4);
   om_init(om);
   queue_init(q);
@@ -67,22 +67,26 @@ int main(int argc, char* argv[]){
 
   pthread_t cooks_tid[NUM_COOKS];
   pthread_t waiters_tid[NUM_WAITERS];
-  pthread_t customers_tid[MAX_CUSTOMERS];
+  pthread_t customers_tid[TOTAL_CUSTOMERS];
 
  /*  void* cook_arg = (cook_args) {} 
+  cook_args* ptr_cook_args = {om, sc, km};
   for(int i = 0; i < NUM_COOKS; i++) {
-    pthread_create(&cooks_tid[i], NULL, cook_thread(), );
+    pthread_create(&cooks_tid[i], NULL, cook_thread(), (void*) ptr_cook_args);
   }
 
+  waiter_args* ptr_waiter_args = {om, q, sc};
   for(int i = 0; i < NUM_WAITERS; i++) {
-    pthread_create(&waiterss_tid[i], NULL, waiters_thread(), );
+    pthread_create(&waiters_tid[i], NULL, waiter_thread(), (void*) ptr_waiter_args);
   }
 
-  for(int i = 0; i < MAX_CUSTOMERS; i++) {
-    pthread_create(&customers_tid[i], NULL, customer_thread(), );
+  customer_args* ptr_customer_args = {om, sc, km, score, };
+  for(int i = 0; i < TOTAL_CUSTOMERS; i++) {
+    pthread_create(&customers_tid[i], NULL, customer_thread(), (void*) ptr_customer_args);
   }
-*/
-  list_insert(om->waitlist, pop(q), 0);
+
+  list_insert()
+  cook_dish()
   print_queue(q);
   return 0;
 } 
