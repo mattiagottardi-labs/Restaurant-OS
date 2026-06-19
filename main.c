@@ -18,9 +18,33 @@ char* resources_path = "/home/mgottardi/OS/rewrite/2026-project-5/code/resources
 char* menu_path = "/home/mgottardi/OS/rewrite/2026-project-5/code/menu.csv";
 
 _Atomic float score = 0;
-int seed = 100; 
+int seed = 100;
+
+int NUM_COOKS;
+int NUM_WAITERS;
+int MAX_CUSTOMERS;
+int TOTAL_CUSTOMERS;
+int GAME_SPEED;
+char* MENU_FILE;
+char* RESOURCE_FILE;
 
 int main(int argc, char* argv[]){
+  // check if sufficient numer of argument is passed
+  if(argc < 8) {
+    perror("Too few arguemnts passed, while launching main binary!\n");
+    return 1;
+  }
+  // variables sent by bootstrap.sh
+  NUM_COOKS = atoi(argv[1]);
+  NUM_WAITERS = atoi(argv[2]);
+  MAX_CUSTOMERS = atoi(argv[3]);
+  TOTAL_CUSTOMERS = atoi(argv[4]);
+  GAME_SPEED = atoi(argv[5]);
+
+  // strings don't need atoi()
+  MENU_FILE = argv[6];
+  RESOURCE_FILE = argv[7];
+
   //create structs
   kitchen_manager* km = (kitchen_manager*) malloc(sizeof(kitchen_manager));
   menu* Menu = (menu*) malloc(sizeof(menu));
@@ -49,6 +73,23 @@ int main(int argc, char* argv[]){
     customer* C = (customer*) malloc(sizeof(customer));
     C->o = make_order(C, Menu, safe_rand_range(5));
     enqueue(C, q);
+  }
+
+  pthread_t cooks_tid[NUM_COOKS];
+  pthread_t waiters_tid[NUM_WAITERS];
+  pthread_t customers_tid[MAX_CUSTOMERS];
+
+  void* cook_arg = (cook_args) {} 
+  for(int i = 0; i < NUM_COOKS; i++) {
+    pthread_create(&cooks_tid[i], NULL, cook_thread(), );
+  }
+
+  for(int i = 0; i < NUM_WAITERS; i++) {
+    pthread_create(&waiterss_tid[i], NULL, waiters_thread(), );
+  }
+
+  for(int i = 0; i < MAX_CUSTOMERS; i++) {
+    pthread_create(&customers_tid[i], NULL, customer_thread(), );
   }
 
   list_insert()

@@ -46,8 +46,8 @@ clean() {
 
 # function to execute scenarios
 run() {
-    echo "Running..."
-    ./*.out
+    echo "Running default scenario"
+    ./bootstrap.sh
 }
 
 # case that choses the right function depending on the argument

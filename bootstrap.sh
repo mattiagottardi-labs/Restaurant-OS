@@ -153,3 +153,6 @@ echo "Final arguments that will be passed to the main binary:"
 for j in {0..7}; do
     echo -e "${required_args[$j]}\t=\t${arg_dict[${required_args[$j]}]}"
 done
+
+# slice the array into individual terms
+./program "${required_args[@]}"
