@@ -284,3 +284,10 @@ void cook_loop(order_manager* m, sim_clock* sc, kitchen_manager* km) {
         cook_dish(d, o, m, sc, km);
     }
 }
+
+void* cook_thread(void* arg) {
+    if(!arg) return NULL;
+    cook_args* arguments = (cook_args*) arg;
+
+    cook_loop(arguments->m, arguments->sc, arguments->km);
+}

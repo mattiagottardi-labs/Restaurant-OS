@@ -8,6 +8,13 @@
 
 #define DIRTY_THRESHOLD 3
 
+// cook arguments structure passed to the thread
+typedef struct cook_args {
+    order_manager* m;
+    sim_clock* sc;
+    kitchen_manager* km;
+} cook_args;
+
 // tool helpers
 int        count_tools(dish* d);
 tool_pool* find_pool(const char* name, kitchen_manager* km);
@@ -24,4 +31,5 @@ dish*  pick_dish(order* o);
 void cook_dish(dish* d, order* o, order_manager* m, sim_clock* sc, kitchen_manager* km);
 void cook_loop(order_manager* m, sim_clock* sc, kitchen_manager* km);
 float get_pressure(order_list* l); //will estimate how hard the kitchen must work
+void* cook_thread(void* arg);
 #endif
