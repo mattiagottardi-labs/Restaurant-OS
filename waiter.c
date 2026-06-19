@@ -20,13 +20,6 @@ int get_prio(order* o, int algorithm) {
 }
 
 
-
-/* --------------------------------------------------------------------------
- * list_insert — insert order into list.
- *               If sorted=true, inserts by ascending prio (most urgent first).
- *               If sorted=false, appends to tail.
- * -------------------------------------------------------------------------- */
-
 void list_insert(order_list* l, customer* c, int algorithm) {
     order* o = c->o;
     if (!o) return;
