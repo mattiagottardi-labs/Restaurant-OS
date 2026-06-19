@@ -196,7 +196,8 @@ dish* pick_dish(order* o) {
  *             check if order is complete and signal customer if so.
  * -------------------------------------------------------------------------- */
 
-void cook_dish(dish* d, order* o, order_manager* m, sim_clock* sc, kitchen_manager* km) {
+void cook_dish(dish* d, order* o, order_manager* m, sim_clock* sc, kitchen_manager* km, bool* running) {
+    if(!running) return;
     tool** used = acquire_tools(d, km);
     if (!used) {
         atomic_store(&d->cooking, false);
@@ -207,10 +208,16 @@ void cook_dish(dish* d, order* o, order_manager* m, sim_clock* sc, kitchen_manag
     pthread_mutex_lock(&sc->lock);
     int ticks = d->time;
     while (ticks > 0) {
+        if(!running) break;
         pthread_cond_wait(&sc->tick_cv, &sc->lock);
         ticks--;
     }
     pthread_mutex_unlock(&sc->lock);
+
+    if(!running) {
+        release_tools(used, d, km, sc);
+        return;
+    }
 
     atomic_store(&d->ready, true);
     atomic_store(&d->cooking, false);
@@ -270,7 +277,7 @@ void cook_dish(dish* d, order* o, order_manager* m, sim_clock* sc, kitchen_manag
  *             claimed order.
  * -------------------------------------------------------------------------- */
 
-void cook_loop(order_manager* m, sim_clock* sc, kitchen_manager* km) {
+void cook_loop(order_manager* m, sim_clock* sc, kitchen_manager* km, bool* running) {
     while (atomic_load(&m->running)) {
         order* o = get_next_order(m);
         if (!o) continue;
@@ -281,7 +288,7 @@ void cook_loop(order_manager* m, sim_clock* sc, kitchen_manager* km) {
             continue;
         }
 
-        cook_dish(d, o, m, sc, km);
+        cook_dish(d, o, m, sc, km, running);
     }
 }
 
