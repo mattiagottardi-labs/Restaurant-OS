@@ -40,7 +40,7 @@ typedef struct customer_args{
   sim_clock* sc;
   menu* Menu;
   _Atomic float* score;
-  int timeout;
+  // int timeout;
 } customer_args;
 
 // order creation
