@@ -68,7 +68,7 @@ int main(int argc, char* argv[]){
   pthread_t cooks_tid[NUM_COOKS];
   pthread_t waiters_tid[NUM_WAITERS];
   pthread_t customers_tid[TOTAL_CUSTOMERS];
-
+}
  /*  void* cook_arg = (cook_args) {} 
   cook_args* ptr_cook_args = {om, sc, km};
   for(int i = 0; i < NUM_COOKS; i++) {
