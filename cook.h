@@ -29,7 +29,7 @@ order* get_next_order(order_manager* m);
 dish*  pick_dish(order* o);
 
 // cook lifecycle
-void cook_dish(dish* d, order* o, order_manager* m, sim_clock* sc, kitchen_manager* km);
+void cook_dish(dish* d, order* o, order_manager* m, sim_clock* sc, kitchen_manager* km, bool* running);
 void cook_loop(order_manager* m, sim_clock* sc, kitchen_manager* km, bool* running);
 float get_pressure(order_list* l); //will estimate how hard the kitchen must work
 void* cook_thread(void* arg);
