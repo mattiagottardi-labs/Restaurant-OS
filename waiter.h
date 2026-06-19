@@ -44,5 +44,7 @@ order* list_pop(order_list* l);
 void   refill_priority(order_manager* m);
 void   waiter_loop(order_manager* m, customer_queue* q, sim_clock* sc);
 void   list_insert_order(order_list* l, order* o, int algorithm);
-void* waiter_thread(void* arg);
+void*  waiter_thread(void* arg);
+void   om_init(order_manager* om);
+void   list_init(order_list* ol);
 #endif
