@@ -35,6 +35,13 @@ typedef struct customer_queue {
     pthread_mutex_t lock;
 } customer_queue;
 
+typedef struct customer_args {
+    customer* c;
+    customer_queue* q;
+    sim_clock* sc;
+    _Atomic float* score;
+} customer_args;
+
 // order creation
 order*  make_order(customer* c, menu* Menu, int num_dishes);
 dish*   copy_dish(dish* src);
@@ -50,5 +57,5 @@ void      clean(customer_queue* q);
 int       get_prep_time(order* o);
 // customer lifecycle
 void customer_loop(customer* c, customer_queue* q, sim_clock* sc, _Atomic float* score);
-
+void* customer_thread(void* arg);
 #endif

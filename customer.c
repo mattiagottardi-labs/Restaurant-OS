@@ -230,3 +230,10 @@ void customer_loop(customer* c, customer_queue* q, sim_clock* sc, _Atomic float*
   } while (!atomic_compare_exchange_weak(score, &current, current + 1.0f));
   return;
 }
+
+void* customer_thread(void* arg) {
+    if(!arg) return NULL;
+    customer_args* arguments = (customer_args*) arg;
+
+    customer_loop(arguments->c, arguments->q, arguments->sc, arguments->score);
+}
