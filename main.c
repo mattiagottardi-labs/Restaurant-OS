@@ -26,6 +26,18 @@ int main(int argc, char* argv[]){
   menu* Menu = (menu*) malloc(sizeof(menu));
   sim_clock* sc = (sim_clock*) malloc(sizeof(sim_clock));
   customer_queue* q = (customer_queue*) malloc(sizeof(customer_queue));
+  order_manager* om = (order_manager*) malloc(sizeof(order_manager));
+  order_list* waitlist = (order_list*) malloc(sizeof(order_list));
+  order_list* priority = (order_list*) malloc(sizeof(order_list));
+  order_list* discarded = (order_list*) malloc(sizeof(order_list));
+  order_list* completed = (order_list*) malloc(sizeof(order_list));
+  om->waitlist = waitlist;
+  om->priority = priority;
+  om->discarded = discarded;
+  om->completed = completed;
+  om->waitlist->head = NULL;
+  om->waitlist->size = 0;
+  pthread_mutex_init(&om->waitlist->lock);
   //init structs
   make_tools(resources_path, km,10);
   make_menu(menu_path, Menu, 20, 4);
@@ -38,6 +50,9 @@ int main(int argc, char* argv[]){
     C->o = make_order(C, Menu, safe_rand_range(5));
     enqueue(C, q);
   }
+
+  list_insert()
+  cook_dish()
   print_queue(q);
   return 0;
 }
