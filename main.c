@@ -27,6 +27,7 @@ int TOTAL_CUSTOMERS;
 int GAME_SPEED;
 char* MENU_FILE;
 char* RESOURCE_FILE;
+bool* running;
 
 int main(int argc, char* argv[]){
   // check if sufficient numer of argument is passed
@@ -59,6 +60,9 @@ int main(int argc, char* argv[]){
   clock_init(sc);
   srand(seed);
 
+  // if nothing (in the init steps) fails, running is true
+  running = true;
+
   for(int i = 0; i < 15; i++){
     customer* C = (customer*) malloc(sizeof(customer));
     C->o = make_order(C, Menu, safe_rand_range(5));
@@ -71,17 +75,17 @@ int main(int argc, char* argv[]){
   pthread_t customers_tid[TOTAL_CUSTOMERS];
 
  /*  void* cook_arg = (cook_args) {} 
-  cook_args* ptr_cook_args = {om, sc, km};
+  cook_args* ptr_cook_args = {om, sc, km, running};
   for(int i = 0; i < NUM_COOKS; i++) {
     pthread_create(&cooks_tid[i], NULL, cook_thread(), (void*) ptr_cook_args);
   }
 
-  waiter_args* ptr_waiter_args = {om, q, sc};
+  waiter_args* ptr_waiter_args = {om, q, sc, running};
   for(int i = 0; i < NUM_WAITERS; i++) {
     pthread_create(&waiters_tid[i], NULL, waiter_thread(), (void*) ptr_waiter_args);
   }
 
-  customer_args* ptr_customer_args = {om, sc, km, score, };
+  customer_args* ptr_customer_args = {om, sc, km, score, running};
   for(int i = 0; i < TOTAL_CUSTOMERS; i++) {
     pthread_create(&customers_tid[i], NULL, customer_thread(), (void*) ptr_customer_args);
   }
