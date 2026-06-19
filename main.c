@@ -61,7 +61,7 @@ int main(int argc, char* argv[]){
   srand(seed);
 
   // if nothing (in the init steps) fails, running is true
-  running = true;
+  *running = true;
 
   for(int i = 0; i < 15; i++){
     customer* C = (customer*) malloc(sizeof(customer));
