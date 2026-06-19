@@ -59,7 +59,7 @@ int main(int argc, char* argv[]){
   clock_init(sc);
   srand(seed);
 
-  for(int i = 0; i < 10; i++){
+  for(int i = 0; i < 15; i++){
     customer* C = (customer*) malloc(sizeof(customer));
     C->o = make_order(C, Menu, safe_rand_range(5));
     enqueue(C, q);
@@ -68,7 +68,7 @@ int main(int argc, char* argv[]){
   pthread_t cooks_tid[NUM_COOKS];
   pthread_t waiters_tid[NUM_WAITERS];
   pthread_t customers_tid[TOTAL_CUSTOMERS];
-}
+
  /*  void* cook_arg = (cook_args) {} 
   cook_args* ptr_cook_args = {om, sc, km};
   for(int i = 0; i < NUM_COOKS; i++) {
@@ -84,10 +84,16 @@ int main(int argc, char* argv[]){
   for(int i = 0; i < TOTAL_CUSTOMERS; i++) {
     pthread_create(&customers_tid[i], NULL, customer_thread(), (void*) ptr_customer_args);
   }
-
-  list_insert()
-  cook_dish()
+*/
+  printf("QUEUE BEFORE POPPING:\n");
   print_queue(q);
+  while(q->size != 0){
+    list_insert(om->waitlist, pop(q), 0);
+  }
+  printf("EMPTY LIST:\n")
+  print_queue(q);
+  printf("PRIORITY LIST:\n");
+  print_list(om->priority);
   return 0;
 } 
 

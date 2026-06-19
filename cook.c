@@ -278,7 +278,7 @@ void cook_dish(dish* d, order* o, order_manager* m, sim_clock* sc, kitchen_manag
  * -------------------------------------------------------------------------- */
 
 void cook_loop(order_manager* m, sim_clock* sc, kitchen_manager* km, bool* running) {
-    while (atomic_load(&m->running)) {
+    while (running) {
         order* o = get_next_order(m);
         if (!o) continue;
 
@@ -296,5 +296,5 @@ void* cook_thread(void* arg) {
     if(!arg) return NULL;
     cook_args* arguments = (cook_args*) arg;
 
-    cook_loop(arguments->m, arguments->sc, arguments->km);
+    cook_loop(arguments->m, arguments->sc, arguments->km, arguments->running);
 }
