@@ -167,7 +167,7 @@ void* waiter_thread(void* arg){
     if(!arg) return NULL;
     waiter_args* arguments = (waiter_args*) arg;
     //creates waiter and runs waiter loop
-    waiter_loop(arguments->m, arguments->q, arguments->sc);
+    waiter_loop(arguments->m, arguments->q, arguments->sc, arguments->running);
     return NULL;
 }
 

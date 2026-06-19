@@ -84,9 +84,7 @@ int main(int argc, char* argv[]){
   for(int i = 0; i < TOTAL_CUSTOMERS; i++) {
     pthread_create(&customers_tid[i], NULL, customer_thread(), (void*) ptr_customer_args);
   }
-
-  list_insert()
-  cook_dish()
+*/
   print_queue(q);
   return 0;
 } 
