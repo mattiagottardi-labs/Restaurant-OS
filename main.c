@@ -13,7 +13,7 @@ void print_tool_status(kitchen_manager* km);
 void queue_init(customer_queue* q);
 void print_customer(customer* C);
 void print_queue(customer_queue* q);
-
+void print_list(order_list* ol);
 char* resources_path = "/home/mgottardi/OS/rewrite/2026-project-5/code/resources.csv";
 char* menu_path = "/home/mgottardi/OS/rewrite/2026-project-5/code/menu.csv";
 
@@ -62,6 +62,7 @@ int main(int argc, char* argv[]){
   for(int i = 0; i < 15; i++){
     customer* C = (customer*) malloc(sizeof(customer));
     C->o = make_order(C, Menu, safe_rand_range(5));
+    C->patience = get_prep_time(C->o) + safe_rand_range(100);
     enqueue(C, q);
   }
 
@@ -90,10 +91,16 @@ int main(int argc, char* argv[]){
   while(q->size != 0){
     list_insert(om->waitlist, pop(q), 0);
   }
-  printf("EMPTY LIST:\n")
+  printf("EMPTY LIST:\n");
   print_queue(q);
   printf("PRIORITY LIST:\n");
   print_list(om->priority);
+  printf("WAITLIST:\n");
+  print_list(om->waitlist);
+  refill_priority(om);
+  printf("PRIORITY LIST:\n");
+  print_list(om->priority);
+
   return 0;
 } 
 
@@ -105,6 +112,8 @@ void print_tool_status(kitchen_manager* km){
 }
 
 void print_customer(customer* C){
+  printf("Customer's Patience: %d", C->patience);
+  printf("\nCustomer's Slack: %d", get_prio(C->o, 0));
   printf("\nCustomer's Order:\n");
   for(int i = 0; C->o->dishes[i] != NULL; i++){
     printf("%s\n", C->o->dishes[i]->name);
@@ -129,6 +138,16 @@ void print_queue(customer_queue* q) {
     }
 
     pthread_mutex_unlock(&q->lock);
+}
+void print_list(order_list* ol){
+  list_node* current = ol->head;
+  printf("list begin\n");
+  for(int i = 0; i < ol->size; i++){
+    printf("%d: ", i);
+    print_customer(current->o->c);
+    current = current->next;
+  }
+  printf("list end\n");
 }
 void queue_init(customer_queue* q){
   q->head = NULL;
