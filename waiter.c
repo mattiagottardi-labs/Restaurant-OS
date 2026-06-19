@@ -173,21 +173,21 @@ void* waiter_thread(void* arg){
 
 void list_init(order_list* ol){
   ol->head = NULL;
-  ol->size = NULL;
-  pthread_mutex_init(&ol->lock);
+  ol->size = 0;
+  pthread_mutex_init(&ol->lock, NULL);
 }
 
 void om_init(order_manager* om){
   om->running = true;
-  pthread_mutex_init(&om->lock);
+  pthread_mutex_init(&om->lock, NULL);
   order_list* waitlist = (order_list*) malloc(sizeof(order_list));
   order_list* priority = (order_list*) malloc(sizeof(order_list));
   order_list* discarded = (order_list*) malloc(sizeof(order_list));
   order_list* completed = (order_list*) malloc(sizeof(order_list));
   om->waitlist = waitlist;
   om->priority = priority;
-  om->discarded = discarded;
-  om->completed = completed;
+  om->discarded_orders = discarded;
+  om->completed_orders = completed;
   list_init(om->waitlist);
   list_init(om->priority);
   list_init(om->completed_orders);
