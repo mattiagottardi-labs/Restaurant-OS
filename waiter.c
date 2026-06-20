@@ -25,7 +25,7 @@ void list_insert(order_list* l, customer* c, int algorithm) {
 
     list_node* new_node = malloc(sizeof(list_node));
     if (!new_node) {
-        fprintf(stderr, "list_insert: malloc failed\n");
+        perror("list_insert: malloc failed\n");
         return;
     }
     new_node->o    = o;
@@ -136,7 +136,7 @@ void list_insert_order(order_list* l, order* o, int algorithm) {
     if (!o) return;
     list_node* new_node = malloc(sizeof(list_node));
     if (!new_node) {
-        fprintf(stderr, "list_insert_order: malloc failed\n");
+        perror("list_insert_order: malloc failed\n");
         return;
     }
     new_node->o    = o;

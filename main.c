@@ -30,6 +30,7 @@ char* RESOURCE_FILE;
 
 bool* running;
 const int MAX_CUSTOMER_SPAWN_RATE = 5000000; // caution, this time is in microseconds
+int CLK_PERIOD;
 
 int main(int argc, char* argv[]){
   // check if sufficient numer of argument is passed
@@ -48,7 +49,13 @@ int main(int argc, char* argv[]){
   // strings don't need atoi()
   MENU_FILE = argv[7];
   RESOURCE_FILE = argv[8];
+
+  CLK_PERIOD = 1000000 / GAME_SPEED;
   */
+
+  sem_t restaurant_capacity;
+  sem_init(&restaurant_capacity, 0, MAX_CUSTOMERS);
+
   //create structs
   running = malloc(sizeof(bool));
   *running = true;
@@ -90,7 +97,7 @@ int main(int argc, char* argv[]){
     pthread_create(&waiters_tid[i], NULL, waiter_thread(), (void*) ptr_waiter_args);
   }
 
-  customer_args* ptr_customer_args = {om, sc, km, score, running};
+  customer_args* ptr_customer_args = {om, sc, km, score, running, restaurant_capacity};
   pthread_create(&customer_thread_manager, NULL, thread_manager(), customer_args);
 
   // Missing pthread_join for cooks and waiters 
@@ -115,6 +122,9 @@ int main(int argc, char* argv[]){
   *running = true;
   cook_dish(target_dish, target_order, om, sc, km, running );
   return 0;
+
+  // destroy the semaphore
+  sem_destroy(&restaurant_capacity);
 } 
 
 void print_tool_status(kitchen_manager* km){
@@ -206,3 +216,28 @@ void* thread_manager(void* arg) {
   free(customer_tid);
   pthread_exit(NULL);
 }
+
+// ─── simulation clock ───────────────────────────────────
+
+void clock_init(sim_clock* sim) {
+    sim->tick = 0;
+    pthread_mutex_init(&sim->lock, NULL);
+    pthread_cond_init(&sim->tick_cv, NULL);
+}
+
+void clock_destroy(sim_clock* sim) {
+    pthread_mutex_destroy(&sim->lock);
+    pthread_cond_destroy(&sim->tick_cv);
+}
+
+// must be in main.c since GAME_SPEED adjusts the tick speed
+void tick_advance(sim_clock* sim) {
+    usleep(CLK_PERIOD);
+    pthread_mutex_lock(&sim->lock);
+    printf("ticking %d", sim->tick);
+    sim->tick++;
+    pthread_cond_broadcast(&sim->tick_cv);
+    pthread_mutex_unlock(&sim->lock);
+}
+
+// ────────────────────────────────────────────────────────

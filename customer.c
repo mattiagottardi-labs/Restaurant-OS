@@ -77,7 +77,7 @@ bool is_empty(customer_queue* q) {
 void enqueue(customer* c, customer_queue* q) {
     queue_node* node = malloc(sizeof(queue_node));
     if (!node) {
-        fprintf(stderr, "enqueue: malloc failed\n");
+        perror("enqueue: malloc failed\n");
         return;
     }
     node->c    = c;
@@ -181,19 +181,26 @@ void clean(customer_queue* q) {
  * 1. Spin until arrival_time
  * 2. Enqueue self
  * 3. Wait to be served, discarded, or patience expires
- * 4. Update score atomically
+ * 4. Update score automically
  * -------------------------------------------------------------------------- */
 
-void customer_loop(customer* c, customer_queue* q, sim_clock* sc, _Atomic float* score) {
+void customer_loop(customer* c, customer_queue* q, sim_clock* sc, _Atomic float* score, sem_t* restaurant_capacity) {
 
-    /* Wait until arrival time */
+    /*
+    // Wait until arrival time
     pthread_mutex_lock(&sc->lock);
     while (sc->tick < c->arrival_time)
         pthread_cond_wait(&sc->tick_cv, &sc->lock);
     pthread_mutex_unlock(&sc->lock);
+    */
+
+    // waiting outside for a free seat
+    atomic_store(&c->can_order, false);
+    sem_wait(restaurant_capacity);
+    atomic_store(&c->can_order, true);
 
     enqueue(c, q);
-    printf("enqueued\n");
+    printf("customer enqueued\n");
     int wait_start = sc->tick;
 
     while (!atomic_load(&c->served)) {
@@ -208,7 +215,7 @@ void customer_loop(customer* c, customer_queue* q, sim_clock* sc, _Atomic float*
             c->o = NULL;
             float current = *score;
             do {
-            // Keep trying until we successfully update the value safely
+                // Keep trying until we successfully update the value safely
             } while (!atomic_compare_exchange_weak(score, &current, current + 1.0f));
             return;
         }
@@ -217,7 +224,7 @@ void customer_loop(customer* c, customer_queue* q, sim_clock* sc, _Atomic float*
             if (c->o) atomic_store(&c->o->expired, true);
             float current = *score;
             do {
-            // Keep trying until we successfully update the value safely
+                // Keep trying until we successfully update the value safely
             }while (!atomic_compare_exchange_weak(score, &current, current - 1.0f));
             return;
         }
@@ -225,8 +232,8 @@ void customer_loop(customer* c, customer_queue* q, sim_clock* sc, _Atomic float*
 
   float current = *score;
   do {
-  printf("stuck");
-  // Keep trying until we successfully update the value safely
+    printf("stuck");
+    // Keep trying until we successfully update the value safely
   } while (!atomic_compare_exchange_weak(score, &current, current + 1.0f));
   return;
 }
@@ -237,6 +244,7 @@ void* customer_thread(void* arg){
   //creates customer and order, thus goes into customer loop
   customer* C = (customer*) malloc(sizeof(customer));
   C->o = make_order(C, arguments->Menu, safe_rand_range(5));
-  customer_loop(C, arguments->q, arguments->sc, arguments->score);
+  customer_loop(C, arguments->q, arguments->sc, arguments->score, arguments->restaurant_capacity);
+  pthread_exit(NULL);
   return NULL;
 }

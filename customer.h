@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include <stdatomic.h>
 #include "kitchen.h"
+#include <semaphore.h>
 
 typedef struct order {
     dish**           dishes;
@@ -21,10 +22,11 @@ typedef struct customer {
     _Atomic bool    served;
     _Atomic bool    discarded;
     pthread_mutex_t lock;
+    _Atomic bool    can_order;
 } customer;
 
 typedef struct queue_node {
-    customer*         c;
+    customer*          c;
     struct queue_node* next;
 } queue_node;
 
@@ -36,12 +38,12 @@ typedef struct customer_queue {
 } customer_queue;
 
 typedef struct customer_args{
-  customer_queue* q;
-  sim_clock* sc;
-  menu* Menu;
-  _Atomic float* score;
-  // int timeout;
-  bool* running;
+  customer_queue*   q;
+  sim_clock*        sc;
+  menu*             Menu;
+  _Atomic float*    score;
+  bool*             running;
+  sem_t*            restaurant_capacity;
 } customer_args;
 
 // order creation
@@ -58,6 +60,6 @@ customer* peek(customer_queue* q);
 void      clean(customer_queue* q);
 int       get_prep_time(order* o);
 // customer lifecycle
-void customer_loop(customer* c, customer_queue* q, sim_clock* sc, _Atomic float* score);
-void* customer_thread(void* arg);
+void    customer_loop(customer* c, customer_queue* q, sim_clock* sc, _Atomic float* score, sem_t* restaurant_capacity);
+void*   customer_thread(void* arg);
 #endif
