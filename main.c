@@ -18,16 +18,18 @@ char* resources_path = "/home/mgottardi/OS/rewrite/2026-project-5/code/resources
 char* menu_path = "/home/mgottardi/OS/rewrite/2026-project-5/code/menu.csv";
 
 _Atomic float score = 0;
-int seed = 100;
 
 int NUM_COOKS;
 int NUM_WAITERS;
 int MAX_CUSTOMERS;
 int TOTAL_CUSTOMERS;
 int GAME_SPEED;
+int RANDOM_SEED;
 char* MENU_FILE;
 char* RESOURCE_FILE;
+
 bool* running;
+const int MAX_CUSTOMER_SPAWN_RATE = 5000000; // caution, this time is in microseconds
 
 int main(int argc, char* argv[]){
   // check if sufficient numer of argument is passed
@@ -41,10 +43,11 @@ int main(int argc, char* argv[]){
   MAX_CUSTOMERS = atoi(argv[3]);
   TOTAL_CUSTOMERS = atoi(argv[4]);
   GAME_SPEED = atoi(argv[5]);
+  RANDOM_SEED = atoi(argv[6])
 
   // strings don't need atoi()
-  MENU_FILE = argv[6];
-  RESOURCE_FILE = argv[7];
+  MENU_FILE = argv[7];
+  RESOURCE_FILE = argv[8];
   */
   //create structs
   running = malloc(sizeof(bool));
@@ -60,7 +63,7 @@ int main(int argc, char* argv[]){
   om_init(om);
   queue_init(q);
   clock_init(sc);
-  srand(seed);
+  srand(RANDOM_SEED);
 
   // if nothing (in the init steps) fails, running is true
   *running = true;
@@ -74,7 +77,7 @@ int main(int argc, char* argv[]){
 
   pthread_t cooks_tid[NUM_COOKS];
   pthread_t waiters_tid[NUM_WAITERS];
-  pthread_t customers_tid[TOTAL_CUSTOMERS];
+  pthread_t customer_thread_manager;
 
  /*  void* cook_arg = (cook_args) {} 
   cook_args* ptr_cook_args = {om, sc, km, running};
@@ -88,9 +91,7 @@ int main(int argc, char* argv[]){
   }
 
   customer_args* ptr_customer_args = {om, sc, km, score, running};
-  for(int i = 0; i < TOTAL_CUSTOMERS; i++) {
-    pthread_create(&customers_tid[i], NULL, customer_thread(), (void*) ptr_customer_args);
-  }
+  pthread_create(&customer_thread_manager, NULL, thread_manager(), customer_args);
 */
   printf("QUEUE BEFORE POPPING:\n");
   print_queue(q);
@@ -166,3 +167,38 @@ void queue_init(customer_queue* q){
   pthread_mutex_init(&q->lock, NULL);
 }
 
+// customer_thread_manager implements this function
+void* thread_manager(void* arg) {
+  if(!arg) return NULL;
+
+  pthread_t* customer_tid = NULL;
+
+  customer_args* arguments = (customer_args*) arg;
+  int customer_counter = 0;
+
+  // customer threads has to be spawned at random time
+  int random_delay = ((rand() % MAX_CUSTOMER_SPAWN_RATE) + 1000) / GAME_SPEED;
+  
+  // cycle that keeps running to manage customer threads
+  while(customer_counter < TOTAL_CUSTOMERS) {
+    usleep(random_delay);
+
+    void *tmp =  realloc((void*) customer_tid, (customer_counter + 1) * sizeof(pthread_t));
+    if(tmp == NULL) {
+      perror("Realloc failed!");
+      free(customer_tid);
+      return NULL;
+    }
+
+    customer_tid = (pthread_t*) tmp;
+    pthread_create(&customer_tid[customer_counter], NULL, customer_thread, (void*) arguments);
+    customer_counter++;
+  }
+
+  for(int i = 0; i < customer_counter; i++) {
+    pthread_join(customer_tid[i], NULL);
+  }
+
+  free(customer_tid);
+  pthread_exit(NULL);
+}
