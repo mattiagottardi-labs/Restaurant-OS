@@ -37,13 +37,21 @@ typedef struct waiter_args{
     bool* running;
 } waiter_args;
 
+typedef struct entertainment_activity {
+    char* name;
+    int efficacy;
+    int duration;
+} entertainment_activity;
+
 int    get_prio(order* o, int algorithm);
 void   list_insert(order_list* l, customer* c, int algorithm);
 order* list_pop(order_list* l);
+order* peek(order_list* l);
 void   refill_priority(order_manager* m);
 void   waiter_loop(order_manager* m, customer_queue* q, sim_clock* sc, bool* running);
 void   list_insert_order(order_list* l, order* o, int algorithm);
 void*  waiter_thread(void* arg);
 void   om_init(order_manager* om);
 void   list_init(order_list* ol);
+int    customer_entertainment(int seed);
 #endif

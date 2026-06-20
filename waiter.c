@@ -19,7 +19,6 @@ int get_prio(order* o, int algorithm) {
     }
 }
 
-
 void list_insert(order_list* l, customer* c, int algorithm) {
     order* o = c->o;
     if (!o) return;
@@ -82,6 +81,17 @@ order* list_pop(order_list* l) {
     pthread_mutex_unlock(&l->lock);
 
     free(old_head);
+    return o;
+}
+
+/* --------------------------------------------------------------------------
+ * peek — return pointer to head customer without removing
+ * -------------------------------------------------------------------------- */
+
+order* peek(order_list* l) {
+    pthread_mutex_lock(&l->lock);
+    order* o = is_empty(l) ? NULL : l->head->o;
+    pthread_mutex_unlock(&l->lock);
     return o;
 }
 
@@ -162,7 +172,6 @@ void list_insert_order(order_list* l, order* o, int algorithm) {
     pthread_mutex_unlock(&l->lock);
 }
 
-
 void* waiter_thread(void* arg){
     if(!arg) return NULL;
     waiter_args* arguments = (waiter_args*) arg;
@@ -191,4 +200,14 @@ void om_init(order_manager* om){
   list_init(om->priority);
   list_init(om->completed_orders);
   list_init(om->discarded_orders);
+}
+
+// if waiting customers and no waiting orders -> call this function
+int customer_entertainment(int seed) {
+    entertainment_activity ea[4] = {{"chatting", 1, 1}, {"singing", 2, 2}, {"dancing", 3, 3}, {"performing magic tricks", 5, 2}};
+
+    int activity = rand() % 4;
+    printf("Waiter is %s, to entertain waiting customers.", ea[activity].name);
+    sleep(ea[activity].duration);
+    return ea[activity].efficacy;
 }

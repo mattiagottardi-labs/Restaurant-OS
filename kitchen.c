@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+
 char* my_strdup(const char* s) {
     if (!s) return NULL;
     char* d = malloc(strlen(s) + 1);
@@ -108,4 +109,3 @@ void make_menu(const char* menu_location, menu* Menu, const int max_dishes, cons
     Menu->num_dishes = j;
     fclose(menu_csv);
 }
-

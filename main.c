@@ -92,6 +92,8 @@ int main(int argc, char* argv[]){
 
   customer_args* ptr_customer_args = {om, sc, km, score, running};
   pthread_create(&customer_thread_manager, NULL, thread_manager(), customer_args);
+
+  // Missing pthread_join for cooks and waiters 
 */
   printf("QUEUE BEFORE POPPING:\n");
   print_queue(q);
@@ -150,6 +152,7 @@ void print_queue(customer_queue* q) {
 
     pthread_mutex_unlock(&q->lock);
 }
+
 void print_list(order_list* ol){
   list_node* current = ol->head;
   printf("list begin\n");
@@ -160,6 +163,7 @@ void print_list(order_list* ol){
   }
   printf("list end\n");
 }
+
 void queue_init(customer_queue* q){
   q->head = NULL;
   q->tail = NULL;
