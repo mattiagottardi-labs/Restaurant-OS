@@ -22,7 +22,6 @@ typedef struct customer {
     _Atomic bool    served;
     _Atomic bool    discarded;
     pthread_mutex_t lock;
-    _Atomic bool    can_order;
 } customer;
 
 typedef struct queue_node {

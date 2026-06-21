@@ -53,5 +53,5 @@ void   list_insert_order(order_list* l, order* o, int algorithm);
 void*  waiter_thread(void* arg);
 void   om_init(order_manager* om);
 void   list_init(order_list* ol);
-int    customer_entertainment(int seed);
+int    customer_entertainment();
 #endif
