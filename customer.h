@@ -33,6 +33,7 @@ typedef struct customer_queue {
     queue_node*     head;
     queue_node*     tail;
     int             size;
+    int             max_size;
     pthread_mutex_t lock;
 } customer_queue;
 
