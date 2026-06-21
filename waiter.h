@@ -10,6 +10,8 @@ please notify before making structural changes.
 #include "customer.h"
 #include "kitchen.h"
 
+entertainment_activity ea[4] = {{"chatting", 1, 1000000}, {"singing", 2, 2000000}, {"dancing", 3, 3000000}, {"performing magic tricks", 5, 2500000}};
+
 typedef struct list_node {
     order*            o;
     int               prio;
@@ -40,7 +42,7 @@ typedef struct waiter_args{
 typedef struct entertainment_activity {
     char* name;
     int efficacy;
-    int duration;
+    int duration;   // in microseconds
 } entertainment_activity;
 
 int    get_prio(order* o, int algorithm);
@@ -53,5 +55,5 @@ void   list_insert_order(order_list* l, order* o, int algorithm);
 void*  waiter_thread(void* arg);
 void   om_init(order_manager* om);
 void   list_init(order_list* ol);
-int    customer_entertainment();
+int    customer_entertainment(entertainment_activity* ea);
 #endif

@@ -18,7 +18,6 @@ typedef struct order {
 typedef struct customer {
     order*          o;
     int             patience;
-    int             arrival_time;
     _Atomic bool    served;
     _Atomic bool    discarded;
     pthread_mutex_t lock;
@@ -35,6 +34,11 @@ typedef struct customer_queue {
     int             size;
     pthread_mutex_t lock;
 } customer_queue;
+
+// queue for the customers standing outside the restaurant
+typedef struct standing_customer_queue {
+    customer_queue* stq;
+} standing_customer_queue;
 
 typedef struct customer_args{
   customer_queue*   q;
