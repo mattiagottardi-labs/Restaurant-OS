@@ -203,10 +203,10 @@ void om_init(order_manager* om){
 }
 
 // if waiting customers and no waiting orders -> call this function
-int customer_entertainment(int seed) {
+int customer_entertainment() {
     entertainment_activity ea[4] = {{"chatting", 1, 1}, {"singing", 2, 2}, {"dancing", 3, 3}, {"performing magic tricks", 5, 2}};
 
-    int activity = rand() % 4;
+    int activity = safe_rand_range(4)-1;
     printf("Waiter is %s, to entertain waiting customers.", ea[activity].name);
     sleep(ea[activity].duration);
     return ea[activity].efficacy;

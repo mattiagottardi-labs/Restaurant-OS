@@ -15,7 +15,7 @@ int safe_rand(void) {
     return r;
 }
 
-int safe_rand_range(int max) {
+int safe_rand_range(int max){
     pthread_mutex_lock(&rand_mutex);
     int r = rand() % (max-1);
     r++;
