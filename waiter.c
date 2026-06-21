@@ -111,6 +111,10 @@ void refill_priority(order_manager* m) {
  * waiter_loop — pops customers from the queue, unpacks their orders
  *               and inserts them into the waitlist sorted by prio.
  *               Defers refill_priority and cook interaction to later.
+ * 
+ * Davide:  additionaly the waiter has to check 2 different lists (or queues)
+ *          for the standing customers outside the restaurant (they have to
+ *          be entertained by the waiter ![only one so mutex needed]), 
  * -------------------------------------------------------------------------- */
 
 void waiter_loop(order_manager* m, customer_queue* q, sim_clock* sc, bool* running) {
@@ -118,6 +122,9 @@ void waiter_loop(order_manager* m, customer_queue* q, sim_clock* sc, bool* runni
         pthread_mutex_lock(&sc->lock);
         pthread_cond_wait(&sc->tick_cv, &sc->lock);
         pthread_mutex_unlock(&sc->lock);
+
+        // waiter checks if a dish is ready in the queue
+        peek();
 
         customer* c = NULL;
         while ((c = pop(q)) != NULL) {
@@ -203,11 +210,9 @@ void om_init(order_manager* om){
 }
 
 // if waiting customers and no waiting orders -> call this function
-int customer_entertainment() {
-    entertainment_activity ea[4] = {{"chatting", 1, 1}, {"singing", 2, 2}, {"dancing", 3, 3}, {"performing magic tricks", 5, 2}};
-
+int customer_entertainment(entertainment_activity *ea) {
     int activity = safe_rand_range(4)-1;
     printf("Waiter is %s, to entertain waiting customers.", ea[activity].name);
-    sleep(ea[activity].duration);
+    usleep(ea[activity].duration);
     return ea[activity].efficacy;
 }
