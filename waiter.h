@@ -56,4 +56,6 @@ void*  waiter_thread(void* arg);
 void   om_init(order_manager* om);
 void   list_init(order_list* ol);
 int    customer_entertainment(entertainment_activity* ea);
+void   take_order(customer_queue* seated, customer_queue* ordered, order_list* waiting);
+
 #endif

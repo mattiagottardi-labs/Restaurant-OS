@@ -66,4 +66,6 @@ int       get_prep_time(order* o);
 // customer lifecycle
 void    customer_loop(customer* c, customer_queue* q, sim_clock* sc, _Atomic float* score, sem_t* restaurant_capacity);
 void*   customer_thread(void* arg);
+
+
 #endif

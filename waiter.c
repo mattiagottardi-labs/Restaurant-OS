@@ -117,17 +117,17 @@ void refill_priority(order_manager* m) {
  *          be entertained by the waiter ![only one so mutex needed]), 
  * -------------------------------------------------------------------------- */
 
-void waiter_loop(order_manager* m, customer_queue* q, sim_clock* sc, bool* running) {
+void waiter_loop(order_manager* m, customer_queue* standing, customer_queue* seated, sim_clock* sc, bool* running) {
     while (running) {
         pthread_mutex_lock(&sc->lock);
         pthread_cond_wait(&sc->tick_cv, &sc->lock);
         pthread_mutex_unlock(&sc->lock);
 
         // waiter checks if a dish is ready in the queue
-        peek();
+        
 
         customer* c = NULL;
-        while ((c = pop(q)) != NULL) {
+        while ((c = pop(standing)) != NULL && seated->size < seated->max_size) {
             if (!c->o || atomic_load(&c->o->expired)) {
                 list_insert(m->discarded_orders, c, 2);
                 continue;
@@ -215,4 +215,14 @@ int customer_entertainment(entertainment_activity *ea) {
     printf("Waiter is %s, to entertain waiting customers.", ea[activity].name);
     usleep(ea[activity].duration);
     return ea[activity].efficacy;
+}
+void take_order(customer_queue* seated, customer_queue* ordered, order_list* waiting){
+  pthread_mutex_lock(&seated->lock);
+  if(seated->size == 0){
+    pthread_mutex_unlock(&seated->lock);
+    return;
+  }
+  customer* temp = pop(seated);
+  enqueue(temp, ordered);
+  list_insert(temp);
 }

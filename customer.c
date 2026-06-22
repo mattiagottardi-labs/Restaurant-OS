@@ -248,3 +248,4 @@ void* customer_thread(void* arg){
   pthread_exit(NULL);
   return NULL;
 }
+
