@@ -36,21 +36,6 @@ typedef struct customer_queue {
     pthread_mutex_t lock;
 } customer_queue;
 
-// queue for the customers standing outside the restaurant
-typedef struct standing_customer_queue {
-    customer_queue* cq;
-} standing_customer_queue;
-
-// queue for the customers standing outside the restaurant
-typedef struct seaeted_customer_queue {
-    customer_queue* cq;
-} standing_customer_queue;
-
-// queue for the customers standing outside the restaurant
-typedef struct ordered_customer_queue {
-    customer_queue* cq;
-} standing_customer_queue;
-
 typedef struct customer_args{
   customer_queue*   q;
   sim_clock*        sc;

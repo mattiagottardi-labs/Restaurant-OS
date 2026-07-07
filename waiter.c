@@ -85,14 +85,19 @@ order* list_pop(order_list* l) {
 }
 
 /* --------------------------------------------------------------------------
- * peek — return if list is empty or not
+ * order_ready — return true if list is empty and false if not
  * -------------------------------------------------------------------------- */
 
-bool peek(order_list* l) {
-    pthread_mutex_lock(&l->lock);
-    order* o = is_empty(l) ? NULL : l->head->o;
-    pthread_mutex_unlock(&l->lock);
-    return o;
+bool order_ready(order_list* l) {
+    return l->size == 0;
+}
+
+/* --------------------------------------------------------------------------
+ * is_empty — return true if list is empty and false if not
+ * -------------------------------------------------------------------------- */
+
+bool is_empty(customer_queue* q) {
+    return q->size == 0;
 }
 
 /* --------------------------------------------------------------------------
@@ -117,14 +122,23 @@ void refill_priority(order_manager* m) {
  *          be entertained by the waiter ![only one so mutex needed]), 
  * -------------------------------------------------------------------------- */
 
-void waiter_loop(order_manager* m, customer_queue* standing, customer_queue* seated, sim_clock* sc, bool* running) {
+void waiter_loop(order_manager* m, customer_queue* standing, customer_queue* seated, customer_queue* ordered, sim_clock* sc, bool* running) {
     while (running) {
         pthread_mutex_lock(&sc->lock);
         pthread_cond_wait(&sc->tick_cv, &sc->lock);
         pthread_mutex_unlock(&sc->lock);
 
-        // waiter checks if a dish is ready in the queue
-        peek();
+        // waiter checks if a customer has to order
+        if(!is_empty(seated)) {
+            
+        }
+
+        // waiter checks if a dish is ready to deliver
+        order_ready(m->completed_orders);
+
+        // waiter checks if there are standing customers waiting
+        is_empty(standing);
+        
 
         customer* c = NULL;
         while ((c = pop(standing)) != NULL && seated->size < seated->max_size) {
