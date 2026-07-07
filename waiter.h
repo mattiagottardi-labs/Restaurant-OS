@@ -10,7 +10,13 @@ please notify before making structural changes.
 #include "customer.h"
 #include "kitchen.h"
 
-entertainment_activity ea[4] = {{"chatting", 1, 1000000}, {"singing", 2, 2000000}, {"dancing", 3, 3000000}, {"performing magic tricks", 5, 2500000}};
+entertainment_activity ea[5] = {
+    {"chatting", 1, 1000000},
+    {"singing", 2, 2000000},
+    {"dancing", 3, 3000000},
+    {"performing magic tricks", 5, 2500000},
+    {"making puns", 2, 500000}
+};
 
 typedef struct list_node {
     order*            o;

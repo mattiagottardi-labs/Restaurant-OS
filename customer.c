@@ -197,6 +197,8 @@ void customer_loop(customer* c, customer_queue* q, sim_clock* sc, _Atomic float*
     // waiting outside for a free seat
     atomic_store(&c->can_order, false);
     sem_wait(restaurant_capacity);
+
+    // if space is available inside the restaurant, the customer can sit down and order
     atomic_store(&c->can_order, true);
 
     enqueue(c, q);
@@ -248,4 +250,3 @@ void* customer_thread(void* arg){
   pthread_exit(NULL);
   return NULL;
 }
-

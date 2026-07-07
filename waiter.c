@@ -85,10 +85,10 @@ order* list_pop(order_list* l) {
 }
 
 /* --------------------------------------------------------------------------
- * peek — return pointer to head customer without removing
+ * peek — return if list is empty or not
  * -------------------------------------------------------------------------- */
 
-order* peek(order_list* l) {
+bool peek(order_list* l) {
     pthread_mutex_lock(&l->lock);
     order* o = is_empty(l) ? NULL : l->head->o;
     pthread_mutex_unlock(&l->lock);
@@ -124,7 +124,7 @@ void waiter_loop(order_manager* m, customer_queue* standing, customer_queue* sea
         pthread_mutex_unlock(&sc->lock);
 
         // waiter checks if a dish is ready in the queue
-        
+        peek();
 
         customer* c = NULL;
         while ((c = pop(standing)) != NULL && seated->size < seated->max_size) {
@@ -211,11 +211,12 @@ void om_init(order_manager* om){
 
 // if waiting customers and no waiting orders -> call this function
 int customer_entertainment(entertainment_activity *ea) {
-    int activity = safe_rand_range(4)-1;
+    int activity = safe_rand_range(5) - 1;
     printf("Waiter is %s, to entertain waiting customers.", ea[activity].name);
     usleep(ea[activity].duration);
     return ea[activity].efficacy;
 }
+
 void take_order(customer_queue* seated, customer_queue* ordered, order_list* waiting){
   pthread_mutex_lock(&seated->lock);
   if(seated->size == 0){
