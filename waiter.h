@@ -40,9 +40,11 @@ typedef struct order_manager {
 
 typedef struct waiter_args{
     order_manager* m;
-    customer_queue* q;
+    customer_queue* standing;
+    customer_queue* seated;
     sim_clock* sc;
     bool* running;
+    sem_t* ea_bin;
 } waiter_args;
 
 typedef struct entertainment_activity {
@@ -56,7 +58,7 @@ void   list_insert(order_list* l, customer* c, int algorithm);
 order* list_pop(order_list* l);
 order* peek(order_list* l);
 void   refill_priority(order_manager* m);
-void   waiter_loop(order_manager* m, customer_queue* q, sim_clock* sc, bool* running);
+void   waiter_loop(order_manager* m, customer_queue* standing, customer_queue* seated, sim_clock* sc, sem_t* ea_bin, bool* running);
 void   list_insert_order(order_list* l, order* o, int algorithm);
 void*  waiter_thread(void* arg);
 void   om_init(order_manager* om);

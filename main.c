@@ -53,8 +53,9 @@ int main(int argc, char* argv[]){
   CLK_PERIOD = 1000000 / GAME_SPEED;
   */
 
-  sem_t restaurant_capacity;
+  sem_t restaurant_capacity, ea_bin;
   sem_init(&restaurant_capacity, 0, MAX_CUSTOMERS);
+  sem_init(&ea_bin, 0, 0);
 
   //create structs
   running = malloc(sizeof(bool));
@@ -92,7 +93,7 @@ int main(int argc, char* argv[]){
     pthread_create(&cooks_tid[i], NULL, cook_thread(), (void*) ptr_cook_args);
   }
 
-  waiter_args* ptr_waiter_args = {om, q, sc, running};
+  waiter_args* ptr_waiter_args = {om, q, sc, running, ea_lock};
   for(int i = 0; i < NUM_WAITERS; i++) {
     pthread_create(&waiters_tid[i], NULL, waiter_thread(), (void*) ptr_waiter_args);
   }
@@ -125,6 +126,7 @@ int main(int argc, char* argv[]){
 
   // destroy the semaphore
   sem_destroy(&restaurant_capacity);
+  sem_destroy(&ea_bin);
 } 
 
 void print_tool_status(kitchen_manager* km){

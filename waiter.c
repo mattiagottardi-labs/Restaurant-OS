@@ -122,34 +122,40 @@ void refill_priority(order_manager* m) {
  *          be entertained by the waiter ![only one so mutex needed]), 
  * -------------------------------------------------------------------------- */
 
-void waiter_loop(order_manager* m, customer_queue* standing, customer_queue* seated, customer_queue* ordered, sim_clock* sc, bool* running) {
+void waiter_loop(order_manager* m, customer_queue* standing, customer_queue* seated, sim_clock* sc, sem_t* ea_bin, bool* running) {
     while (running) {
         pthread_mutex_lock(&sc->lock);
         pthread_cond_wait(&sc->tick_cv, &sc->lock);
         pthread_mutex_unlock(&sc->lock);
 
+        sem_wait(&ea_bin);
         // waiter checks if a customer has to order
         if(!is_empty(seated)) {
-            
-        }
 
-        // waiter checks if a dish is ready to deliver
-        order_ready(m->completed_orders);
+            // waiter checks if a dish is ready to deliver
+            if(!order_ready(m->completed_orders)) {
 
-        // waiter checks if there are standing customers waiting
-        is_empty(standing);
-        
-
-        customer* c = NULL;
-        while ((c = pop(standing)) != NULL && seated->size < seated->max_size) {
-            if (!c->o || atomic_load(&c->o->expired)) {
-                list_insert(m->discarded_orders, c, 2);
-                continue;
+                // waiter checks if there are standing customers waiting
+                if(!is_empty(standing)) {
+                    customer_entertainment(ea);
+                    sem_post(&ea_bin);
+                }
             }
-            list_insert(m->waitlist, c, 0);  // or 1 for SJF
         }
+        else {
 
-        refill_priority(m);
+            // moving customer from standing to seated queue
+            customer* c = NULL;
+            while ((c = pop(standing)) != NULL && seated->size < seated->max_size) {
+                if (!c->o || atomic_load(&c->o->expired)) {
+                    list_insert(m->discarded_orders, c, 2);
+                    continue;
+                }
+                list_insert(m->waitlist, c, 0);  // or 1 for SJF
+            }
+
+            refill_priority(m);
+        }
     }
 }
 
@@ -197,7 +203,7 @@ void* waiter_thread(void* arg){
     if(!arg) return NULL;
     waiter_args* arguments = (waiter_args*) arg;
     //creates waiter and runs waiter loop
-    waiter_loop(arguments->m, arguments->q, arguments->sc, arguments->running);
+    waiter_loop(arguments->m, arguments->standing, arguments->seated, arguments->sc, arguments->running, arguments->ea_bin);
     return NULL;
 }
 
