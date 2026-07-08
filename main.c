@@ -32,9 +32,45 @@ bool* running;
 const int MAX_CUSTOMER_SPAWN_RATE = 5000000; // caution, this time is in microseconds
 int CLK_PERIOD;
 
+// customer_thread_manager implements this function
+void* thread_manager(void* arg) {
+  if(!arg) return NULL;
+
+  pthread_t* customer_tid = NULL;
+
+  customer_args* arguments = (customer_args*) arg;
+  int customer_counter = 0;
+
+  // customer threads has to be spawned at random time
+  int random_delay = ((rand() % MAX_CUSTOMER_SPAWN_RATE) + 1000) / GAME_SPEED;
+  
+  // cycle that keeps running to manage customer threads
+  while(customer_counter < TOTAL_CUSTOMERS) {
+    usleep(random_delay);
+
+    void *tmp =  realloc((void*) customer_tid, (customer_counter + 1) * sizeof(pthread_t));
+    if(tmp == NULL) {
+      perror("Realloc failed!");
+      free(customer_tid);
+      return NULL;
+    }
+
+    customer_tid = (pthread_t*) tmp;
+    pthread_create(&customer_tid[customer_counter], NULL, customer_thread, (void*) arguments);
+    customer_counter++;
+  }
+
+  for(int i = 0; i < customer_counter; i++) {
+    pthread_join(customer_tid[i], NULL);
+  }
+
+  free(customer_tid);
+  pthread_exit(NULL);
+}
+
 int main(int argc, char* argv[]){
   // check if sufficient numer of argument is passed
- /* if(argc < 8) {
+  if(argc < 8) {
     perror("Too few arguemnts passed, while launching main binary!\n");
     return 1;
   }
@@ -44,14 +80,13 @@ int main(int argc, char* argv[]){
   MAX_CUSTOMERS = atoi(argv[3]);
   TOTAL_CUSTOMERS = atoi(argv[4]);
   GAME_SPEED = atoi(argv[5]);
-  RANDOM_SEED = atoi(argv[6])
+  RANDOM_SEED = atoi(argv[6]);
 
   // strings don't need atoi()
   MENU_FILE = argv[7];
   RESOURCE_FILE = argv[8];
 
   CLK_PERIOD = 1000000 / GAME_SPEED;
-  */
 
   sem_t restaurant_capacity, ea_bin;
   sem_init(&restaurant_capacity, 0, MAX_CUSTOMERS);
@@ -63,46 +98,70 @@ int main(int argc, char* argv[]){
   kitchen_manager* km = (kitchen_manager*) malloc(sizeof(kitchen_manager));
   menu* Menu = (menu*) malloc(sizeof(menu));
   sim_clock* sc = (sim_clock*) malloc(sizeof(sim_clock));
-  customer_queue* q = (customer_queue*) malloc(sizeof(customer_queue));
+  customer_queue* standing = (customer_queue*) malloc(sizeof(customer_queue));
+  customer_queue* seated = (customer_queue*) malloc(sizeof(customer_queue));
   order_manager* om = (order_manager*) malloc(sizeof(order_manager));
   //init structs
   make_tools(resources_path, km, 10);
   make_menu(menu_path, Menu, 20, 4);
   om_init(om);
-  queue_init(q);
+  queue_init(standing);
+  queue_init(seated);
   clock_init(sc);
   srand(RANDOM_SEED);
 
   // if nothing (in the init steps) fails, running is true
   *running = true;
 
+/*
   for(int i = 0; i < 15; i++){
     customer* C = (customer*) malloc(sizeof(customer));
     C->o = make_order(C, Menu, safe_rand_range(5));
     C->patience = get_prep_time(C->o) + safe_rand_range(100);
-    enqueue(C, q);
+    enqueue(C, standing);
   }
+*/
 
   pthread_t cooks_tid[NUM_COOKS];
   pthread_t waiters_tid[NUM_WAITERS];
   pthread_t customer_thread_manager;
 
- /*  void* cook_arg = (cook_args) {} 
-  cook_args* ptr_cook_args = {om, sc, km, running};
+  cook_args* ptr_cook_args = malloc(sizeof(cook_args));
+  ptr_cook_args->km = km;
+  ptr_cook_args->m = om;
+  ptr_cook_args->running = running;
+  ptr_cook_args->sc = sc;
+
   for(int i = 0; i < NUM_COOKS; i++) {
-    pthread_create(&cooks_tid[i], NULL, cook_thread(), (void*) ptr_cook_args);
+    pthread_create(&cooks_tid[i], NULL, cook_thread, ptr_cook_args);
   }
 
-  waiter_args* ptr_waiter_args = {om, q, sc, running, ea_lock};
+  waiter_args* ptr_waiter_args = malloc(sizeof(waiter_args));
+  ptr_waiter_args->ea_bin = &ea_bin;
+  ptr_waiter_args->m = om;
+  ptr_waiter_args->running = running;
+  ptr_waiter_args->sc = sc;
+  ptr_waiter_args->seated = seated;
+  ptr_waiter_args->standing = standing;
+
   for(int i = 0; i < NUM_WAITERS; i++) {
-    pthread_create(&waiters_tid[i], NULL, waiter_thread(), (void*) ptr_waiter_args);
+    pthread_create(&waiters_tid[i], NULL, waiter_thread, ptr_waiter_args);
   }
 
-  customer_args* ptr_customer_args = {om, sc, km, score, running, restaurant_capacity};
-  pthread_create(&customer_thread_manager, NULL, thread_manager(), customer_args);
+  customer_args* ptr_customer_args = malloc(sizeof(customer_args));
+  ptr_customer_args->Menu = Menu;
+  ptr_customer_args->q = standing;
+  ptr_customer_args->restaurant_capacity = &restaurant_capacity;
+  ptr_customer_args->running = running;
+  ptr_customer_args->sc = sc;
+  ptr_customer_args->score = &score;
+
+  // thread_manager manages all customer threads
+  pthread_create(&customer_thread_manager, NULL, thread_manager, ptr_customer_args);
 
   // Missing pthread_join for cooks and waiters 
-*/
+
+/*
   printf("QUEUE BEFORE POPPING:\n");
   print_queue(q);
   while(q->size != 0){
@@ -123,6 +182,7 @@ int main(int argc, char* argv[]){
   *running = true;
   cook_dish(target_dish, target_order, om, sc, km, running );
   return 0;
+*/
 
   // destroy the semaphore
   sem_destroy(&restaurant_capacity);
@@ -181,42 +241,6 @@ void queue_init(customer_queue* q){
   q->tail = NULL;
   q->size = 0;
   pthread_mutex_init(&q->lock, NULL);
-}
-
-// customer_thread_manager implements this function
-void* thread_manager(void* arg) {
-  if(!arg) return NULL;
-
-  pthread_t* customer_tid = NULL;
-
-  customer_args* arguments = (customer_args*) arg;
-  int customer_counter = 0;
-
-  // customer threads has to be spawned at random time
-  int random_delay = ((rand() % MAX_CUSTOMER_SPAWN_RATE) + 1000) / GAME_SPEED;
-  
-  // cycle that keeps running to manage customer threads
-  while(customer_counter < TOTAL_CUSTOMERS) {
-    usleep(random_delay);
-
-    void *tmp =  realloc((void*) customer_tid, (customer_counter + 1) * sizeof(pthread_t));
-    if(tmp == NULL) {
-      perror("Realloc failed!");
-      free(customer_tid);
-      return NULL;
-    }
-
-    customer_tid = (pthread_t*) tmp;
-    pthread_create(&customer_tid[customer_counter], NULL, customer_thread, (void*) arguments);
-    customer_counter++;
-  }
-
-  for(int i = 0; i < customer_counter; i++) {
-    pthread_join(customer_tid[i], NULL);
-  }
-
-  free(customer_tid);
-  pthread_exit(NULL);
 }
 
 // ─── simulation clock ───────────────────────────────────
