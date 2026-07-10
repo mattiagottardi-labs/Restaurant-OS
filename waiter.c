@@ -199,9 +199,9 @@ void list_insert_order(order_list* l, order* o, int algorithm) {
     pthread_mutex_unlock(&l->lock);
 }
 
-void* waiter_thread(void* arg){
-    if(!arg) return NULL;
-    waiter_args* arguments = (waiter_args*) arg;
+void* waiter_thread(void* args){
+    if(!args) return NULL;
+    WaiterArgs* arguments = (WaiterArgs*) args;
     //creates waiter and runs waiter loop
     waiter_loop(arguments->m, arguments->standing, arguments->seated, arguments->sc, arguments->running, arguments->ea_bin);
     return NULL;
@@ -230,7 +230,7 @@ void om_init(order_manager* om){
 }
 
 // if waiting customers and no waiting orders -> call this function
-int customer_entertainment(entertainment_activity *ea) {
+int customer_entertainment(EntertainmentActivity *ea) {
     int activity = safe_rand_range(5) - 1;
     printf("Waiter is %s, to entertain waiting customers.", ea[activity].name);
     usleep(ea[activity].duration);

@@ -10,7 +10,7 @@ please notify before making structural changes.
 #include "customer.h"
 #include "kitchen.h"
 
-entertainment_activity ea[5] = {
+EntertainmentActivity ea[5] = {
     {"chatting", 1, 1000000},
     {"singing", 2, 2000000},
     {"dancing", 3, 3000000},
@@ -38,20 +38,20 @@ typedef struct order_manager {
     pthread_mutex_t lock;
 } order_manager;
 
-typedef struct waiter_args{
+typedef struct WaiterArgs {
     order_manager* m;
     customer_queue* standing;
     customer_queue* seated;
     sim_clock* sc;
     bool* running;
     sem_t* ea_bin;
-} waiter_args;
+} WaiterArgs;
 
-typedef struct entertainment_activity {
+typedef struct EntertainmentActivity {
     char* name;
     int efficacy;
     int duration;   // in microseconds
-} entertainment_activity;
+} EntertainmentActivity;
 
 int    get_prio(order* o, int algorithm);
 void   list_insert(order_list* l, customer* c, int algorithm);
@@ -63,7 +63,7 @@ void   list_insert_order(order_list* l, order* o, int algorithm);
 void*  waiter_thread(void* arg);
 void   om_init(order_manager* om);
 void   list_init(order_list* ol);
-int    customer_entertainment(entertainment_activity* ea);
+int    customer_entertainment(EntertainmentActivity* ea);
 void   take_order(customer_queue* seated, customer_queue* ordered, order_list* waiting);
 
 #endif

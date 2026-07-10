@@ -33,12 +33,12 @@ const int MAX_CUSTOMER_SPAWN_RATE = 5000000; // caution, this time is in microse
 int CLK_PERIOD;
 
 // customer_thread_manager implements this function
-void* thread_manager(void* arg) {
-  if(!arg) return NULL;
+void* thread_manager(void* args) {
+  if(!args) return NULL;
 
   pthread_t* customer_tid = NULL;
 
-  customer_args* arguments = (customer_args*) arg;
+  CustomerArgs* arguments = (CustomerArgs*) args;
   int customer_counter = 0;
 
   // customer threads has to be spawned at random time
@@ -126,38 +126,38 @@ int main(int argc, char* argv[]){
   pthread_t waiters_tid[NUM_WAITERS];
   pthread_t customer_thread_manager;
 
-  cook_args* ptr_cook_args = malloc(sizeof(cook_args));
-  ptr_cook_args->km = km;
-  ptr_cook_args->m = om;
-  ptr_cook_args->running = running;
-  ptr_cook_args->sc = sc;
+  CookArgs* cook_args = malloc(sizeof(CookArgs));
+  cook_args->km = km;
+  cook_args->m = om;
+  cook_args->running = running;
+  cook_args->sc = sc;
 
   for(int i = 0; i < NUM_COOKS; i++) {
-    pthread_create(&cooks_tid[i], NULL, cook_thread, ptr_cook_args);
+    pthread_create(&cooks_tid[i], NULL, cook_thread, cook_args);
   }
 
-  waiter_args* ptr_waiter_args = malloc(sizeof(waiter_args));
-  ptr_waiter_args->ea_bin = &ea_bin;
-  ptr_waiter_args->m = om;
-  ptr_waiter_args->running = running;
-  ptr_waiter_args->sc = sc;
-  ptr_waiter_args->seated = seated;
-  ptr_waiter_args->standing = standing;
+  WaiterArgs* waiter_args = malloc(sizeof(WaiterArgs));
+  waiter_args->ea_bin = &ea_bin;
+  waiter_args->m = om;
+  waiter_args->running = running;
+  waiter_args->sc = sc;
+  waiter_args->seated = seated;
+  waiter_args->standing = standing;
 
   for(int i = 0; i < NUM_WAITERS; i++) {
-    pthread_create(&waiters_tid[i], NULL, waiter_thread, ptr_waiter_args);
+    pthread_create(&waiters_tid[i], NULL, waiter_thread, waiter_args);
   }
 
-  customer_args* ptr_customer_args = malloc(sizeof(customer_args));
-  ptr_customer_args->Menu = Menu;
-  ptr_customer_args->q = standing;
-  ptr_customer_args->restaurant_capacity = &restaurant_capacity;
-  ptr_customer_args->running = running;
-  ptr_customer_args->sc = sc;
-  ptr_customer_args->score = &score;
+  CustomerArgs* customer_args = malloc(sizeof(CustomerArgs));
+  customer_args->Menu = Menu;
+  customer_args->q = standing;
+  customer_args->restaurant_capacity = &restaurant_capacity;
+  customer_args->running = running;
+  customer_args->sc = sc;
+  customer_args->score = &score;
 
   // thread_manager manages all customer threads
-  pthread_create(&customer_thread_manager, NULL, thread_manager, ptr_customer_args);
+  pthread_create(&customer_thread_manager, NULL, thread_manager, customer_args);
 
   // Missing pthread_join for cooks and waiters 
 

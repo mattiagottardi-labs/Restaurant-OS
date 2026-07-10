@@ -300,9 +300,9 @@ void cook_loop(order_manager* m, sim_clock* sc, kitchen_manager* km, bool* runni
     }
 }
 
-void* cook_thread(void* arg) {
-    if(!arg) return NULL;
-    cook_args* arguments = (cook_args*) arg;
+void* cook_thread(void* args) {
+    if(!args) return NULL;
+    CookArgs* arguments = (CookArgs*) args;
 
     cook_loop(arguments->m, arguments->sc, arguments->km, arguments->running);
 }

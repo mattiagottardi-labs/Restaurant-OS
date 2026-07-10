@@ -9,12 +9,12 @@
 #define DIRTY_THRESHOLD 3
 
 // cook arguments structure passed to the thread
-typedef struct cook_args {
+typedef struct CookArgs {
     order_manager* m;
     sim_clock* sc;
     kitchen_manager* km;
     bool* running;
-} cook_args;
+} CookArgs;
 
 // tool helpers
 int        count_tools(dish* d);

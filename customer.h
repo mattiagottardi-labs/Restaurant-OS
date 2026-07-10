@@ -36,14 +36,14 @@ typedef struct customer_queue {
     pthread_mutex_t lock;
 } customer_queue;
 
-typedef struct customer_args{
+typedef struct CustomerArgs {
   customer_queue*   q;
   sim_clock*        sc;
   menu*             Menu;
   _Atomic float*    score;
   bool*             running;
   sem_t*            restaurant_capacity;
-} customer_args;
+} CustomerArgs;
 
 // order creation
 order*  make_order(customer* c, menu* Menu, int num_dishes);
