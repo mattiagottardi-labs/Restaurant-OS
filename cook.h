@@ -10,27 +10,27 @@
 
 // cook arguments structure passed to the thread
 typedef struct CookArgs {
-    order_manager* m;
-    sim_clock* sc;
-    kitchen_manager* km;
+    OrderManager* m;
+    SimClock* sc;
+    KitchenManager* km;
     bool* running;
 } CookArgs;
 
-// tool helpers
-int        count_tools(dish* d);
-tool_pool* find_pool(const char* name, kitchen_manager* km);
-tool*      acquire_pool(tool_pool* pool);
-void       release_pool(tool_pool* pool, tool* t, sim_clock* sc, kitchen_manager* km);
-tool**     acquire_tools(dish* d, kitchen_manager* km);
-void       release_tools(tool** used, dish* d, kitchen_manager* km, sim_clock* sc);
+// Tool helpers
+int        count_tools(Dish* d);
+ToolPool* find_pool(const char* name, KitchenManager* km);
+Tool*      acquire_pool(ToolPool* pool);
+void       release_pool(ToolPool* pool, Tool* t, SimClock* sc, KitchenManager* km);
+Tool**     acquire_tools(Dish* d, KitchenManager* km);
+void       release_tools(Tool** used, Dish* d, KitchenManager* km, SimClock* sc);
 
-// order/dish selection
-order* get_next_order(order_manager* m);
-dish*  pick_dish(order* o);
+// Order/Dish selection
+Order* get_next_order(OrderManager* m);
+Dish*  pick_dish(Order* o);
 
 // cook lifecycle
-void cook_dish(dish* d, order* o, order_manager* m, sim_clock* sc, kitchen_manager* km, bool* running);
-void cook_loop(order_manager* m, sim_clock* sc, kitchen_manager* km, bool* running);
-float get_pressure(order_list* l); //will estimate how hard the kitchen must work
+void cook_dish(Dish* d, Order* o, OrderManager* m, SimClock* sc, KitchenManager* km, bool* running);
+void cook_loop(OrderManager* m, SimClock* sc, KitchenManager* km, bool* running);
+float get_pressure(OrderList* l); //will estimate how hard the kitchen must work
 void* cook_thread(void* arg);
 #endif

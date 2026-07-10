@@ -10,14 +10,14 @@ char* my_strdup(const char* s) {
     return d;
 }
 
-void make_tools(const char* tools_location, kitchen_manager* my_kitchen,const int max_tools) {
+void make_tools(const char* tools_location, KitchenManager* my_kitchen,const int max_tools) {
     FILE* f = fopen(tools_location, "r");
     if (!f) {
         perror("Failed to open tools file");
         exit(1);
     }
 
-    my_kitchen->pools = malloc(max_tools * sizeof(tool_pool*));
+    my_kitchen->pools = malloc(max_tools * sizeof(ToolPool*));
     char line[1024];
     int count = 0;
 
@@ -30,13 +30,13 @@ void make_tools(const char* tools_location, kitchen_manager* my_kitchen,const in
         char* time_str = strtok(NULL, ",");
 
         if (name && qty_str && time_str) {
-            tool_pool* pool = malloc(sizeof(tool_pool));
+            ToolPool* pool = malloc(sizeof(ToolPool));
             pool->name = my_strdup(name);
             pool->quantity = atoi(qty_str);
             pool->in_use = 0;
 
             // Initialize individual tools within the pool
-            pool->tools = malloc(pool->quantity * sizeof(tool));
+            pool->tools = malloc(pool->quantity * sizeof(Tool));
             int clean_time = atoi(time_str);
             pthread_mutex_init(&pool->lock, NULL);
             pthread_cond_init(&pool->cv, NULL);
@@ -53,7 +53,7 @@ void make_tools(const char* tools_location, kitchen_manager* my_kitchen,const in
     fclose(f);
 }
 
-void make_menu(const char* menu_location, menu* Menu, const int max_dishes, const int max_tools_per_dish) {
+void make_menu(const char* menu_location, Menu* Menu, const int max_dishes, const int max_tools_per_dish) {
     FILE *menu_csv = fopen(menu_location, "r");
     if(!menu_csv){ 
         perror("file cannot be opened");
@@ -64,12 +64,12 @@ void make_menu(const char* menu_location, menu* Menu, const int max_dishes, cons
     fgets(line, sizeof(line), menu_csv); // skip header
     
     int j = 0;
-    Menu->selection = malloc(max_dishes * sizeof(dish*));
+    Menu->selection = malloc(max_dishes * sizeof(Dish*));
 
     while(fgets(line, sizeof(line), menu_csv) && j < max_dishes){
         line[strcspn(line, "\n")] = 0; 
         
-        dish* d = malloc(sizeof(dish));
+        Dish* d = malloc(sizeof(Dish));
         d->name = strdup(strtok(line, ","));
         d->price = atoi(strtok(NULL, ","));
         d->time = atoi(strtok(NULL, ","));

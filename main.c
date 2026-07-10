@@ -9,11 +9,11 @@
 #include <pthread.h>
 #include <stdatomic.h>
 
-void print_tool_status(kitchen_manager* km);
-void queue_init(customer_queue* q);
-void print_customer(customer* C);
-void print_queue(customer_queue* q);
-void print_list(order_list* ol);
+void print_tool_status(KitchenManager* km);
+void queue_init(CustomerQueue* q);
+void print_customer(Customer* C);
+void print_queue(CustomerQueue* q);
+void print_list(OrderList* ol);
 char* resources_path = "/home/mgottardi/OS/rewrite/2026-project-5/code/resources.csv";
 char* menu_path = "/home/mgottardi/OS/rewrite/2026-project-5/code/menu.csv";
 
@@ -95,15 +95,15 @@ int main(int argc, char* argv[]){
   //create structs
   running = malloc(sizeof(bool));
   *running = true;
-  kitchen_manager* km = (kitchen_manager*) malloc(sizeof(kitchen_manager));
-  menu* Menu = (menu*) malloc(sizeof(menu));
-  sim_clock* sc = (sim_clock*) malloc(sizeof(sim_clock));
-  customer_queue* standing = (customer_queue*) malloc(sizeof(customer_queue));
-  customer_queue* seated = (customer_queue*) malloc(sizeof(customer_queue));
-  order_manager* om = (order_manager*) malloc(sizeof(order_manager));
+  KitchenManager* km = malloc(sizeof(KitchenManager));
+  Menu* menu = malloc(sizeof(Menu));
+  SimClock* sc = malloc(sizeof(SimClock));
+  CustomerQueue* standing = malloc(sizeof(CustomerQueue));
+  CustomerQueue* seated = malloc(sizeof(CustomerQueue));
+  OrderManager* om = malloc(sizeof(OrderManager));
   //init structs
   make_tools(resources_path, km, 10);
-  make_menu(menu_path, Menu, 20, 4);
+  make_menu(menu_path, menu, 20, 4);
   om_init(om);
   queue_init(standing);
   queue_init(seated);
@@ -115,7 +115,7 @@ int main(int argc, char* argv[]){
 
 /*
   for(int i = 0; i < 15; i++){
-    customer* C = (customer*) malloc(sizeof(customer));
+    customer* C = malloc(sizeof(customer));
     C->o = make_order(C, Menu, safe_rand_range(5));
     C->patience = get_prep_time(C->o) + safe_rand_range(100);
     enqueue(C, standing);
@@ -149,7 +149,7 @@ int main(int argc, char* argv[]){
   }
 
   CustomerArgs* customer_args = malloc(sizeof(CustomerArgs));
-  customer_args->Menu = Menu;
+  customer_args->menu = menu;
   customer_args->q = standing;
   customer_args->restaurant_capacity = &restaurant_capacity;
   customer_args->running = running;
@@ -176,8 +176,8 @@ int main(int argc, char* argv[]){
   refill_priority(om);
   printf("PRIORITY LIST:\n");
   print_list(om->priority);
-  order* target_order = get_next_order(om);
-  dish* target_dish = pick_dish(target_order);
+  Order* target_order = get_next_order(om);
+  Dish* target_dish = pick_dish(target_order);
   bool* running = malloc(sizeof(bool));
   *running = true;
   cook_dish(target_dish, target_order, om, sc, km, running );
@@ -189,14 +189,14 @@ int main(int argc, char* argv[]){
   sem_destroy(&ea_bin);
 } 
 
-void print_tool_status(kitchen_manager* km){
+void print_tool_status(KitchenManager* km){
    printf("TOOLS: \n");
   for(int i = 0; i < km->num_pools; i++){
     printf("%s, %d items, %d in use\n", km->pools[i]->name, km->pools[i]->quantity, km->pools[i]->in_use);
   }
 }
 
-void print_customer(customer* C){
+void print_customer(Customer* C){
   printf("Customer's Patience: %d", C->patience);
   printf("\nCustomer's Slack: %d", get_prio(C->o, 0));
   printf("\nCustomer's Order:\n");
@@ -205,14 +205,14 @@ void print_customer(customer* C){
   }
 }
 
-void print_queue(customer_queue* q) {
+void print_queue(CustomerQueue* q) {
     pthread_mutex_lock(&q->lock);
 
     if (!q->head) {
         printf("queue is empty\n");
     } else {
         printf("head is there, printing QUEUE:\n");
-        queue_node* current = q->head;
+        QueueNode* current = q->head;
         int i = 0;
         while (current != NULL) {
             printf("%d. ", i);
@@ -225,8 +225,8 @@ void print_queue(customer_queue* q) {
     pthread_mutex_unlock(&q->lock);
 }
 
-void print_list(order_list* ol){
-  list_node* current = ol->head;
+void print_list(OrderList* ol){
+  ListNode* current = ol->head;
   printf("list begin\n");
   for(int i = 0; i < ol->size; i++){
     printf("%d: ", i);
@@ -236,7 +236,7 @@ void print_list(order_list* ol){
   printf("list end\n");
 }
 
-void queue_init(customer_queue* q){
+void queue_init(CustomerQueue* q){
   q->head = NULL;
   q->tail = NULL;
   q->size = 0;
@@ -245,19 +245,19 @@ void queue_init(customer_queue* q){
 
 // ─── simulation clock ───────────────────────────────────
 
-void clock_init(sim_clock* sim) {
+void clock_init(SimClock* sim) {
     sim->tick = 0;
     pthread_mutex_init(&sim->lock, NULL);
     pthread_cond_init(&sim->tick_cv, NULL);
 }
 
-void clock_destroy(sim_clock* sim) {
+void clock_destroy(SimClock* sim) {
     pthread_mutex_destroy(&sim->lock);
     pthread_cond_destroy(&sim->tick_cv);
 }
 
 // must be in main.c since GAME_SPEED adjusts the tick speed
-void tick_advance(sim_clock* sim) {
+void tick_advance(SimClock* sim) {
     usleep(CLK_PERIOD);
     pthread_mutex_lock(&sim->lock);
     printf("ticking %d", sim->tick);

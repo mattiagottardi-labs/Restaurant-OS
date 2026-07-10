@@ -18,31 +18,31 @@ EntertainmentActivity ea[5] = {
     {"making puns", 2, 500000}
 };
 
-typedef struct list_node {
-    order*            o;
+typedef struct ListNode {
+    Order*            o;
     int               prio;
-    struct list_node* next;
-} list_node;
+    struct ListNode* next;
+} ListNode;
 
-typedef struct order_list {
-    list_node*      head;
+typedef struct OrderList {
+    ListNode*      head;
     int             size;
     pthread_mutex_t lock;
-} order_list;
+} OrderList;
 
-typedef struct order_manager {
-    order_list*     waitlist;
-    order_list*     priority;
-    order_list*     completed_orders;
-    order_list*     discarded_orders;
+typedef struct OrderManager {
+    OrderList*     waitlist;
+    OrderList*     priority;
+    OrderList*     completed_orders;
+    OrderList*     discarded_orders;
     pthread_mutex_t lock;
-} order_manager;
+} OrderManager;
 
 typedef struct WaiterArgs {
-    order_manager* m;
-    customer_queue* standing;
-    customer_queue* seated;
-    sim_clock* sc;
+    OrderManager* m;
+    CustomerQueue* standing;
+    CustomerQueue* seated;
+    SimClock* sc;
     bool* running;
     sem_t* ea_bin;
 } WaiterArgs;
@@ -53,17 +53,17 @@ typedef struct EntertainmentActivity {
     int duration;   // in microseconds
 } EntertainmentActivity;
 
-int    get_prio(order* o, int algorithm);
-void   list_insert(order_list* l, customer* c, int algorithm);
-order* list_pop(order_list* l);
-order* peek(order_list* l);
-void   refill_priority(order_manager* m);
-void   waiter_loop(order_manager* m, customer_queue* standing, customer_queue* seated, sim_clock* sc, sem_t* ea_bin, bool* running);
-void   list_insert_order(order_list* l, order* o, int algorithm);
+int    get_prio(Order* o, int algorithm);
+void   list_insert(OrderList* l, Customer* c, int algorithm);
+Order* list_pop(OrderList* l);
+Order* peek(OrderList* l);
+void   refill_priority(OrderManager* m);
+void   waiter_loop(OrderManager* m, CustomerQueue* standing, CustomerQueue* seated, SimClock* sc, sem_t* ea_bin, bool* running);
+void   list_insert_order(OrderList* l, Order* o, int algorithm);
 void*  waiter_thread(void* arg);
-void   om_init(order_manager* om);
-void   list_init(order_list* ol);
+void   om_init(OrderManager* om);
+void   list_init(OrderList* ol);
 int    customer_entertainment(EntertainmentActivity* ea);
-void   take_order(customer_queue* seated, customer_queue* ordered, order_list* waiting);
+void   take_order(CustomerQueue* seated, CustomerQueue* ordered, OrderList* waiting);
 
 #endif

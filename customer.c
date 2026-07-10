@@ -7,18 +7,18 @@
  * Order creation
  * -------------------------------------------------------------------------- */
 
-order* make_order(customer* c, menu* Menu, int num_dishes) {
-    order* o = malloc(sizeof(order));
+Order* make_order(Customer* c, Menu* menu, int num_dishes) {
+    Order* o = malloc(sizeof(Order));
     if (!o) return NULL;
 
-    o->dishes = calloc(num_dishes + 1, sizeof(dish*));
+    o->dishes = calloc(num_dishes + 1, sizeof(Dish*));
     if (!o->dishes) {
         free(o);
         return NULL;
     }
 
     for (int i = 0; i < num_dishes; i++) {
-        o->dishes[i] = copy_dish(Menu->selection[safe_rand_range(Menu->num_dishes)]);
+        o->dishes[i] = copy_dish(menu->selection[safe_rand_range(menu->num_dishes)]);
     }
     o->dishes[num_dishes] = NULL;
     atomic_store(&o->completed, false);
@@ -29,7 +29,7 @@ order* make_order(customer* c, menu* Menu, int num_dishes) {
     return o;
 }
 
-int get_prep_time(order* o) {
+int get_prep_time(Order* o) {
     int tot = 0;
     for (int i = 0; o->dishes[i] != NULL; i++) {
         if (atomic_load(&o->dishes[i]->ready)) continue;
@@ -38,10 +38,10 @@ int get_prep_time(order* o) {
     return tot;
 }
 
-dish* copy_dish(dish* src) {
+Dish* copy_dish(Dish* src) {
     if (!src) return NULL;
 
-    dish* d = malloc(sizeof(dish));
+    Dish* d = malloc(sizeof(Dish));
     if (!d) return NULL;
 
     *d = *src;
@@ -51,7 +51,7 @@ dish* copy_dish(dish* src) {
     return d;
 }
 
-void free_order(order* o) {
+void free_order(Order* o) {
     if (!o) return;
     for (int i = 0; o->dishes[i] != NULL; i++) {
         pthread_mutex_destroy(&o->dishes[i]->lock);
@@ -66,7 +66,7 @@ void free_order(order* o) {
  * Queue helpers
  * -------------------------------------------------------------------------- */
 
-bool is_empty(customer_queue* q) {
+bool is_empty(CustomerQueue* q) {
     return q->size == 0;
 }
 
@@ -74,8 +74,8 @@ bool is_empty(customer_queue* q) {
  * enqueue — allocate a new node and append to tail
  * -------------------------------------------------------------------------- */
 
-void enqueue(customer* c, customer_queue* q) {
-    queue_node* node = malloc(sizeof(queue_node));
+void enqueue(Customer* c, CustomerQueue* q) {
+    QueueNode* node = malloc(sizeof(QueueNode));
     if (!node) {
         perror("enqueue: malloc failed\n");
         return;
@@ -100,7 +100,7 @@ void enqueue(customer* c, customer_queue* q) {
  * dequeue — remove head node without returning the customer
  * -------------------------------------------------------------------------- */
 
-void dequeue(customer_queue* q) {
+void dequeue(CustomerQueue* q) {
     pthread_mutex_lock(&q->lock);
 
     if (is_empty(q)) {
@@ -108,7 +108,7 @@ void dequeue(customer_queue* q) {
         return;
     }
 
-    queue_node* old_head = q->head;
+    QueueNode* old_head = q->head;
     q->head = old_head->next;
     if (!q->head) q->tail = NULL;
     q->size--;
@@ -121,20 +121,20 @@ void dequeue(customer_queue* q) {
  * peek — return pointer to head customer without removing
  * -------------------------------------------------------------------------- */
 
-customer* peek(customer_queue* q) {
+Customer* peek(CustomerQueue* q) {
     pthread_mutex_lock(&q->lock);
-    customer* c = is_empty(q) ? NULL : q->head->c;
+    Customer* c = is_empty(q) ? NULL : q->head->c;
     pthread_mutex_unlock(&q->lock);
     return c;
 }
 
 /* --------------------------------------------------------------------------
- * pop — return the first customer whose patience >= order remaining_time.
+ * pop — return the first customer whose patience >= Order remaining_time.
  *       Impatient or expired customers are signalled and removed immediately.
  *       Uses prev pointer to correctly unlink any node in the list.
  * -------------------------------------------------------------------------- */
 
-customer* pop(customer_queue* q) {
+Customer* pop(CustomerQueue* q) {
     pthread_mutex_lock(&q->lock);
 
     if (!q->head) {
@@ -142,8 +142,8 @@ customer* pop(customer_queue* q) {
         return NULL;
     }
 
-    queue_node* old_head = q->head;
-    customer*   result   = old_head->c;
+    QueueNode* old_head = q->head;
+    Customer* result = old_head->c;
 
     q->head = old_head->next;
     if (!q->head) q->tail = NULL;
@@ -158,12 +158,12 @@ customer* pop(customer_queue* q) {
  *         Does NOT free the customers themselves.
  * -------------------------------------------------------------------------- */
 
-void clean(customer_queue* q) {
+void clean(CustomerQueue* q) {
     pthread_mutex_lock(&q->lock);
 
-    queue_node* node = q->head;
+    QueueNode* node = q->head;
     while (node) {
-        queue_node* next = node->next;
+        QueueNode* next = node->next;
         free(node);
         node = next;
     }
@@ -184,7 +184,7 @@ void clean(customer_queue* q) {
  * 4. Update score automically
  * -------------------------------------------------------------------------- */
 
-void customer_loop(customer* c, customer_queue* q, sim_clock* sc, _Atomic float* score, sem_t* restaurant_capacity) {
+void customer_loop(Customer* c, CustomerQueue* q, SimClock* sc, _Atomic float* score, sem_t* restaurant_capacity) {
 
     /*
     // Wait until arrival time
@@ -198,7 +198,7 @@ void customer_loop(customer* c, customer_queue* q, sim_clock* sc, _Atomic float*
     //atomic_store(&c->can_order, false);
     sem_wait(restaurant_capacity);
 
-    // if space is available inside the restaurant, the customer can sit down and order
+    // if space is available inside the restaurant, the customer can sit down and Order
     //atomic_store(&c->can_order, true);
 
     enqueue(c, q);
@@ -243,9 +243,9 @@ void customer_loop(customer* c, customer_queue* q, sim_clock* sc, _Atomic float*
 void* customer_thread(void* args) {
   if(!args) return NULL;
   CustomerArgs* arguments = (CustomerArgs*) args;
-  //creates customer and order, thus goes into customer loop
-  customer* C = (customer*) malloc(sizeof(customer));
-  C->o = make_order(C, arguments->Menu, safe_rand_range(5));
+  //creates customer and Order, thus goes into customer loop
+  Customer* C = malloc(sizeof(Customer));
+  C->o = make_order(C, arguments->menu, safe_rand_range(5));
   customer_loop(C, arguments->q, arguments->sc, arguments->score, arguments->restaurant_capacity);
   pthread_exit(NULL);
   return NULL;

@@ -6,50 +6,50 @@
 #include "utils.h"
 
 // forward declaration — customer defined in customer.h
-typedef struct customer customer;
-typedef struct order order;
+typedef struct Customer customer;
+typedef struct Order order;
 
-typedef struct tool {
+typedef struct Tool {
     char*           name;
     int             clean_time;
     int             dirty_usages;
     _Atomic bool    in_use;
     pthread_mutex_t lock;
-} tool;
+} Tool;
 
-typedef struct tool_pool {
+typedef struct ToolPool {
     int             in_use;
     int             quantity;
     char*           name;
-    tool*           tools;
+    Tool*           tools;
     pthread_mutex_t lock;
     pthread_cond_t  cv;
-} tool_pool;
+} ToolPool;
 
-typedef struct kitchen_manager {
-    tool_pool** pools;
+typedef struct KitchenManager {
+    ToolPool** pools;
     int         num_pools;
     pthread_mutex_t sink;        // shared sink mutex for all cooks
-} kitchen_manager;
+} KitchenManager;
 
-typedef struct dish {
+typedef struct Dish {
     char*           name;
     int             price;
     int             time;
-    struct order*   o;
+    struct Order*   o;
     char**          tools;
     _Atomic bool    ready;
     _Atomic bool    cooking;
     pthread_mutex_t lock;
-} dish;
+} Dish;
 
-typedef struct menu {
-    dish**  selection;
+typedef struct Menu {
+    Dish**  selection;
     int     num_dishes;
-} menu;
+} Menu;
 
 char* my_strdup(const char* s);
-void make_tools(const char* tools_location, kitchen_manager* km, int max_tools);
-void make_menu(const char* menu_location, menu* Menu, const int max_dishes, const int max_tools_per_dish);
+void make_tools(const char* tools_location, KitchenManager* km, int max_tools);
+void make_menu(const char* menu_location, Menu* menu, const int max_dishes, const int max_tools_per_dish);
 
 #endif
