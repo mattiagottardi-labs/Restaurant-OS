@@ -2,6 +2,13 @@
 #define UTILS_H
 
 #include <pthread.h>
+#include "customer.h"
+
+// struct that keeps customer and tid tied toghether
+typedef struct Mapping {
+    Customer *c;
+    pthread_t* tid;
+} Mapping;
 
 // ─── simulation clock ────────────────────────────────────────────────────────
 

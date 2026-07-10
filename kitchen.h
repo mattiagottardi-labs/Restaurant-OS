@@ -27,8 +27,8 @@ typedef struct ToolPool {
 } ToolPool;
 
 typedef struct KitchenManager {
-    ToolPool** pools;
-    int         num_pools;
+    ToolPool**      pools;
+    int             num_pools;
     pthread_mutex_t sink;        // shared sink mutex for all cooks
 } KitchenManager;
 

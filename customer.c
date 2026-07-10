@@ -201,8 +201,6 @@ void customer_loop(Customer* c, CustomerQueue* q, SimClock* sc, _Atomic float* s
     // if space is available inside the restaurant, the customer can sit down and Order
     //atomic_store(&c->can_order, true);
 
-    enqueue(c, q);
-    printf("customer enqueued\n");
     int wait_start = sc->tick;
 
     while (!atomic_load(&c->served)) {

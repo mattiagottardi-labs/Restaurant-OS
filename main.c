@@ -68,6 +68,39 @@ void* thread_manager(void* args) {
   pthread_exit(NULL);
 }
 
+// customer_thread_manager implements this function
+void* thread_manager_mk2(void* args) {
+  if(!args) return NULL;
+
+  CustomerArgs* arguments = (CustomerArgs*) args;
+  int customer_counter = 0;
+
+  // customer threads has to be spawned at random time
+  int random_delay = ((rand() % MAX_CUSTOMER_SPAWN_RATE) + 1000) / GAME_SPEED;
+
+  Mapping* mappings = NULL;
+  
+  // cycle that keeps running to manage customer threads
+  while(customer_counter < TOTAL_CUSTOMERS) {
+    usleep(random_delay);
+
+    Customer* c = malloc(sizeof(Customer));
+    pthread_t* tid = malloc(sizeof(pthread_t));
+    Mapping* mappings = realloc(mappings, (customer_counter + 1) * sizeof(Mapping));
+
+    pthread_create(&tid[customer_counter], NULL, customer_thread, (void*) arguments);
+    customer_counter++;
+
+    enqueue(c, arguments->q);
+    printf("New customer enqued in standing queue\n");
+  }
+
+  for(int i = 0; i < customer_counter; i++) {
+    pthread_join(mappings->tid, NULL);
+  }
+  pthread_exit(NULL);
+}
+
 int main(int argc, char* argv[]){
   // check if sufficient numer of argument is passed
   if(argc < 8) {
