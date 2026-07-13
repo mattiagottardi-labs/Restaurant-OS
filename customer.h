@@ -6,6 +6,14 @@
 #include "kitchen.h"
 #include <semaphore.h>
 
+typedef enum CustomerState {
+    STANDING,
+    SEATED,
+    ORDERED,
+    EATING,
+    FINISHED
+} CustomerState;
+
 typedef struct Order {
     Dish**           dishes;
     _Atomic int      remaining_time;
@@ -21,6 +29,8 @@ typedef struct Customer {
     _Atomic bool    served;
     _Atomic bool    discarded;
     pthread_mutex_t lock;
+    CustomerState   present;
+    CustomerState   future;
 } Customer;
 
 typedef struct QueueNode {

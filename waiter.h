@@ -18,6 +18,15 @@ EntertainmentActivity ea[5] = {
     {"making puns", 2, 500000}
 };
 
+typedef enum WaiterState {
+    IDLE,
+    ACTIVE,
+    TAKING_ORDER,
+    CHECKING_FOOD,
+    DELIVERING_FOOD,
+    ENTERTAINING
+} WaiterState;
+
 typedef struct ListNode {
     Order*            o;
     int               prio;
@@ -47,6 +56,12 @@ typedef struct WaiterArgs {
     sem_t* ea_bin;
 } WaiterArgs;
 
+typedef struct Waiter {
+    WaiterArgs* wtr_arg;
+    WaiterState present;
+    WaiterState future;
+} Waiter;
+
 typedef struct EntertainmentActivity {
     char* name;
     int efficacy;
@@ -58,7 +73,7 @@ void   list_insert(OrderList* l, Customer* c, int algorithm);
 Order* list_pop(OrderList* l);
 Order* peek(OrderList* l);
 void   refill_priority(OrderManager* m);
-void   waiter_loop(OrderManager* m, CustomerQueue* standing, CustomerQueue* seated, SimClock* sc, sem_t* ea_bin, bool* running);
+void   waiter_loop(Waiter* wtr, CustomerQueue* standing, CustomerQueue* seated);
 void   list_insert_order(OrderList* l, Order* o, int algorithm);
 void*  waiter_thread(void* arg);
 void   om_init(OrderManager* om);

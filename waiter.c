@@ -121,18 +121,59 @@ void refill_priority(OrderManager* m) {
  *          be entertained by the waiter ![only one so mutex needed]), 
  * -------------------------------------------------------------------------- */
 
-void waiter_loop(OrderManager* m, CustomerQueue* standing, CustomerQueue* seated, SimClock* sc, sem_t* ea_bin, bool* running) {
-    while (running) {
-        pthread_mutex_lock(&sc->lock);
-        pthread_cond_wait(&sc->tick_cv, &sc->lock);
-        pthread_mutex_unlock(&sc->lock);
+void waiter_loop(Waiter* wtr, CustomerQueue* standing, CustomerQueue* seated) {
+    while (wtr->wtr_arg->running) {
+        pthread_mutex_lock(&wtr->wtr_arg->sc->lock);
+        pthread_cond_wait(&wtr->wtr_arg->sc->tick_cv, &wtr->wtr_arg->sc->lock);
+        pthread_mutex_unlock(&wtr->wtr_arg->sc->lock);
 
-        sem_wait(&ea_bin);
+        switch(wtr->present) {
+            case IDLE:
+                if(!is_empty(seated)) {
+                    wtr->future = ACTIVE;
+                }
+                else {
+                    wtr->future = wtr->present;
+                }
+                break;
+            
+            case TAKING_ORDER:
+                if(is_empty(seated) && is_empty(standing)) {
+                    wtr->future = IDLE;
+                }
+                else if(!is_empty(standing)) {
+                    wtr->future = ENTERTAINING;
+                }
+                else {
+                    wtr->future = wtr->present;
+                }
+                break;
+
+            case CHECKING_FOOD:
+                
+                break;
+
+            case DELIVERING_FOOD:
+
+                break;
+
+            case ENTERTAINING:
+                customer_entertainment(ea);
+                break;
+
+            default:
+                perror("Waiter - Unknown state!");          
+        }
+        // Update the state for next cycle
+        wtr->present = wtr->future;
+
+        /*
+        sem_wait(&wtr->wtr_arg->ea_bin);
         // waiter checks if a customer has to Order
         if(!is_empty(seated)) {
 
             // waiter checks if a Dish is ready to deliver
-            if(!order_ready(m->completed_orders)) {
+            if(!order_ready(wtr->wtr_arg->m->completed_orders)) {
 
                 // waiter checks if there are standing customers waiting
                 if(!is_empty(standing)) {
@@ -141,6 +182,7 @@ void waiter_loop(OrderManager* m, CustomerQueue* standing, CustomerQueue* seated
                 }
             }
         }
+        
         else {
 
             // moving customer from standing to seated queue
@@ -155,6 +197,7 @@ void waiter_loop(OrderManager* m, CustomerQueue* standing, CustomerQueue* seated
 
             refill_priority(m);
         }
+*/
     }
 }
 
@@ -200,9 +243,13 @@ void list_insert_order(OrderList* l, Order* o, int algorithm) {
 
 void* waiter_thread(void* args){
     if(!args) return NULL;
-    WaiterArgs* arguments = (WaiterArgs*) args;
+    WaiterArgs* wtr_arg = (WaiterArgs*) args;
+    Waiter* wtr = malloc(sizeof(Waiter));
+    wtr->present = IDLE;
+    wtr->wtr_arg = wtr_arg;
+
     //creates waiter and runs waiter loop
-    waiter_loop(arguments->m, arguments->standing, arguments->seated, arguments->sc, arguments->running, arguments->ea_bin);
+    waiter_loop(wtr_arg->m, arguments->standing, arguments->seated, arguments->sc, arguments->running, arguments->ea_bin);
     return NULL;
 }
 
