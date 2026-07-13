@@ -9,7 +9,8 @@
 typedef enum CustomerState {
     STANDING,
     SEATED,
-    ORDERED,
+    ORDERING,
+    WAITING_FOOD,
     EATING,
     FINISHED
 } CustomerState;
@@ -23,6 +24,15 @@ typedef struct Order {
     pthread_mutex_t  lock;
 } Order;
 
+typedef struct CustomerArgs {
+  CustomerQueue*    q;
+  SimClock*         sc;
+  Menu*             menu;
+  _Atomic float*    score;
+  bool*             running;
+  sem_t*            rc;
+} CustomerArgs;
+
 typedef struct Customer {
     Order*          o;
     int             patience;
@@ -31,6 +41,7 @@ typedef struct Customer {
     pthread_mutex_t lock;
     CustomerState   present;
     CustomerState   future;
+    CustomerArgs*   cst_arg;
 } Customer;
 
 typedef struct QueueNode {
@@ -46,15 +57,6 @@ typedef struct CustomerQueue {
     pthread_mutex_t lock;
 } CustomerQueue;
 
-typedef struct CustomerArgs {
-  CustomerQueue*    q;
-  SimClock*         sc;
-  Menu*             menu;
-  _Atomic float*    score;
-  bool*             running;
-  sem_t*            restaurant_capacity;
-} CustomerArgs;
-
 // Order creation
 Order*  make_order(Customer* c, Menu* menu, int num_dishes);
 Dish*   copy_dish(Dish* src);
@@ -63,13 +65,13 @@ void    free_order(Order* o);
 // queue
 bool      is_empty(CustomerQueue* q);
 void      enqueue(Customer* c, CustomerQueue* q);
-void      dequeue(CustomerQueue* q);
+Customer* dequeue(CustomerQueue* q);
 Customer* pop(CustomerQueue* q);
 Customer* peek(CustomerQueue* q);
 void      clean(CustomerQueue* q);
 int       get_prep_time(Order* o);
 // customer lifecycle
-void    customer_loop(Customer* c, CustomerQueue* q, SimClock* sc, _Atomic float* score, sem_t* restaurant_capacity);
+void    customer_loop(Customer* c);
 void*   customer_thread(void* arg);
 
 #endif

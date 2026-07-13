@@ -97,10 +97,10 @@ void enqueue(Customer* c, CustomerQueue* q) {
 }
 
 /* --------------------------------------------------------------------------
- * dequeue — remove head node without returning the customer
+ * dequeue — remove head node, returning the customer
  * -------------------------------------------------------------------------- */
 
-void dequeue(CustomerQueue* q) {
+Customer* dequeue(CustomerQueue* q) {
     pthread_mutex_lock(&q->lock);
 
     if (is_empty(q)) {
@@ -114,7 +114,7 @@ void dequeue(CustomerQueue* q) {
     q->size--;
 
     pthread_mutex_unlock(&q->lock);
-    free(old_head);
+    return old_head;
 }
 
 /* --------------------------------------------------------------------------
@@ -184,23 +184,49 @@ void clean(CustomerQueue* q) {
  * 4. Update score automically
  * -------------------------------------------------------------------------- */
 
-void customer_loop(Customer* c, CustomerQueue* q, SimClock* sc, _Atomic float* score, sem_t* restaurant_capacity) {
+void customer_loop(Customer* cst) {
+    sem_wait(cst->cst_arg->rc);
+    
 
+    while(cst->cst_arg->running) {
     /*
     // Wait until arrival time
     pthread_mutex_lock(&sc->lock);
     while (sc->tick < c->arrival_time)
-        pthread_cond_wait(&sc->tick_cv, &sc->lock);
+    pthread_cond_wait(&sc->tick_cv, &sc->lock);
     pthread_mutex_unlock(&sc->lock);
     */
 
-    // waiting outside for a free seat
-    //atomic_store(&c->can_order, false);
-    sem_wait(restaurant_capacity);
+        pthread_mutex_lock(&cst->cst_arg->sc->lock);
+        pthread_cond_wait(&cst->cst_arg->sc->tick_cv, &cst->cst_arg->sc->lock);
+        pthread_mutex_unlock(&cst->cst_arg->sc->lock);
+
+        // waiting outside for a free seat
+        switch(cst->present) {
+            case STANDING:
+
+                break;
+
+            case SEATED:
+
+                break;
+
+            case ORDERING:
+                cst->o = make_order(cst, cst->cst_arg->menu, safe_rand_range(5));
+                cst->future = WAITING_FOOD;
+                break;
+
+            case WAITING_FOOD:
+
+                break;
+
+            
+        }
+        cst->present = cst->future;
 
     // if space is available inside the restaurant, the customer can sit down and Order
     //atomic_store(&c->can_order, true);
-
+/*
     int wait_start = sc->tick;
 
     while (!atomic_load(&c->served)) {
@@ -236,15 +262,22 @@ void customer_loop(Customer* c, CustomerQueue* q, SimClock* sc, _Atomic float* s
     // Keep trying until we successfully update the value safely
   } while (!atomic_compare_exchange_weak(score, &current, current + 1.0f));
   return;
+*/
+    }
+    sem_post(&cst->lock);
 }
 
 void* customer_thread(void* args) {
   if(!args) return NULL;
-  CustomerArgs* arguments = (CustomerArgs*) args;
-  //creates customer and Order, thus goes into customer loop
-  Customer* C = malloc(sizeof(Customer));
-  C->o = make_order(C, arguments->menu, safe_rand_range(5));
-  customer_loop(C, arguments->q, arguments->sc, arguments->score, arguments->restaurant_capacity);
-  pthread_exit(NULL);
+  //creates customer then goes into customer loop
+  Customer* cst = malloc(sizeof(Customer));
+  cst->present = STANDING;
+  cst->cst_arg = (CustomerArgs*) args;
+
+  customer_loop(cst);
+
+  free(cst);
+  cst = NULL;
+
   return NULL;
 }

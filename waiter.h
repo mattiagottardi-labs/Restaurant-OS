@@ -20,7 +20,7 @@ EntertainmentActivity ea[5] = {
 
 typedef enum WaiterState {
     IDLE,
-    ACTIVE,
+    ACCOMODATING_CUSTOMER,
     TAKING_ORDER,
     CHECKING_FOOD,
     DELIVERING_FOOD,
@@ -53,6 +53,7 @@ typedef struct WaiterArgs {
     CustomerQueue* seated;
     SimClock* sc;
     bool* running;
+    sem_t* rc;
     sem_t* ea_bin;
 } WaiterArgs;
 
@@ -73,7 +74,7 @@ void   list_insert(OrderList* l, Customer* c, int algorithm);
 Order* list_pop(OrderList* l);
 Order* peek(OrderList* l);
 void   refill_priority(OrderManager* m);
-void   waiter_loop(Waiter* wtr, CustomerQueue* standing, CustomerQueue* seated);
+void   waiter_loop(Waiter* wtr);
 void   list_insert_order(OrderList* l, Order* o, int algorithm);
 void*  waiter_thread(void* arg);
 void   om_init(OrderManager* om);
