@@ -133,6 +133,7 @@ int main(int argc, char* argv[]){
   SimClock* sc = malloc(sizeof(SimClock));
   CustomerQueue* standing = malloc(sizeof(CustomerQueue));
   CustomerQueue* seated = malloc(sizeof(CustomerQueue));
+  CustomerQueue* waiting_order = malloc(sizeof(CustomerQueue));
   OrderManager* om = malloc(sizeof(OrderManager));
   //init structs
   make_tools(resources_path, km, 10);
@@ -145,15 +146,6 @@ int main(int argc, char* argv[]){
 
   // if nothing (in the init steps) fails, running is true
   *running = true;
-
-/*
-  for(int i = 0; i < 15; i++){
-    customer* C = malloc(sizeof(customer));
-    C->o = make_order(C, Menu, safe_rand_range(5));
-    C->patience = get_prep_time(C->o) + safe_rand_range(100);
-    enqueue(C, standing);
-  }
-*/
 
   pthread_t cooks_tid[NUM_COOKS];
   pthread_t waiters_tid[NUM_WAITERS];
@@ -176,6 +168,7 @@ int main(int argc, char* argv[]){
   waiter_args->sc = sc;
   waiter_args->seated = seated;
   waiter_args->standing = standing;
+  waiter_args->waiting_order = waiting_order;
 
   for(int i = 0; i < NUM_WAITERS; i++) {
     pthread_create(&waiters_tid[i], NULL, waiter_thread, waiter_args);
@@ -184,7 +177,6 @@ int main(int argc, char* argv[]){
   CustomerArgs* customer_args = malloc(sizeof(CustomerArgs));
   customer_args->menu = menu;
   customer_args->q = standing;
-  customer_args->restaurant_capacity = &restaurant_capacity;
   customer_args->running = running;
   customer_args->sc = sc;
   customer_args->score = &score;

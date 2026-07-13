@@ -51,6 +51,7 @@ typedef struct WaiterArgs {
     OrderManager* m;
     CustomerQueue* standing;
     CustomerQueue* seated;
+    CustomerQueue* waiting_order;
     SimClock* sc;
     bool* running;
     sem_t* rc;
@@ -80,6 +81,6 @@ void*  waiter_thread(void* arg);
 void   om_init(OrderManager* om);
 void   list_init(OrderList* ol);
 int    customer_entertainment(EntertainmentActivity* ea);
-void   take_order(CustomerQueue* seated, CustomerQueue* ordered, OrderList* waiting);
+//void   take_order(CustomerQueue* seated, CustomerQueue* ordered, OrderList* waiting);
 
 #endif

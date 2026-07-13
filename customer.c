@@ -185,18 +185,9 @@ void clean(CustomerQueue* q) {
  * -------------------------------------------------------------------------- */
 
 void customer_loop(Customer* cst) {
-    sem_wait(cst->cst_arg->rc);
     
 
     while(cst->cst_arg->running) {
-    /*
-    // Wait until arrival time
-    pthread_mutex_lock(&sc->lock);
-    while (sc->tick < c->arrival_time)
-    pthread_cond_wait(&sc->tick_cv, &sc->lock);
-    pthread_mutex_unlock(&sc->lock);
-    */
-
         pthread_mutex_lock(&cst->cst_arg->sc->lock);
         pthread_cond_wait(&cst->cst_arg->sc->tick_cv, &cst->cst_arg->sc->lock);
         pthread_mutex_unlock(&cst->cst_arg->sc->lock);
@@ -204,25 +195,34 @@ void customer_loop(Customer* cst) {
         // waiting outside for a free seat
         switch(cst->present) {
             case STANDING:
-
                 break;
 
             case SEATED:
-
                 break;
 
             case ORDERING:
                 cst->o = make_order(cst, cst->cst_arg->menu, safe_rand_range(5));
-                cst->future = WAITING_FOOD;
                 break;
 
-            case WAITING_FOOD:
+            case WAITING_ORDER:
 
                 break;
 
+            case EATING:
+
+                break;
+
+            case FINISHED:
+
+                break;
+
+            default:
+                perror("Customer - Unknown State");
             
         }
         cst->present = cst->future;
+        cst->patience--;
+    }
 
     // if space is available inside the restaurant, the customer can sit down and Order
     //atomic_store(&c->can_order, true);
@@ -263,8 +263,7 @@ void customer_loop(Customer* cst) {
   } while (!atomic_compare_exchange_weak(score, &current, current + 1.0f));
   return;
 */
-    }
-    sem_post(&cst->lock);
+    
 }
 
 void* customer_thread(void* args) {

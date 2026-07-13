@@ -10,7 +10,7 @@ typedef enum CustomerState {
     STANDING,
     SEATED,
     ORDERING,
-    WAITING_FOOD,
+    WAITING_ORDER,
     EATING,
     FINISHED
 } CustomerState;
@@ -30,7 +30,6 @@ typedef struct CustomerArgs {
   Menu*             menu;
   _Atomic float*    score;
   bool*             running;
-  sem_t*            rc;
 } CustomerArgs;
 
 typedef struct Customer {
