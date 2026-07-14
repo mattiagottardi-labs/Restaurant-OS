@@ -40,7 +40,7 @@ typedef struct Customer {
     pthread_mutex_t lock;
     CustomerState   present;
     CustomerState   future;
-    CustomerArgs*   cst_arg;
+    CustomerArgs*   arg;
 } Customer;
 
 typedef struct QueueNode {
@@ -57,20 +57,19 @@ typedef struct CustomerQueue {
 } CustomerQueue;
 
 // Order creation
-Order*  make_order(Customer* c, Menu* menu, int num_dishes);
-Dish*   copy_dish(Dish* src);
-void    free_order(Order* o);
+Order*      make_order(Customer* c, Menu* menu, int num_dishes);
+Dish*       copy_dish(Dish* src);
+void        free_order(Order* o);
 
 // queue
-bool      is_empty(CustomerQueue* q);
-void      enqueue(Customer* c, CustomerQueue* q);
-Customer* dequeue(CustomerQueue* q);
-Customer* pop(CustomerQueue* q);
-Customer* peek(CustomerQueue* q);
-void      clean(CustomerQueue* q);
-int       get_prep_time(Order* o);
+bool        is_empty(CustomerQueue* q);
+void        enqueue(Customer* c, CustomerQueue* q);
+Customer*   dequeue(CustomerQueue* q);
+Customer*   pop(CustomerQueue* q);
+Customer*   peek(CustomerQueue* q);
+void        clean(CustomerQueue* q);
+int         get_prep_time(Order* o);
 // customer lifecycle
-void    customer_loop(Customer* c);
-void*   customer_thread(void* arg);
-
+void        customer_loop(Customer* c);
+void*       customer_thread(void* arg);
 #endif

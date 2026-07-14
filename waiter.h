@@ -59,7 +59,7 @@ typedef struct WaiterArgs {
 } WaiterArgs;
 
 typedef struct Waiter {
-    WaiterArgs* wtr_arg;
+    WaiterArgs* arg;
     WaiterState present;
     WaiterState future;
 } Waiter;

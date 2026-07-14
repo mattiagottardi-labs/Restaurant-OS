@@ -122,17 +122,17 @@ void refill_priority(OrderManager* m) {
  * -------------------------------------------------------------------------- */
 
 void waiter_loop(Waiter* wtr) {
-    while (wtr->wtr_arg->running) {
-        pthread_mutex_lock(&wtr->wtr_arg->sc->lock);
-        pthread_cond_wait(&wtr->wtr_arg->sc->tick_cv, &wtr->wtr_arg->sc->lock);
-        pthread_mutex_unlock(&wtr->wtr_arg->sc->lock);
+    while (wtr->arg->running) {
+        pthread_mutex_lock(&wtr->arg->sc->lock);
+        pthread_cond_wait(&wtr->arg->sc->tick_cv, &wtr->arg->sc->lock);
+        pthread_mutex_unlock(&wtr->arg->sc->lock);
 
         switch(wtr->present) {
             case IDLE:
-                if(!is_empty(wtr->wtr_arg->seated)) {
+                if(!is_empty(wtr->arg->seated)) {
                     wtr->future = ACCOMODATING_CUSTOMER;
                 }
-                else if(!is_empty(wtr->wtr_arg->seated)) {
+                else if(!is_empty(wtr->arg->seated)) {
                     wtr->future = TAKING_ORDER;
                 }
                 else {
@@ -142,14 +142,10 @@ void waiter_loop(Waiter* wtr) {
 
             // when customer is waiting outisde but there is free space, accomodate the customer
             case ACCOMODATING_CUSTOMER:
-                pthread_mutex_lock(&wtr->wtr_arg->standing->lock);
-                Customer* cst = dequeue(wtr->wtr_arg->standing);
-                pthread_mutex_unlock(&wtr->wtr_arg->standing->lock);
+                Customer* cst = dequeue(wtr->arg->standing);
 
-                pthread_mutex_lock(&wtr->wtr_arg->seated->lock);
-                enqueue(cst, wtr->wtr_arg->seated);
+                enqueue(cst, wtr->arg->seated);
                 cst->present = SEATED;
-                pthread_mutex_unlock(&wtr->wtr_arg->seated->lock);
 
                 free(cst);
                 cst = NULL;
@@ -158,24 +154,25 @@ void waiter_loop(Waiter* wtr) {
                 break;
             
             case TAKING_ORDER:
-                pthread_mutex_lock(&wtr->wtr_arg->seated->lock);
-                Customer* cst = dequeue(wtr->wtr_arg->seated);
-                pthread_mutex_unlock(&wtr->wtr_arg->seated->lock);
+                // obtain customer without removing from the queue
+                Customer* cst = pop(wtr->arg->seated);
+                if(cst->o != NULL) {
+                    // insert the order, if not NULL
+                    list_insert(wtr->arg->m->waitlist, cst, 0);
 
-                list_insert(wtr->wtr_arg->m->waitlist, cst, 0);
+                    cst = dequeue(wtr->arg->seated);
+                    enqueue(cst, wtr->arg->waiting_order);
+                    cst->present = WAITING_ORDER;
+                }              
 
-                pthread_mutex_lock(&wtr->wtr_arg->waiting_order->lock);
-                enqueue(cst, wtr->wtr_arg->waiting_order);
-                cst->present = WAITING_ORDER;
-                pthread_mutex_unlock(&wtr->wtr_arg->waiting_order->lock);
-
+                // free the pointer
                 free(cst);
                 cst = NULL;
 
-                if(is_empty(wtr->wtr_arg->standing) && is_empty(wtr->wtr_arg->seated)) {
+                if(is_empty(wtr->arg->standing) && is_empty(wtr->arg->seated)) {
                     wtr->future = IDLE;
                 }
-                else if(!is_empty(wtr->wtr_arg->standing)) {
+                else if(!is_empty(wtr->arg->standing)) {
                     wtr->future = ENTERTAINING;
                 }
                 else {
@@ -185,7 +182,7 @@ void waiter_loop(Waiter* wtr) {
 
             case CHECKING_FOOD:
                 
-                if(!order_ready(wtr->wtr_arg->m->completed_orders)) {
+                if(!order_ready(wtr->arg->m->completed_orders)) {
                     wtr->future = DELIVERING_FOOD;
                 }
                 else {
@@ -194,7 +191,7 @@ void waiter_loop(Waiter* wtr) {
                 break;
 
             case DELIVERING_FOOD:
-
+                // take the order and search for the customer in the waiting_order queue
                 break;
 
             case ENTERTAINING:
@@ -209,12 +206,12 @@ void waiter_loop(Waiter* wtr) {
         wtr->present = wtr->future;
 
         /*
-        sem_wait(&wtr->wtr_arg->ea_bin);
+        sem_wait(&wtr->arg->ea_bin);
         // waiter checks if a customer has to Order
         if(!is_empty(seated)) {
 
             // waiter checks if a Dish is ready to deliver
-            if(!order_ready(wtr->wtr_arg->m->completed_orders)) {
+            if(!order_ready(wtr->arg->m->completed_orders)) {
 
                 // waiter checks if there are standing customers waiting
                 if(!is_empty(standing)) {
@@ -287,7 +284,7 @@ void* waiter_thread(void* args){
     // creates waiter
     Waiter* wtr = malloc(sizeof(Waiter));
     wtr->present = IDLE;
-    wtr->wtr_arg = (WaiterArgs*) args;;
+    wtr->arg = (WaiterArgs*) args;;
 
     // runs waiter loop
     waiter_loop(wtr);

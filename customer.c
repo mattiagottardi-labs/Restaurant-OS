@@ -186,11 +186,10 @@ void clean(CustomerQueue* q) {
 
 void customer_loop(Customer* cst) {
     
-
-    while(cst->cst_arg->running) {
-        pthread_mutex_lock(&cst->cst_arg->sc->lock);
-        pthread_cond_wait(&cst->cst_arg->sc->tick_cv, &cst->cst_arg->sc->lock);
-        pthread_mutex_unlock(&cst->cst_arg->sc->lock);
+    while(cst->arg->running) {
+        pthread_mutex_lock(&cst->arg->sc->lock);
+        pthread_cond_wait(&cst->arg->sc->tick_cv, &cst->arg->sc->lock);
+        pthread_mutex_unlock(&cst->arg->sc->lock);
 
         // waiting outside for a free seat
         switch(cst->present) {
@@ -201,7 +200,7 @@ void customer_loop(Customer* cst) {
                 break;
 
             case ORDERING:
-                cst->o = make_order(cst, cst->cst_arg->menu, safe_rand_range(5));
+                cst->o = make_order(cst, cst->arg->menu, safe_rand_range(5));
                 break;
 
             case WAITING_ORDER:
@@ -271,7 +270,7 @@ void* customer_thread(void* args) {
   //creates customer then goes into customer loop
   Customer* cst = malloc(sizeof(Customer));
   cst->present = STANDING;
-  cst->cst_arg = (CustomerArgs*) args;
+  cst->arg = (CustomerArgs*) args;
 
   customer_loop(cst);
 
