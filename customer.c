@@ -197,6 +197,8 @@ void customer_loop(Customer* cst) {
                 break;
 
             case SEATED:
+                sem_wait(&cst->arg->rc);
+                cst->future = ORDERING;
                 break;
 
             case ORDERING:
@@ -204,15 +206,21 @@ void customer_loop(Customer* cst) {
                 break;
 
             case WAITING_ORDER:
-
+                if(cst->served) {
+                    cst->future = EATING;
+                }
+                else {
+                    cst->future = cst->present;
+                }
                 break;
 
             case EATING:
-
+                // eating time = 1 s (just to test the code)
+                usleep(100000);
                 break;
 
             case FINISHED:
-
+                sem_post(&cst->arg->rc);
                 break;
 
             default:

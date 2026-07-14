@@ -48,8 +48,8 @@ typedef struct Menu {
     int     num_dishes;
 } Menu;
 
-char* my_strdup(const char* s);
-void make_tools(const char* tools_location, KitchenManager* km, int max_tools);
-void make_menu(const char* menu_location, Menu* menu, const int max_dishes, const int max_tools_per_dish);
+char*   my_strdup(const char* s);
+void    make_tools(const char* tools_location, KitchenManager* km, int max_tools);
+void    make_menu(const char* menu_location, Menu* menu, const int max_dishes, const int max_tools_per_dish);
 
 #endif

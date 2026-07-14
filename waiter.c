@@ -129,8 +129,14 @@ void waiter_loop(Waiter* wtr) {
 
         switch(wtr->present) {
             case IDLE:
-                if(!is_empty(wtr->arg->seated)) {
-                    wtr->future = ACCOMODATING_CUSTOMER;
+                // if there are standing customer, try to accomodate one of them
+                if(!is_empty(wtr->arg->standing)) {
+                    // check if semaphore has available spaces
+                    int sval;
+                    sem_getvalue(&wtr->arg->rc, &sval);
+                    if(sval > 0) {
+                        wtr->future = ACCOMODATING_CUSTOMER;
+                    }
                 }
                 else if(!is_empty(wtr->arg->seated)) {
                     wtr->future = TAKING_ORDER;
@@ -158,7 +164,7 @@ void waiter_loop(Waiter* wtr) {
                 Customer* cst = pop(wtr->arg->seated);
                 if(cst->o != NULL) {
                     // insert the order, if not NULL
-                    list_insert(wtr->arg->m->waitlist, cst, 0);
+                    list_insert_order(wtr->arg->om->waitlist, cst, 0);
 
                     cst = dequeue(wtr->arg->seated);
                     enqueue(cst, wtr->arg->waiting_order);
@@ -181,17 +187,27 @@ void waiter_loop(Waiter* wtr) {
                 break;
 
             case CHECKING_FOOD:
-                
-                if(!order_ready(wtr->arg->m->completed_orders)) {
+                if(!order_ready(wtr->arg->om->completed_orders)) {
                     wtr->future = DELIVERING_FOOD;
                 }
                 else {
-                    wtr->future = wtr->present;
+                    wtr->future = IDLE;
                 }
                 break;
 
             case DELIVERING_FOOD:
                 // take the order and search for the customer in the waiting_order queue
+                Order* o = list_pop(wtr->arg->om->completed_orders);
+
+                QueueNode* find_order = wtr->arg->waiting_order->head;
+
+                for(int i = 0; i < wtr->arg->waiting_order->size; i++) {
+                    if(o->c == find_order->c) {
+                        o->c->served = true;
+                        break;
+                    }
+                    find_order = find_order->next;
+                }
                 break;
 
             case ENTERTAINING:

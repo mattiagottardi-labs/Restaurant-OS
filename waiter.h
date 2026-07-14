@@ -28,46 +28,46 @@ typedef enum WaiterState {
 } WaiterState;
 
 typedef struct ListNode {
-    Order*            o;
-    int               prio;
+    Order*           o;
+    int              prio;
     struct ListNode* next;
 } ListNode;
 
 typedef struct OrderList {
-    ListNode*      head;
+    ListNode*       head;
     int             size;
     pthread_mutex_t lock;
 } OrderList;
 
 typedef struct OrderManager {
-    OrderList*     waitlist;
-    OrderList*     priority;
-    OrderList*     completed_orders;
-    OrderList*     discarded_orders;
+    OrderList*      waitlist;
+    OrderList*      priority;
+    OrderList*      completed_orders;
+    OrderList*      discarded_orders;
     pthread_mutex_t lock;
 } OrderManager;
 
 typedef struct WaiterArgs {
-    OrderManager* m;
-    CustomerQueue* standing;
-    CustomerQueue* seated;
-    CustomerQueue* waiting_order;
-    SimClock* sc;
-    bool* running;
-    sem_t* rc;
-    sem_t* ea_bin;
+    OrderManager*   om;
+    CustomerQueue*  standing;
+    CustomerQueue*  seated;
+    CustomerQueue*  waiting_order;
+    SimClock*       sc;
+    bool*           running;
+    sem_t*          rc;
+    sem_t*          ea_bin;
 } WaiterArgs;
 
 typedef struct Waiter {
-    WaiterArgs* arg;
-    WaiterState present;
-    WaiterState future;
+    WaiterArgs*     arg;
+    WaiterState     present;
+    WaiterState     future;
 } Waiter;
 
 typedef struct EntertainmentActivity {
-    char* name;
-    int efficacy;
-    int duration;   // in microseconds
+    char*           name;
+    int             efficacy;
+    int             duration;   // in microseconds
 } EntertainmentActivity;
 
 int    get_prio(Order* o, int algorithm);
