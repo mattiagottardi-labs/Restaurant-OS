@@ -199,15 +199,15 @@ void waiter_loop(Waiter* wtr) {
                 // take the order and search for the customer in the waiting_order queue
                 Order* o = list_pop(wtr->arg->om->completed_orders);
 
+                // loop through all orders and search the one pointing to the right customer
                 QueueNode* find_order = wtr->arg->waiting_order->head;
-
-                for(int i = 0; i < wtr->arg->waiting_order->size; i++) {
-                    if(o->c == find_order->c) {
-                        o->c->served = true;
-                        break;
-                    }
+                while(o->c != find_order->c) {
                     find_order = find_order->next;
                 }
+                o->c->served = true;
+
+                free(find_order);
+                find_order = NULL;
                 break;
 
             case ENTERTAINING:
