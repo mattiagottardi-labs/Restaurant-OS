@@ -163,7 +163,7 @@ int main(int argc, char* argv[]){
 
   WaiterArgs* waiter_args = malloc(sizeof(WaiterArgs));
   waiter_args->ea_bin = &ea_bin;
-  waiter_args->m = om;
+  waiter_args->om = om;
   waiter_args->running = running;
   waiter_args->sc = sc;
   waiter_args->seated = seated;
