@@ -3,7 +3,7 @@
 # command is the argument passed when launching the script
 command=$1
 
-flags="-Wall -Wextra -lpthread -o program"
+flags="-Wall -Wextra -lpthread -c"
 arguemnts=
 
 usage() {
@@ -17,7 +17,8 @@ build() {
     echo "Building..."
 
     # command substitution that redirects output to variable
-    output=$(gcc $flags main.c)
+    output=$(gcc $flags *.c)
+    output=$(gcc *.o -o program)
 
     # check if the gcc exit code is 0: ok, 1: failed
     if [ $? -ne 0 ]; then

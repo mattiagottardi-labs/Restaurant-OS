@@ -10,15 +10,15 @@
 
 // cook arguments structure passed to the thread
 typedef struct CookArgs {
-    OrderManager* m;
-    SimClock* sc;
+    OrderManager*   om;
+    SimClock*       sc;
     KitchenManager* km;
-    bool* running;
+    bool*           running;
 } CookArgs;
 
 // Tool helpers
 int        count_tools(Dish* d);
-ToolPool* find_pool(const char* name, KitchenManager* km);
+ToolPool*  find_pool(const char* name, KitchenManager* km);
 Tool*      acquire_pool(ToolPool* pool);
 void       release_pool(ToolPool* pool, Tool* t, SimClock* sc, KitchenManager* km);
 Tool**     acquire_tools(Dish* d, KitchenManager* km);
@@ -29,8 +29,8 @@ Order* get_next_order(OrderManager* m);
 Dish*  pick_dish(Order* o);
 
 // cook lifecycle
-void cook_dish(Dish* d, Order* o, OrderManager* m, SimClock* sc, KitchenManager* km, bool* running);
-void cook_loop(OrderManager* m, SimClock* sc, KitchenManager* km, bool* running);
-float get_pressure(OrderList* l); //will estimate how hard the kitchen must work
-void* cook_thread(void* arg);
+void    cook_dish(Dish* d, Order* o, OrderManager* om, SimClock* sc, KitchenManager* km, bool* running);
+void    cook_loop(OrderManager* m, SimClock* sc, KitchenManager* km, bool* running);
+float   get_pressure(OrderList* l); //will estimate how hard the kitchen must work
+void*   cook_thread(void* arg);
 #endif

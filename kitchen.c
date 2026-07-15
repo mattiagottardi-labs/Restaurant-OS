@@ -10,7 +10,7 @@ char* my_strdup(const char* s) {
     return d;
 }
 
-void make_tools(const char* tools_location, KitchenManager* my_kitchen,const int max_tools) {
+void make_tools(const char* tools_location, KitchenManager* my_kitchen, const int max_tools) {
     FILE* f = fopen(tools_location, "r");
     if (!f) {
         perror("Failed to open tools file");

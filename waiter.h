@@ -10,14 +10,6 @@ please notify before making structural changes.
 #include "customer.h"
 #include "kitchen.h"
 
-EntertainmentActivity ea[5] = {
-    {"chatting", 1, 1000000},
-    {"singing", 2, 2000000},
-    {"dancing", 3, 3000000},
-    {"performing magic tricks", 5, 2500000},
-    {"making puns", 2, 500000}
-};
-
 typedef enum WaiterState {
     IDLE,
     ACCOMODATING_CUSTOMER,
@@ -70,13 +62,14 @@ typedef struct EntertainmentActivity {
     int             duration;   // in microseconds
 } EntertainmentActivity;
 
+extern EntertainmentActivity ea[5];
+
 int    get_prio(Order* o, int algorithm);
-void   list_insert(OrderList* l, Customer* c, int algorithm);
-Order* list_pop(OrderList* l);
-Order* peek(OrderList* l);
-void   refill_priority(OrderManager* m);
+void   list_insert(OrderList* ol, Customer* cst, int algorithm);
+Order* list_pop(OrderList* ol);
+void   refill_priority(OrderManager* om);
 void   waiter_loop(Waiter* wtr);
-void   list_insert_order(OrderList* l, Order* o, int algorithm);
+void   list_insert_order(OrderList* ol, Order* o, int algorithm);
 void*  waiter_thread(void* arg);
 void   om_init(OrderManager* om);
 void   list_init(OrderList* ol);

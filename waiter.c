@@ -3,6 +3,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+EntertainmentActivity ea[5] = {
+    {"chatting", 1, 1000000},
+    {"singing", 2, 2000000},
+    {"dancing", 3, 3000000},
+    {"performing magic tricks", 5, 2500000},
+    {"making puns", 2, 500000}
+};
+
 /* --------------------------------------------------------------------------
  * get_prio — slack time: lower value = less slack = higher urgency
  * -------------------------------------------------------------------------- */
@@ -19,8 +27,8 @@ int get_prio(Order* o, int algorithm) {
     }
 }
 
-void list_insert(OrderList* l, Customer* c, int algorithm) {
-    Order* o = c->o;
+void list_insert(OrderList* ol, Customer* cst, int algorithm) {
+    Order* o = cst->o;
     if (!o) return;
 
     ListNode* new_node = malloc(sizeof(ListNode));
@@ -32,52 +40,51 @@ void list_insert(OrderList* l, Customer* c, int algorithm) {
     new_node->prio = get_prio(o, algorithm);
     new_node->next = NULL;
 
-    pthread_mutex_lock(&l->lock);
+    pthread_mutex_lock(&ol->lock);
 
-    if (algorithm == 2 || !l->head) {
+    if (algorithm == 2 || !ol->head) {
         /* Append to tail */
-        if (!l->head) {
-            l->head = new_node;
+        if (!ol->head) {
+            ol->head = new_node;
         } else {
-            ListNode* cur = l->head;
+            ListNode* cur = ol->head;
             while (cur->next) cur = cur->next;
             cur->next = new_node;
         }
     } else {
         /* Sorted insert by ascending prio */
-        if (new_node->prio < l->head->prio) {
-            new_node->next = l->head;
-            l->head = new_node;
+        if (new_node->prio < ol->head->prio) {
+            new_node->next = ol->head;
+            ol->head = new_node;
         } else {
-            ListNode* cur = l->head;
+            ListNode* cur = ol->head;
             while (cur->next && cur->next->prio <= new_node->prio) cur = cur->next;
             new_node->next = cur->next;
             cur->next = new_node;
         }
     }
 
-    l->size++;
-    pthread_mutex_unlock(&l->lock);
+    ol->size++;
+    pthread_mutex_unlock(&ol->lock);
 }
 
 /* --------------------------------------------------------------------------
  * list_pop — remove and return the Order at the head of the list
  * -------------------------------------------------------------------------- */
+Order* list_pop(OrderList* ol) {
+    pthread_mutex_lock(&ol->lock);
 
-Order* list_pop(OrderList* l) {
-    pthread_mutex_lock(&l->lock);
-
-    if (!l->head) {
-        pthread_mutex_unlock(&l->lock);
+    if (!ol->head) {
+        pthread_mutex_unlock(&ol->lock);
         return NULL;
     }
 
-    ListNode* old_head  = l->head;
+    ListNode* old_head  = ol->head;
     Order*    o         = old_head->o;
-    l->head = old_head->next;
-    l->size--;
+    ol->head = old_head->next;
+    ol->size--;
 
-    pthread_mutex_unlock(&l->lock);
+    pthread_mutex_unlock(&ol->lock);
 
     free(old_head);
     return o;
@@ -86,15 +93,13 @@ Order* list_pop(OrderList* l) {
 /* --------------------------------------------------------------------------
  * order_ready — return true if list is empty and false if not
  * -------------------------------------------------------------------------- */
-
-bool order_ready(OrderList* l) {
-    return l->size == 0;
+bool order_ready(OrderList* ol) {
+    return ol->size == 0;
 }
 
 /* --------------------------------------------------------------------------
  * is_empty — return true if list is empty and false if not
  * -------------------------------------------------------------------------- */
-
 bool is_empty(CustomerQueue* q) {
     return q->size == 0;
 }
@@ -102,12 +107,11 @@ bool is_empty(CustomerQueue* q) {
 /* --------------------------------------------------------------------------
  * refill_priority — top up the 10-slot cook buffer from waitlist head
  * -------------------------------------------------------------------------- */
-
-void refill_priority(OrderManager* m) {
-    while (m->priority->size < 10) {
-        Order* o = list_pop(m->waitlist);
+void refill_priority(OrderManager* om) {
+    while (om->priority->size < 10) {
+        Order* o = list_pop(om->waitlist);
         if (!o) break;
-        list_insert_order(m->priority, o, 1);
+        list_insert_order(om->priority, o, 1);
     }
 }
 
@@ -120,7 +124,6 @@ void refill_priority(OrderManager* m) {
  *          for the standing customers outside the restaurant (they have to
  *          be entertained by the waiter ![only one so mutex needed]), 
  * -------------------------------------------------------------------------- */
-
 void waiter_loop(Waiter* wtr) {
     while (wtr->arg->running) {
         pthread_mutex_lock(&wtr->arg->sc->lock);
@@ -255,7 +258,7 @@ void waiter_loop(Waiter* wtr) {
     }
 }
 
-void list_insert_order(OrderList* l, Order* o, int algorithm) {
+void list_insert_order(OrderList* ol, Order* o, int algorithm) {
     if (!o) return;
     ListNode* new_node = malloc(sizeof(ListNode));
     if (!new_node) {
@@ -266,24 +269,24 @@ void list_insert_order(OrderList* l, Order* o, int algorithm) {
     new_node->prio = get_prio(o, algorithm);
     new_node->next = NULL;
 
-    pthread_mutex_lock(&l->lock);
+    pthread_mutex_lock(&ol->lock);
 
-    if (algorithm == 2 || !l->head) {
+    if (algorithm == 2 || !ol->head) {
         /* Append to tail */
-        if (!l->head) {
-            l->head = new_node;
+        if (!ol->head) {
+            ol->head = new_node;
         } else {
-            ListNode* cur = l->head;
+            ListNode* cur = ol->head;
             while (cur->next) cur = cur->next;
             cur->next = new_node;
         }
     } else {
         /* Sorted insert by ascending prio */
-        if (new_node->prio < l->head->prio) {
-            new_node->next = l->head;
-            l->head = new_node;
+        if (new_node->prio < ol->head->prio) {
+            new_node->next = ol->head;
+            ol->head = new_node;
         } else {
-            ListNode* cur = l->head;
+            ListNode* cur = ol->head;
             while (cur->next && cur->next->prio <= new_node->prio)
                 cur = cur->next;
             new_node->next = cur->next;
@@ -291,8 +294,8 @@ void list_insert_order(OrderList* l, Order* o, int algorithm) {
         }
     }
 
-    l->size++;
-    pthread_mutex_unlock(&l->lock);
+    ol->size++;
+    pthread_mutex_unlock(&ol->lock);
 }
 
 void* waiter_thread(void* args){

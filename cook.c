@@ -15,12 +15,12 @@ int count_tools(Dish* d) {
     return i;
 }
 
-float get_pressure(OrderList* l){
+float get_pressure(OrderList* ol){
   int tot_prio;
   int tot_orders;
-  pthread_mutex_lock(&l->lock);
-  ListNode* current = l->head;
-  for(int i = 0; i < l->size; i++){
+  pthread_mutex_lock(&ol->lock);
+  ListNode* current = ol->head;
+  for(int i = 0; i < ol->size; i++){
     if(atomic_load(&current->o->completed) || atomic_load(&current->o->expired)){
       current = current->next;
       continue;
@@ -115,11 +115,11 @@ void release_tools(Tool** used, Dish* d, KitchenManager* km, SimClock* sc) {
  *                  Returns NULL if nothing is available.
  * -------------------------------------------------------------------------- */
 
-Order* get_next_order(OrderManager* m) {
-    pthread_mutex_lock(&m->priority->lock);
+Order* get_next_order(OrderManager* om) {
+    pthread_mutex_lock(&om->priority->lock);
 
     ListNode* prev = NULL;
-    ListNode* node = m->priority->head;
+    ListNode* node = om->priority->head;
 
     while (node) {
         Order* o = node->o;
@@ -129,14 +129,14 @@ Order* get_next_order(OrderManager* m) {
             ListNode* to_free = node;
             node = node->next;
             if (prev) prev->next = node;
-            else      m->priority->head = node;
-            m->priority->size--;
+            else      om->priority->head = node;
+            om->priority->size--;
             free(to_free);
 
             /* Move to discarded — unlock first to avoid lock ordering issues */
-            pthread_mutex_unlock(&m->priority->lock);
-            list_insert_order(m->discarded_orders, o, 2);
-            pthread_mutex_lock(&m->priority->lock);
+            pthread_mutex_unlock(&om->priority->lock);
+            list_insert_order(om->discarded_orders, o, 2);
+            pthread_mutex_lock(&om->priority->lock);
             continue;
         }
 
@@ -149,7 +149,7 @@ Order* get_next_order(OrderManager* m) {
             }
         }
         if (has_available) {
-            pthread_mutex_unlock(&m->priority->lock);
+            pthread_mutex_unlock(&om->priority->lock);
             return o;
         }
 
@@ -158,7 +158,7 @@ Order* get_next_order(OrderManager* m) {
     }
 
     /* All orders fully claimed or priority list empty */
-    pthread_mutex_unlock(&m->priority->lock);
+    pthread_mutex_unlock(&om->priority->lock);
     return NULL;
 }
 
@@ -202,7 +202,7 @@ Dish* pick_dish(Order* o) {
  *             check if Order is complete and signal customer if so.
  * -------------------------------------------------------------------------- */
 
-void cook_dish(Dish* d, Order* o, OrderManager* m, SimClock* sc, KitchenManager* km, bool* running) {
+void cook_dish(Dish* d, Order* o, OrderManager* om, SimClock* sc, KitchenManager* km, bool* running) {
     if(!running) return;
     Tool** used = acquire_tools(d, km);
     if (!used) {
@@ -249,27 +249,27 @@ void cook_dish(Dish* d, Order* o, OrderManager* m, SimClock* sc, KitchenManager*
 
             /* Check expiry — customer may have timed out while we were cooking */
             if (atomic_load(&o->expired)) {
-                list_insert_order(m->discarded_orders, o, 2);
+                list_insert_order(om->discarded_orders, o, 2);
             } else {
                 /* Remove from priority list */
-                pthread_mutex_lock(&m->priority->lock);
+                pthread_mutex_lock(&om->priority->lock);
                 ListNode* prev = NULL;
-                ListNode* node = m->priority->head;
+                ListNode* node = om->priority->head;
                 while (node) {
                     if (node->o == o) {
                         if (prev) prev->next = node->next;
-                        else      m->priority->head = node->next;
-                        m->priority->size--;
+                        else      om->priority->head = node->next;
+                        om->priority->size--;
                         free(node);
                         break;
                     }
                     prev = node;
                     node = node->next;
                 }
-                pthread_mutex_unlock(&m->priority->lock);
+                pthread_mutex_unlock(&om->priority->lock);
 
                 /* Move to completed and signal customer */
-                list_insert_order(m->completed_orders, o, 2);
+                list_insert_order(om->completed_orders, o, 2);
                 atomic_store(&o->c->served, true);
             }
         }
@@ -285,9 +285,9 @@ void cook_dish(Dish* d, Order* o, OrderManager* m, SimClock* sc, KitchenManager*
  *             claimed Order.
  * -------------------------------------------------------------------------- */
 
-void cook_loop(OrderManager* m, SimClock* sc, KitchenManager* km, bool* running) {
+void cook_loop(OrderManager* om, SimClock* sc, KitchenManager* km, bool* running) {
     while (running) {
-        Order* o = get_next_order(m);
+        Order* o = get_next_order(om);
         if (!o) continue;
 
         Dish* d = pick_dish(o);
@@ -296,7 +296,7 @@ void cook_loop(OrderManager* m, SimClock* sc, KitchenManager* km, bool* running)
             continue;
         }
 
-        cook_dish(d, o, m, sc, km, running);
+        cook_dish(d, o, om, sc, km, running);
     }
 }
 
@@ -304,5 +304,5 @@ void* cook_thread(void* args) {
     if(!args) return NULL;
     CookArgs* arguments = (CookArgs*) args;
 
-    cook_loop(arguments->m, arguments->sc, arguments->km, arguments->running);
+    cook_loop(arguments->om, arguments->sc, arguments->km, arguments->running);
 }

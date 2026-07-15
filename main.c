@@ -32,6 +32,14 @@ bool* running;
 const int MAX_CUSTOMER_SPAWN_RATE = 5000000; // caution, this time is in microseconds
 int CLK_PERIOD;
 
+void* cook_thread(void* args) {
+
+}
+
+void* waiter_thread(void* args) {
+  
+}
+
 // customer_thread_manager implements this function
 void* thread_manager(void* args) {
   if(!args) return NULL;
@@ -67,152 +75,6 @@ void* thread_manager(void* args) {
   free(customer_tid);
   pthread_exit(NULL);
 }
-
-// customer_thread_manager implements this function
-void* thread_manager_mk2(void* args) {
-  if(!args) return NULL;
-
-  CustomerArgs* arguments = (CustomerArgs*) args;
-  int customer_counter = 0;
-
-  // customer threads has to be spawned at random time
-  int random_delay = ((rand() % MAX_CUSTOMER_SPAWN_RATE) + 1000) / GAME_SPEED;
-
-  Mapping* mappings = NULL;
-  
-  // cycle that keeps running to manage customer threads
-  while(customer_counter < TOTAL_CUSTOMERS) {
-    usleep(random_delay);
-
-    Customer* c = malloc(sizeof(Customer));
-    pthread_t* tid = malloc(sizeof(pthread_t));
-    Mapping* mappings = realloc(mappings, (customer_counter + 1) * sizeof(Mapping));
-
-    pthread_create(&tid[customer_counter], NULL, customer_thread, (void*) arguments);
-    customer_counter++;
-
-    enqueue(c, arguments->q);
-    printf("New customer enqued in standing queue\n");
-  }
-
-  for(int i = 0; i < customer_counter; i++) {
-    pthread_join(mappings->tid, NULL);
-  }
-  pthread_exit(NULL);
-}
-
-int main(int argc, char* argv[]){
-  // check if sufficient numer of argument is passed
-  if(argc < 8) {
-    perror("Too few arguemnts passed, while launching main binary!\n");
-    return 1;
-  }
-  // variables sent by bootstrap.sh
-  NUM_COOKS = atoi(argv[1]);
-  NUM_WAITERS = atoi(argv[2]);
-  MAX_CUSTOMERS = atoi(argv[3]);
-  TOTAL_CUSTOMERS = atoi(argv[4]);
-  GAME_SPEED = atoi(argv[5]);
-  RANDOM_SEED = atoi(argv[6]);
-
-  // strings don't need atoi()
-  MENU_FILE = argv[7];
-  RESOURCE_FILE = argv[8];
-
-  CLK_PERIOD = 1000000 / GAME_SPEED;
-
-  sem_t restaurant_capacity, ea_bin;
-  sem_init(&restaurant_capacity, 0, MAX_CUSTOMERS);
-  sem_init(&ea_bin, 0, 0);
-
-  //create structs
-  running = malloc(sizeof(bool));
-  *running = true;
-  KitchenManager* km = malloc(sizeof(KitchenManager));
-  Menu* menu = malloc(sizeof(Menu));
-  SimClock* sc = malloc(sizeof(SimClock));
-  CustomerQueue* standing = malloc(sizeof(CustomerQueue));
-  CustomerQueue* seated = malloc(sizeof(CustomerQueue));
-  CustomerQueue* waiting_order = malloc(sizeof(CustomerQueue));
-  OrderManager* om = malloc(sizeof(OrderManager));
-  //init structs
-  make_tools(resources_path, km, 10);
-  make_menu(menu_path, menu, 20, 4);
-  om_init(om);
-  queue_init(standing);
-  queue_init(seated);
-  clock_init(sc);
-  srand(RANDOM_SEED);
-
-  // if nothing (in the init steps) fails, running is true
-  *running = true;
-
-  pthread_t cooks_tid[NUM_COOKS];
-  pthread_t waiters_tid[NUM_WAITERS];
-  pthread_t customer_thread_manager;
-
-  CookArgs* cook_args = malloc(sizeof(CookArgs));
-  cook_args->km = km;
-  cook_args->m = om;
-  cook_args->running = running;
-  cook_args->sc = sc;
-
-  for(int i = 0; i < NUM_COOKS; i++) {
-    pthread_create(&cooks_tid[i], NULL, cook_thread, cook_args);
-  }
-
-  WaiterArgs* waiter_args = malloc(sizeof(WaiterArgs));
-  waiter_args->ea_bin = &ea_bin;
-  waiter_args->om = om;
-  waiter_args->running = running;
-  waiter_args->sc = sc;
-  waiter_args->seated = seated;
-  waiter_args->standing = standing;
-  waiter_args->waiting_order = waiting_order;
-
-  for(int i = 0; i < NUM_WAITERS; i++) {
-    pthread_create(&waiters_tid[i], NULL, waiter_thread, waiter_args);
-  }
-
-  CustomerArgs* customer_args = malloc(sizeof(CustomerArgs));
-  customer_args->menu = menu;
-  customer_args->q = standing;
-  customer_args->running = running;
-  customer_args->sc = sc;
-  customer_args->score = &score;
-
-  // thread_manager manages all customer threads
-  pthread_create(&customer_thread_manager, NULL, thread_manager, customer_args);
-
-  // Missing pthread_join for cooks and waiters 
-
-/*
-  printf("QUEUE BEFORE POPPING:\n");
-  print_queue(q);
-  while(q->size != 0){
-    list_insert(om->waitlist, pop(q), 0);
-  }
-  printf("EMPTY LIST:\n");
-  print_queue(q);
-  printf("PRIORITY LIST:\n");
-  print_list(om->priority);
-  printf("WAITLIST:\n");
-  print_list(om->waitlist);
-  refill_priority(om);
-  printf("PRIORITY LIST:\n");
-  print_list(om->priority);
-  Order* target_order = get_next_order(om);
-  Dish* target_dish = pick_dish(target_order);
-  bool* running = malloc(sizeof(bool));
-  *running = true;
-  cook_dish(target_dish, target_order, om, sc, km, running );
-  return 0;
-*/
-
-  // destroy the semaphore
-  sem_destroy(&restaurant_capacity);
-  sem_destroy(&ea_bin);
-} 
 
 void print_tool_status(KitchenManager* km){
    printf("TOOLS: \n");
@@ -292,3 +154,115 @@ void tick_advance(SimClock* sim) {
 }
 
 // ────────────────────────────────────────────────────────
+
+int main(int argc, char* argv[]){
+  // check if sufficient numer of argument is passed
+  if(argc < 8) {
+    perror("Too few arguemnts passed, while launching main binary!\n");
+    return 1;
+  }
+  // variables sent by bootstrap.sh
+  NUM_COOKS = atoi(argv[1]);
+  NUM_WAITERS = atoi(argv[2]);
+  MAX_CUSTOMERS = atoi(argv[3]);
+  TOTAL_CUSTOMERS = atoi(argv[4]);
+  GAME_SPEED = atoi(argv[5]);
+  RANDOM_SEED = atoi(argv[6]);
+
+  // strings don't need atoi()
+  MENU_FILE = argv[7];
+  RESOURCE_FILE = argv[8];
+
+  CLK_PERIOD = 1000000 / GAME_SPEED;
+
+  sem_t restaurant_capacity, ea_bin;
+  sem_init(&restaurant_capacity, 0, MAX_CUSTOMERS);
+  sem_init(&ea_bin, 0, 0);
+
+  //create structs
+  running = malloc(sizeof(bool));
+  *running = true;
+  KitchenManager* km = malloc(sizeof(KitchenManager));
+  Menu* menu = malloc(sizeof(Menu));
+  SimClock* sc = malloc(sizeof(SimClock));
+  CustomerQueue* standing = malloc(sizeof(CustomerQueue));
+  CustomerQueue* seated = malloc(sizeof(CustomerQueue));
+  CustomerQueue* waiting_order = malloc(sizeof(CustomerQueue));
+  OrderManager* om = malloc(sizeof(OrderManager));
+  //init structs
+  make_tools(resources_path, km, 10);
+  make_menu(menu_path, menu, 20, 4);
+  om_init(om);
+  queue_init(standing);
+  queue_init(seated);
+  clock_init(sc);
+  srand(RANDOM_SEED);
+
+  // if nothing (in the init steps) fails, running is true
+  *running = true;
+
+  pthread_t cooks_tid[NUM_COOKS];
+  pthread_t waiters_tid[NUM_WAITERS];
+  pthread_t customer_thread_manager;
+
+  CookArgs* cook_args = malloc(sizeof(CookArgs));
+  cook_args->km = km;
+  cook_args->om = om;
+  cook_args->running = running;
+  cook_args->sc = sc;
+
+  for(int i = 0; i < NUM_COOKS; i++) {
+    pthread_create(&cooks_tid[i], NULL, cook_thread, cook_args);
+  }
+
+  WaiterArgs* waiter_args = malloc(sizeof(WaiterArgs));
+  waiter_args->ea_bin = &ea_bin;
+  waiter_args->om = om;
+  waiter_args->running = running;
+  waiter_args->sc = sc;
+  waiter_args->seated = seated;
+  waiter_args->standing = standing;
+  waiter_args->waiting_order = waiting_order;
+
+  for(int i = 0; i < NUM_WAITERS; i++) {
+    pthread_create(&waiters_tid[i], NULL, waiter_thread, waiter_args);
+  }
+
+  CustomerArgs* customer_args = malloc(sizeof(CustomerArgs));
+  customer_args->menu = menu;
+  customer_args->running = running;
+  customer_args->sc = sc;
+  customer_args->score = &score;
+
+  // thread_manager manages all customer threads
+  pthread_create(&customer_thread_manager, NULL, thread_manager, customer_args);
+
+  // Missing pthread_join for cooks and waiters 
+
+/*
+  printf("QUEUE BEFORE POPPING:\n");
+  print_queue(q);
+  while(q->size != 0){
+    list_insert(om->waitlist, pop(q), 0);
+  }
+  printf("EMPTY LIST:\n");
+  print_queue(q);
+  printf("PRIORITY LIST:\n");
+  print_list(om->priority);
+  printf("WAITLIST:\n");
+  print_list(om->waitlist);
+  refill_priority(om);
+  printf("PRIORITY LIST:\n");
+  print_list(om->priority);
+  Order* target_order = get_next_order(om);
+  Dish* target_dish = pick_dish(target_order);
+  bool* running = malloc(sizeof(bool));
+  *running = true;
+  cook_dish(target_dish, target_order, om, sc, km, running );
+  return 0;
+*/
+
+  // destroy the semaphore
+  sem_destroy(&restaurant_capacity);
+  sem_destroy(&ea_bin);
+}

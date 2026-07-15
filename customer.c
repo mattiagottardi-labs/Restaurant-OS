@@ -65,7 +65,6 @@ void free_order(Order* o) {
 /* --------------------------------------------------------------------------
  * Queue helpers
  * -------------------------------------------------------------------------- */
-
 bool is_empty(CustomerQueue* q) {
     return q->size == 0;
 }
@@ -73,7 +72,6 @@ bool is_empty(CustomerQueue* q) {
 /* --------------------------------------------------------------------------
  * enqueue — allocate a new node and append to tail
  * -------------------------------------------------------------------------- */
-
 void enqueue(Customer* c, CustomerQueue* q) {
     QueueNode* node = malloc(sizeof(QueueNode));
     if (!node) {
@@ -99,7 +97,6 @@ void enqueue(Customer* c, CustomerQueue* q) {
 /* --------------------------------------------------------------------------
  * dequeue — remove head node, returning the customer
  * -------------------------------------------------------------------------- */
-
 Customer* dequeue(CustomerQueue* q) {
     pthread_mutex_lock(&q->lock);
 
@@ -120,7 +117,6 @@ Customer* dequeue(CustomerQueue* q) {
 /* --------------------------------------------------------------------------
  * peek — return pointer to head customer without removing
  * -------------------------------------------------------------------------- */
-
 Customer* peek(CustomerQueue* q) {
     pthread_mutex_lock(&q->lock);
     Customer* c = is_empty(q) ? NULL : q->head->c;
@@ -133,7 +129,6 @@ Customer* peek(CustomerQueue* q) {
  *       Impatient or expired customers are signalled and removed immediately.
  *       Uses prev pointer to correctly unlink any node in the list.
  * -------------------------------------------------------------------------- */
-
 Customer* pop(CustomerQueue* q) {
     pthread_mutex_lock(&q->lock);
 
@@ -153,11 +148,11 @@ Customer* pop(CustomerQueue* q) {
     pthread_mutex_unlock(&q->lock);
     return result;
 }
+
 /* --------------------------------------------------------------------------
  * clean — free all nodes and reset queue to empty state
  *         Does NOT free the customers themselves.
  * -------------------------------------------------------------------------- */
-
 void clean(CustomerQueue* q) {
     pthread_mutex_lock(&q->lock);
 
@@ -183,9 +178,7 @@ void clean(CustomerQueue* q) {
  * 3. Wait to be served, discarded, or patience expires
  * 4. Update score automically
  * -------------------------------------------------------------------------- */
-
 void customer_loop(Customer* cst) {
-    
     while(cst->arg->running) {
         pthread_mutex_lock(&cst->arg->sc->lock);
         pthread_cond_wait(&cst->arg->sc->tick_cv, &cst->arg->sc->lock);

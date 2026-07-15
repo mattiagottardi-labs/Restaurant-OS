@@ -2,13 +2,7 @@
 #define UTILS_H
 
 #include <pthread.h>
-#include "customer.h"
-
-// struct that keeps customer and tid tied toghether
-typedef struct Mapping {
-    Customer *c;
-    pthread_t* tid;
-} Mapping;
+//#include "customer.h"
 
 // ─── simulation clock ────────────────────────────────────────────────────────
 
@@ -18,11 +12,11 @@ typedef struct SimClock {
     pthread_cond_t  tick_cv;
 } SimClock;
 
-typedef struct {
-    SimClock* clock;
-    int running;
-    unsigned tick_ms;
-} clock_thread_args;
+typedef struct ClockThreadArgs {
+    SimClock*       clock;
+    int             running;
+    unsigned        tick_ms;
+} ClockThreadArgs;
 
 void clock_init(SimClock* sim);
 void clock_destroy(SimClock* sim);
@@ -35,5 +29,4 @@ extern pthread_mutex_t rand_mutex;
 void     seed_init(int seed);
 int      safe_rand(void);
 int      safe_rand_range(int max);
-
 #endif

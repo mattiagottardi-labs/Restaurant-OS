@@ -25,7 +25,6 @@ typedef struct Order {
 } Order;
 
 typedef struct CustomerArgs {
-  CustomerQueue*    q;
   SimClock*         sc;
   Menu*             menu;
   _Atomic float*    score;
