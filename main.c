@@ -14,8 +14,8 @@ void queue_init(CustomerQueue* q);
 void print_customer(Customer* C);
 void print_queue(CustomerQueue* q);
 void print_list(OrderList* ol);
-char* resources_path = "/home/mgottardi/OS/rewrite/2026-project-5/code/resources.csv";
-char* menu_path = "/home/mgottardi/OS/rewrite/2026-project-5/code/menu.csv";
+//char* resources_path = "/home/mgottardi/OS/rewrite/2026-project-5/code/resources.csv";
+//char* menu_path = "/home/mgottardi/OS/rewrite/2026-project-5/code/menu.csv";
 
 _Atomic float score = 0;
 
@@ -182,8 +182,8 @@ int main(int argc, char* argv[]){
   CustomerQueue* waiting_order = malloc(sizeof(CustomerQueue));
   OrderManager* om = malloc(sizeof(OrderManager));
   //init structs
-  make_tools(resources_path, km, 10);
-  make_menu(menu_path, menu, 20, 4);
+  make_tools(RESOURCE_FILE, km, 10);
+  make_menu(MENU_FILE, menu, 20, 4);
   om_init(om);
   queue_init(standing);
   queue_init(seated);
