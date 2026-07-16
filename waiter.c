@@ -86,8 +86,6 @@ Order* list_pop(OrderList* ol) {
 
     pthread_mutex_unlock(&ol->lock);
 
-    free(old_head);
-    old_head = NULL;
     return o;
 }
 
@@ -99,13 +97,6 @@ Order* list_peek(OrderList* ol) {
     Order* o  = ol->size == 0 ? NULL : ol->head->o;
     pthread_mutex_unlock(&ol->lock);
     return o;
-}
-
-/* --------------------------------------------------------------------------
- * order_ready — return true if list is empty and false if not
- * -------------------------------------------------------------------------- */
-bool order_ready(OrderList* ol) {
-    return ol->size == 0;
 }
 
 /* --------------------------------------------------------------------------
@@ -237,11 +228,11 @@ void waiter_loop(Waiter* wtr) {
         switch(wtr->present) {
             case IDLE:
                 // if there are seated customer, try to serve them
-                if(!is_empty(wtr->arg->seated)) {
+                if(!is_empty(wtr->arg->seated, CUSTOMER_QUEUE)) {
                     wtr->future = TAKING_ORDER;
                 }
                 // otherwise check for standing customer and try to accomodate them
-                else if(!is_empty(wtr->arg->standing)) {
+                else if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE)) {
                     int sval;
                     sem_getvalue(wtr->arg->rc, &sval);
                     wtr->future = (sval > 0) ? ACCOMODATING_CUSTOMER : ENTERTAINING;
@@ -261,7 +252,7 @@ void waiter_loop(Waiter* wtr) {
                 free(cst);
                 cst = NULL;
 
-                wtr->future = order_ready(wtr->arg->om->completed_orders)? DELIVERING_FOOD : IDLE;
+                wtr->future = is_empty(wtr->arg->om->completed_orders, ORDER_LIST) ? DELIVERING_FOOD : IDLE;
                 break;
             
             case TAKING_ORDER:
@@ -275,18 +266,23 @@ void waiter_loop(Waiter* wtr) {
                     cst->present = WAITING_ORDER;
                 }              
 
-                if(!is_empty(wtr->arg->standing)) {
+                if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE)) {
                     wtr->future = ENTERTAINING;
                 }
                 else {
-                    wtr->future = order_ready(wtr->arg->om->completed_orders)? DELIVERING_FOOD : IDLE;
+                    wtr->future = is_empty(wtr->arg->om->completed_orders, ORDER_LIST) ? DELIVERING_FOOD : IDLE;
                 }
                 break;
 
             case DELIVERING_FOOD:
                 // take the order and deliver to the customer
                 Order* o = list_pop(wtr->arg->om->completed_orders);
-                atomic_store(&o->c->served, true);
+                if(o != NULL) {
+                    atomic_store(&o->c->served, true);
+                }
+                else {
+                    printf("Order is NULL\n");
+                }
                 
                 if(list_peek(wtr->arg->om->completed_orders)) {
                     wtr->future = wtr->present;

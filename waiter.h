@@ -18,18 +18,6 @@ typedef enum WaiterState {
     ENTERTAINING
 } WaiterState;
 
-typedef struct ListNode {
-    Order*           o;
-    int              prio;
-    struct ListNode* next;
-} ListNode;
-
-typedef struct OrderList {
-    ListNode*       head;
-    int             size;
-    pthread_mutex_t lock;
-} OrderList;
-
 typedef struct OrderManager {
     OrderList*      waitlist;
     OrderList*      priority;

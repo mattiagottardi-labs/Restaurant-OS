@@ -4,6 +4,25 @@
 #include <pthread.h>
 //#include "customer.h"
 
+typedef struct Order Order;
+
+typedef enum Casting {
+    ORDER_LIST,
+    CUSTOMER_QUEUE
+} Casting;
+
+typedef struct ListNode {
+    Order*           o;
+    int              prio;
+    struct ListNode* next;
+} ListNode;
+
+typedef struct OrderList {
+    ListNode*       head;
+    int             size;
+    pthread_mutex_t lock;
+} OrderList;
+
 // ─── simulation clock ────────────────────────────────────────────────────────
 
 typedef struct SimClock {

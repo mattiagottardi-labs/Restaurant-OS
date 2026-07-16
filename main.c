@@ -81,9 +81,10 @@ void print_tool_status(KitchenManager* km){
 }
 
 void print_customer(Customer* C){
-  printf("Customer's Patience: %d", C->patience);
-  printf("\nCustomer's Slack: %d", get_prio(C->o, 0));
-  printf("\nCustomer's Order:\n");
+  printf("Customer's stats:");
+  printf("\n\tPatience: %d", C->patience);
+  printf("\n\tSlack: %d", get_prio(C->o, 0));
+  printf("\n\tOrder:\n");
   for(int i = 0; C->o->dishes[i] != NULL; i++){
     printf("%s\n", C->o->dishes[i]->name);
   }

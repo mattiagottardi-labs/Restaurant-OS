@@ -64,8 +64,22 @@ void free_order(Order* o) {
 /* --------------------------------------------------------------------------
  * Queue helpers
  * -------------------------------------------------------------------------- */
-bool is_empty(CustomerQueue* q) {
-    return q->size == 0;
+bool is_empty(void* q, Casting cast) {
+    switch(cast) {
+    case ORDER_LIST:
+        OrderList* ol = (OrderList*) q;
+        return ol->size == 0;
+        break;
+
+    case CUSTOMER_QUEUE:
+        CustomerQueue* cq = (CustomerQueue*) q;
+        return cq->size == 0;
+        break;
+    
+    default:
+        perror("Unknown Cast");
+        break;
+    }
 }
 
 /* --------------------------------------------------------------------------
@@ -99,7 +113,7 @@ void enqueue(Customer* c, CustomerQueue* q) {
 void dequeue(CustomerQueue* q) {
     pthread_mutex_lock(&q->lock);
 
-    if (is_empty(q)) {
+    if (is_empty(q, CUSTOMER_QUEUE)) {
         pthread_mutex_unlock(&q->lock);
         return;
     }
@@ -120,7 +134,7 @@ void dequeue(CustomerQueue* q) {
  * -------------------------------------------------------------------------- */
 Customer* peek(CustomerQueue* q) {
     pthread_mutex_lock(&q->lock);
-    Customer* c = is_empty(q) ? NULL : q->head->c;
+    Customer* c = is_empty(q, CUSTOMER_QUEUE) ? NULL : q->head->c;
     pthread_mutex_unlock(&q->lock);
     return c;
 }
@@ -256,48 +270,7 @@ void customer_loop(Customer* cst) {
         cst->patience--;
     }
 
-    // clean memory
-
-    // if space is available inside the restaurant, the customer can sit down and Order
-    //atomic_store(&c->can_order, true);
-/*
-    int wait_start = sc->tick;
-
-    while (!atomic_load(&c->served)) {
-        printf("hello from customer\n");
-        pthread_mutex_lock(&sc->lock);
-        pthread_cond_wait(&sc->tick_cv, &sc->lock);
-        int current_tick = sc->tick;
-        pthread_mutex_unlock(&sc->lock);
-
-        if (atomic_load(&c->discarded)) {
-            free_order(c->o);
-            c->o = NULL;
-            float current = *score;
-            do {
-                // Keep trying until we successfully update the value safely
-            } while (!atomic_compare_exchange_weak(score, &current, current + 1.0f));
-            return;
-        }
-
-        if ((current_tick - wait_start) >= c->patience) {
-            if (c->o) atomic_store(&c->o->expired, true);
-            float current = *score;
-            do {
-                // Keep trying until we successfully update the value safely
-            }while (!atomic_compare_exchange_weak(score, &current, current - 1.0f));
-            return;
-        }
-    }
-
-  float current = *score;
-  do {
-    printf("stuck");
-    // Keep trying until we successfully update the value safely
-  } while (!atomic_compare_exchange_weak(score, &current, current + 1.0f));
-  return;
-*/
-    
+    // clean memory    
 }
 
 void* customer_thread(void* args) {

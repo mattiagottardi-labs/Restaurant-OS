@@ -67,7 +67,7 @@ Dish*       copy_dish(Dish* src);
 void        free_order(Order* o);
 
 // queue
-bool        is_empty(CustomerQueue* q);
+bool        is_empty(void* q, Casting cast);
 void        enqueue(Customer* c, CustomerQueue* q);
 void        dequeue(CustomerQueue* q);
 Customer*   pop(CustomerQueue* q);
