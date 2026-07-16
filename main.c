@@ -141,7 +141,7 @@ void* tick_advance(void* args) {
   while(running) {
     usleep(CLK_PERIOD);
     pthread_mutex_lock(&sc->lock);
-    printf("ticking %d", sc->tick);
+    printf("ticking %d\n", sc->tick);
     sc->tick++;
     pthread_cond_broadcast(&sc->tick_cv);
     pthread_mutex_unlock(&sc->lock);
@@ -177,6 +177,8 @@ int main(int argc, char* argv[]){
 
   CLK_PERIOD = 1000000 / GAME_SPEED;
 
+  pthread_mutex_t print = PTHREAD_MUTEX_INITIALIZER;
+
   sem_t restaurant_capacity, ea_bin;
   sem_init(&restaurant_capacity, 0, MAX_CUSTOMERS);
   sem_init(&ea_bin, 0, 0);
@@ -209,32 +211,35 @@ int main(int argc, char* argv[]){
   pthread_t waiters_tid[NUM_WAITERS];
   pthread_t customer_thread_manager;
 
-  pthread_create(&clock, NULL, tick_advance, (void*) sc);
+  pthread_create(&clock, NULL, tick_advance, sc);
 
-  CookArgs* cook_args = malloc(sizeof(CookArgs));
-  cook_args->km = km;
-  cook_args->om = om;
-  cook_args->running = running;
-  cook_args->sc = sc;
+  CookArgs* cook_args = malloc(NUM_COOKS * sizeof(CookArgs));
 
   for(int i = 0; i < NUM_COOKS; i++) {
-    cook_args->id = i;
+    cook_args->km = km;
+    cook_args->om = om;
+    cook_args->running = running;
+    cook_args->sc = sc;
     pthread_create(&cooks_tid[i], NULL, cook_thread, cook_args);
+    cook_args++;
   }
   printf("Cooks created\n");
 
-  WaiterArgs* waiter_args = malloc(sizeof(WaiterArgs));
-  waiter_args->ea_bin = &ea_bin;
-  waiter_args->om = om;
-  waiter_args->running = running;
-  waiter_args->sc = sc;
-  waiter_args->seated = seated;
-  waiter_args->standing = standing;
-  waiter_args->waiting_order = waiting_order;
+  WaiterArgs* waiter_args = malloc(NUM_WAITERS * sizeof(WaiterArgs));
 
   for(int i = 0; i < NUM_WAITERS; i++) {
-    waiter_args->id = i;
+    waiter_args->id = i + 1;
+    waiter_args->ea_bin = &ea_bin;
+    waiter_args->om = om;
+    waiter_args->running = running;
+    waiter_args->sc = sc;
+    waiter_args->seated = seated;
+    waiter_args->standing = standing;
+    waiter_args->waiting_order = waiting_order;
+    waiter_args->rc = &restaurant_capacity;
+    waiter_args->print = &print;
     pthread_create(&waiters_tid[i], NULL, waiter_thread, waiter_args);
+    waiter_args++;
   }
   printf("Waiters created\n");
 
@@ -243,6 +248,9 @@ int main(int argc, char* argv[]){
   customer_args->running = running;
   customer_args->sc = sc;
   customer_args->score = &score;
+  customer_args->standing = standing;
+  customer_args->id = 0;
+  customer_args->print = &print;
 
   // thread_manager manages all customer threads
   pthread_create(&customer_thread_manager, NULL, thread_manager, customer_args);

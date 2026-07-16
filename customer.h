@@ -12,7 +12,6 @@ typedef struct CustomerQueue CustomerQueue;
 typedef enum CustomerState {
     STANDING,
     SEATED,
-    ORDERING,
     WAITING_ORDER,
     EATING,
     FINISHED
@@ -28,13 +27,14 @@ typedef struct Order {
 } Order;
 
 typedef struct CustomerArgs {
-    int             id;
-    SimClock*       sc;
-    Menu*           menu;
-    _Atomic float*  score;
-    bool*           running;
-    sem_t           rc;
-    CustomerQueue*  standing;
+    int                 id;
+    SimClock*           sc;
+    Menu*               menu;
+    _Atomic float*      score;
+    bool*               running;
+    sem_t               rc;
+    CustomerQueue*      standing;
+    pthread_mutex_t*    print;
 } CustomerArgs;
 
 typedef struct Customer {
@@ -77,4 +77,5 @@ int         get_prep_time(Order* o);
 // customer lifecycle
 void        customer_loop(Customer* c);
 void*       customer_thread(void* arg);
+void        print_cst(Customer* cst);
 #endif

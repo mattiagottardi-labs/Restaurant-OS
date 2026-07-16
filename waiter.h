@@ -39,15 +39,16 @@ typedef struct OrderManager {
 } OrderManager;
 
 typedef struct WaiterArgs {
-    int             id;
-    OrderManager*   om;
-    CustomerQueue*  standing;
-    CustomerQueue*  seated;
-    CustomerQueue*  waiting_order;
-    SimClock*       sc;
-    bool*           running;
-    sem_t*          rc;
-    sem_t*          ea_bin;
+    int                 id;
+    OrderManager*       om;
+    CustomerQueue*      standing;
+    CustomerQueue*      seated;
+    CustomerQueue*      waiting_order;
+    SimClock*           sc;
+    bool*               running;
+    sem_t*              rc;
+    sem_t*              ea_bin;
+    pthread_mutex_t*    print;
 } WaiterArgs;
 
 typedef struct Waiter {
@@ -75,5 +76,5 @@ void   om_init(OrderManager* om);
 void   list_init(OrderList* ol);
 int    customer_entertainment(EntertainmentActivity* ea);
 //void   take_order(CustomerQueue* seated, CustomerQueue* ordered, OrderList* waiting);
-void    print_waiter(Waiter* wtr);
+void    print_wtr(Waiter* wtr);
 #endif

@@ -108,25 +108,28 @@ void refill_priority(OrderManager* om) {
     }
 }
 
-void print_waiter(Waiter* wtr) {
-    printf("I am WAITER %d, now ", wtr->arg->id);
+void print_wtr(Waiter* wtr) {
+    pthread_mutex_lock(wtr->arg->print);
+    printf(" WAITER %d: ", wtr->arg->id);
     switch(wtr->present) {
         case IDLE:
-            printf("I am IDLE");
+            printf("idle");
             break;
 
         case ACCOMODATING_CUSTOMER:
-            printf("I am ACCOMODATING the CUSTOMERS");
+            printf("accomodating customer");
             break;
 
         case TAKING_ORDER:
-            printf("I am TAKING the ORDER");
+            printf("taking the order");
             break;
 
         case DELIVERING_FOOD:
-            printf("I am DELIVERING FOOD");
+            printf("delivering the food");
             break;
     }
+    printf("\n");
+    pthread_mutex_unlock(wtr->arg->print);
 }
 
 /* --------------------------------------------------------------------------
@@ -144,7 +147,7 @@ void waiter_loop(Waiter* wtr) {
         pthread_cond_wait(&wtr->arg->sc->tick_cv, &wtr->arg->sc->lock);
         pthread_mutex_unlock(&wtr->arg->sc->lock);
 
-        print_waiter(wtr);
+        print_wtr(wtr);
 
         switch(wtr->present) {
             case IDLE:
@@ -152,6 +155,7 @@ void waiter_loop(Waiter* wtr) {
                 if(!is_empty(wtr->arg->standing)) {
                     // check if semaphore has available spaces
                     int sval;
+                    printf("Semaphore = %d", sval);
                     sem_getvalue(wtr->arg->rc, &sval);
                     if(sval > 0) {
                         wtr->future = ACCOMODATING_CUSTOMER;

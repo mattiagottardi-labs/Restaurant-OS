@@ -171,6 +171,34 @@ void clean(CustomerQueue* q) {
     pthread_mutex_unlock(&q->lock);
 }
 
+void print_cst(Customer* cst) {
+    pthread_mutex_lock(cst->arg->print);
+    printf(" CUSTOMER %d: ", cst->arg->id);
+    switch(cst->present) {
+        case STANDING:
+            printf("standing");
+            break;
+
+        case SEATED:
+            printf("seated");
+            break;
+
+        case WAITING_ORDER:
+            printf("waiting for my order");
+            break;
+
+        case EATING:
+            printf("eating");
+            break;
+
+        case FINISHED:
+            printf("done");
+            break;
+    }
+    printf("\n");
+    pthread_mutex_unlock(cst->arg->print);
+}
+
 /* --------------------------------------------------------------------------
  * customer_loop — lifecycle of a single customer thread
  *
@@ -185,14 +213,13 @@ void customer_loop(Customer* cst) {
         pthread_cond_wait(&cst->arg->sc->tick_cv, &cst->arg->sc->lock);
         pthread_mutex_unlock(&cst->arg->sc->lock);
 
-        
+        //print_cst(cst);     
 
         cst->present = cst->patience != 0 ? cst->present : FINISHED;
 
         // waiting outside for a free seat
         switch(cst->present) {
             case STANDING:
-                printf("Standing");
                 break;
 
             case SEATED:
@@ -278,7 +305,7 @@ void* customer_thread(void* args) {
   Customer* cst = malloc(sizeof(Customer));
   cst->present = STANDING;
   cst->arg = (CustomerArgs*) args;
-  //enqueue(cst, cst->arg->standing);
+  enqueue(cst, cst->arg->standing);
 
   cst->o = make_order(cst, cst->arg->menu, safe_rand_range(5));
   cst->patience = get_prep_time(cst->o) + safe_rand_range(100);
