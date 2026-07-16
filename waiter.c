@@ -98,13 +98,6 @@ bool order_ready(OrderList* ol) {
 }
 
 /* --------------------------------------------------------------------------
- * is_empty — return true if list is empty and false if not
- * -------------------------------------------------------------------------- */
-bool is_empty(CustomerQueue* q) {
-    return q->size == 0;
-}
-
-/* --------------------------------------------------------------------------
  * refill_priority — top up the 10-slot cook buffer from waitlist head
  * -------------------------------------------------------------------------- */
 void refill_priority(OrderManager* om) {
@@ -139,7 +132,9 @@ void waiter_loop(Waiter* wtr) {
                     sem_getvalue(wtr->arg->rc, &sval);
                     if(sval > 0) {
                         wtr->future = ACCOMODATING_CUSTOMER;
-                        break;
+                    }
+                    else {
+                        wtr->future = ENTERTAINING;
                     }
                 }
 
@@ -166,7 +161,7 @@ void waiter_loop(Waiter* wtr) {
             
             case TAKING_ORDER:
                 // obtain customer without removing from the queue
-                if(!peek(wtr->arg->seated)->o) {
+                if(peek(wtr->arg->seated)) {
                     // insert the order, if not NULL
                     list_insert_order(wtr->arg->om->waitlist, cst->o, 0);
 
@@ -186,7 +181,7 @@ void waiter_loop(Waiter* wtr) {
             case DELIVERING_FOOD:
                 // take the order and dekiver to the customer
                 Order* o = list_pop(wtr->arg->om->completed_orders);
-                o->c->served = true;
+                atomic_store(&o->c->served, true);
                 break;
 
             case ENTERTAINING:

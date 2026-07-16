@@ -194,7 +194,7 @@ void customer_loop(Customer* cst) {
 
             case SEATED:
                 sem_wait(&cst->arg->rc);
-                cst->future = ORDERING;
+                cst->future = WAITING_ORDER;
                 break;
 
             case WAITING_ORDER:
@@ -224,6 +224,8 @@ void customer_loop(Customer* cst) {
         cst->present = cst->future;
         cst->patience--;
     }
+
+    // clean memory
 
     // if space is available inside the restaurant, the customer can sit down and Order
     //atomic_store(&c->can_order, true);
@@ -278,9 +280,6 @@ void* customer_thread(void* args) {
   cst->o = make_order(cst, cst->arg->menu, safe_rand_range(5));
   cst->patience = get_prep_time(cst->o) + safe_rand_range(100);
   customer_loop(cst);
-
-  free(cst);
-  cst = NULL;
 
   return NULL;
 }

@@ -12,8 +12,7 @@ typedef enum CookState {
     WAITING,
     SELECT_DISH,
     ACQUIRE_TOOL,
-    COOKING,
-    CLEANING
+    COOKING
 } CookState;
 
 // cook arguments structure passed to the thread
@@ -27,6 +26,7 @@ typedef struct CookArgs {
 typedef struct Cook {
     CookArgs* arg;
     Dish*     target_dish;
+    Tool**    claimed_tools;
     CookState present;
     CookState future;
 } Cook;
