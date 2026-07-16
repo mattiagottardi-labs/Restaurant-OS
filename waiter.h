@@ -39,6 +39,7 @@ typedef struct OrderManager {
 } OrderManager;
 
 typedef struct WaiterArgs {
+    int             id;
     OrderManager*   om;
     CustomerQueue*  standing;
     CustomerQueue*  seated;
@@ -74,5 +75,5 @@ void   om_init(OrderManager* om);
 void   list_init(OrderList* ol);
 int    customer_entertainment(EntertainmentActivity* ea);
 //void   take_order(CustomerQueue* seated, CustomerQueue* ordered, OrderList* waiting);
-
+void    print_waiter(Waiter* wtr);
 #endif

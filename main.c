@@ -14,8 +14,8 @@ void queue_init(CustomerQueue* q);
 void print_customer(Customer* C);
 void print_queue(CustomerQueue* q);
 void print_list(OrderList* ol);
-char* resources_path = "resources.csv";
-char* menu_path = "menu.csv";
+//char* resources_path = "resources.csv";
+//char* menu_path = "menu.csv";
 
 _Atomic float score = 0;
 
@@ -124,33 +124,43 @@ void queue_init(CustomerQueue* q){
 
 // ─── simulation clock ───────────────────────────────────
 
-void clock_init(SimClock* sim) {
-    sim->tick = 0;
-    pthread_mutex_init(&sim->lock, NULL);
-    pthread_cond_init(&sim->tick_cv, NULL);
+void clock_init(SimClock* sc) {
+    sc->tick = 0;
+    pthread_mutex_init(&sc->lock, NULL);
+    pthread_cond_init(&sc->tick_cv, NULL);
 }
 
-void clock_destroy(SimClock* sim) {
-    pthread_mutex_destroy(&sim->lock);
-    pthread_cond_destroy(&sim->tick_cv);
+void clock_destroy(SimClock* sc) {
+    pthread_mutex_destroy(&sc->lock);
+    pthread_cond_destroy(&sc->tick_cv);
 }
 
 // must be in main.c since GAME_SPEED adjusts the tick speed
-void tick_advance(SimClock* sim) {
+void* tick_advance(void* args) {
+  SimClock* sc = args;
+  while(running) {
     usleep(CLK_PERIOD);
-    pthread_mutex_lock(&sim->lock);
-    printf("ticking %d", sim->tick);
-    sim->tick++;
-    pthread_cond_broadcast(&sim->tick_cv);
-    pthread_mutex_unlock(&sim->lock);
+    pthread_mutex_lock(&sc->lock);
+    printf("ticking %d", sc->tick);
+    sc->tick++;
+    pthread_cond_broadcast(&sc->tick_cv);
+    pthread_mutex_unlock(&sc->lock);
+  }
 }
 
 // ────────────────────────────────────────────────────────
 
 int main(int argc, char* argv[]){
+  printf("\nC MAIN BINARY STARTING!\n");
+
+  printf("Received arguments\n");
+  for(int i = 0; i < argc; i++) {
+    printf("\targv %d: %s\n", i, argv[i]);
+  }
+
   // check if sufficient numer of argument is passed
   if(argc < 8) {
-    perror("Too few arguemnts passed, while launching main binary!\n");
+    perror("Too few arguments passed, while launching main binary!\n");
     return 1;
   }
   // variables sent by bootstrap.sh
@@ -182,20 +192,24 @@ int main(int argc, char* argv[]){
   CustomerQueue* waiting_order = malloc(sizeof(CustomerQueue));
   OrderManager* om = malloc(sizeof(OrderManager));
   //init structs
-  make_tools(resources_path, km, 10);
-  make_menu(menu_path, menu, 20, 4);
+  make_tools(RESOURCE_FILE, km, 10);
+  make_menu(MENU_FILE, menu, 20, 4);
   om_init(om);
   queue_init(standing);
   queue_init(seated);
   clock_init(sc);
   srand(RANDOM_SEED);
+  printf("Init Successful!\n");
 
   // if nothing (in the init steps) fails, running is true
   *running = true;
 
+  pthread_t clock;
   pthread_t cooks_tid[NUM_COOKS];
   pthread_t waiters_tid[NUM_WAITERS];
   pthread_t customer_thread_manager;
+
+  pthread_create(&clock, NULL, tick_advance, (void*) sc);
 
   CookArgs* cook_args = malloc(sizeof(CookArgs));
   cook_args->km = km;
@@ -204,8 +218,10 @@ int main(int argc, char* argv[]){
   cook_args->sc = sc;
 
   for(int i = 0; i < NUM_COOKS; i++) {
+    cook_args->id = i;
     pthread_create(&cooks_tid[i], NULL, cook_thread, cook_args);
   }
+  printf("Cooks created\n");
 
   WaiterArgs* waiter_args = malloc(sizeof(WaiterArgs));
   waiter_args->ea_bin = &ea_bin;
@@ -217,8 +233,10 @@ int main(int argc, char* argv[]){
   waiter_args->waiting_order = waiting_order;
 
   for(int i = 0; i < NUM_WAITERS; i++) {
+    waiter_args->id = i;
     pthread_create(&waiters_tid[i], NULL, waiter_thread, waiter_args);
   }
+  printf("Waiters created\n");
 
   CustomerArgs* customer_args = malloc(sizeof(CustomerArgs));
   customer_args->menu = menu;
@@ -229,7 +247,14 @@ int main(int argc, char* argv[]){
   // thread_manager manages all customer threads
   pthread_create(&customer_thread_manager, NULL, thread_manager, customer_args);
 
-  // Missing pthread_join for cooks and waiters 
+  // Missing pthread_join for cooks and waiters
+  for(int i = 0; i < NUM_COOKS; i++) {
+    pthread_join(cooks_tid[i], NULL);
+  }
+
+  for(int i = 0; i < NUM_WAITERS; i++) {
+    pthread_join(waiters_tid[i], NULL);
+  }
 
 /*
   printf("QUEUE BEFORE POPPING:\n");
@@ -257,4 +282,5 @@ int main(int argc, char* argv[]){
   // destroy the semaphore
   sem_destroy(&restaurant_capacity);
   sem_destroy(&ea_bin);
+  printf("Semaphores destroyed");
 }

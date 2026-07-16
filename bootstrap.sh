@@ -95,6 +95,7 @@ check_file() {
 #-----------------------------------------------------------------------------------------------------------------------#
 
 # 1) check if file exists and is readable
+
 check_file
 
 #-----------------------------------------------------------------------------------------------------------------------#
@@ -149,10 +150,14 @@ done
 #-----------------------------------------------------------------------------------------------------------------------#
 
 # 4) print the final arguments that will be passed to the main binary
-echo "Final arguments that will be passed to the main binary:"
+final_args=()
+
 for j in {0..7}; do
-    echo -e "${required_args[$j]}\t=\t${arg_dict[${required_args[$j]}]}"
+    key="${required_args[$j]}"
+    value="${arg_dict[$key]}"
+    final_args+=("$value")
+    echo -e "$key\t= $value"
 done
 
-# slice the array into individual terms
-./program "${required_args[@]}"
+./program "${final_args[@]}"
+#gdb --args ./program "${final_args[@]}"

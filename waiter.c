@@ -108,6 +108,27 @@ void refill_priority(OrderManager* om) {
     }
 }
 
+void print_waiter(Waiter* wtr) {
+    printf("I am WAITER %d, now ", wtr->arg->id);
+    switch(wtr->present) {
+        case IDLE:
+            printf("I am IDLE");
+            break;
+
+        case ACCOMODATING_CUSTOMER:
+            printf("I am ACCOMODATING the CUSTOMERS");
+            break;
+
+        case TAKING_ORDER:
+            printf("I am TAKING the ORDER");
+            break;
+
+        case DELIVERING_FOOD:
+            printf("I am DELIVERING FOOD");
+            break;
+    }
+}
+
 /* --------------------------------------------------------------------------
  * waiter_loop — pops customers from the queue, unpacks their orders
  *               and inserts them into the waitlist sorted by prio.
@@ -122,6 +143,8 @@ void waiter_loop(Waiter* wtr) {
         pthread_mutex_lock(&wtr->arg->sc->lock);
         pthread_cond_wait(&wtr->arg->sc->tick_cv, &wtr->arg->sc->lock);
         pthread_mutex_unlock(&wtr->arg->sc->lock);
+
+        print_waiter(wtr);
 
         switch(wtr->present) {
             case IDLE:

@@ -4,6 +4,7 @@
 command=$1
 
 flags="-Wall -Wextra -lpthread -c"
+name="program"
 
 usage() {
     echo -e "How to build the code:\n./build.sh build num_cooks num_waiters max_customers game_speed random_seed\n"
@@ -17,7 +18,7 @@ build() {
 
     # command substitution that redirects output to variable
     output=$(gcc $flags *.c)
-    output=$(gcc *.o -o program)
+    output=$(gcc *.o -o $name)
 
     # check if the gcc exit code is 0: ok, 1: failed
     if [ $? -ne 0 ]; then
@@ -26,8 +27,7 @@ build() {
     else
         echo "Build successful!"
         # command substitution $(). the output of the command is assigned to var executable
-        executable=$(ls | grep *.out)
-        echo "The executable is: $executable"
+        echo "The executable is: $name"
     fi
 }
 

@@ -28,12 +28,13 @@ typedef struct Order {
 } Order;
 
 typedef struct CustomerArgs {
-  SimClock*         sc;
-  Menu*             menu;
-  _Atomic float*    score;
-  bool*             running;
-  sem_t             rc;
-  CustomerQueue*    standing;
+    int             id;
+    SimClock*       sc;
+    Menu*           menu;
+    _Atomic float*  score;
+    bool*           running;
+    sem_t           rc;
+    CustomerQueue*  standing;
 } CustomerArgs;
 
 typedef struct Customer {

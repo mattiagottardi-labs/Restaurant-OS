@@ -20,7 +20,7 @@ typedef struct ClockThreadArgs {
 
 void clock_init(SimClock* sim);
 void clock_destroy(SimClock* sim);
-void tick_advance(SimClock* sim);
+void* tick_advance(void* args);
 
 // ─── random ──────────────────────────────────────────────────────────────────
 
