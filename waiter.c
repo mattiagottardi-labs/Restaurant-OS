@@ -74,7 +74,7 @@ void list_insert(OrderList* ol, Customer* cst, int algorithm) {
 Order* list_pop(OrderList* ol) {
     pthread_mutex_lock(&ol->lock);
 
-    if (!ol->head) {
+    if(!ol->head) {
         pthread_mutex_unlock(&ol->lock);
         return NULL;
     }
@@ -87,6 +87,17 @@ Order* list_pop(OrderList* ol) {
     pthread_mutex_unlock(&ol->lock);
 
     free(old_head);
+    old_head = NULL;
+    return o;
+}
+
+/* --------------------------------------------------------------------------
+ * list_peek — return pointer to head order without removing
+ * -------------------------------------------------------------------------- */
+Order* list_peek(OrderList* ol) {
+    pthread_mutex_lock(&ol->lock);
+    Order* o  = ol->size == 0 ? NULL : ol->head->o;
+    pthread_mutex_unlock(&ol->lock);
     return o;
 }
 
@@ -127,9 +138,83 @@ void print_wtr(Waiter* wtr) {
         case DELIVERING_FOOD:
             printf("delivering the food");
             break;
+
+        case ENTERTAINING:
+            printf("entertaining the standing customer/s");
+            break;
     }
     printf("\n");
     pthread_mutex_unlock(wtr->arg->print);
+}
+
+void list_insert_order(OrderList* ol, Order* o, int algorithm) {
+    if (!o) return;
+    ListNode* new_node = malloc(sizeof(ListNode));
+    if (!new_node) {
+        perror("list_insert_order: malloc failed\n");
+        return;
+    }
+    new_node->o    = o;
+    new_node->prio = get_prio(o, algorithm);
+    new_node->next = NULL;
+
+    pthread_mutex_lock(&ol->lock);
+
+    if (algorithm == 2 || !ol->head) {
+        /* Append to tail */
+        if (!ol->head) {
+            ol->head = new_node;
+        } else {
+            ListNode* cur = ol->head;
+            while (cur->next) cur = cur->next;
+            cur->next = new_node;
+        }
+    } else {
+        /* Sorted insert by ascending prio */
+        if (new_node->prio < ol->head->prio) {
+            new_node->next = ol->head;
+            ol->head = new_node;
+        } else {
+            ListNode* cur = ol->head;
+            while (cur->next && cur->next->prio <= new_node->prio)
+                cur = cur->next;
+            new_node->next = cur->next;
+            cur->next = new_node;
+        }
+    }
+
+    ol->size++;
+    pthread_mutex_unlock(&ol->lock);
+}
+
+void list_init(OrderList* ol){
+  ol->head = NULL;
+  ol->size = 0;
+  pthread_mutex_init(&ol->lock, NULL);
+}
+
+void om_init(OrderManager* om){
+  pthread_mutex_init(&om->lock, NULL);
+  OrderList* waitlist = malloc(sizeof(OrderList));
+  OrderList* priority = malloc(sizeof(OrderList));
+  OrderList* discarded = malloc(sizeof(OrderList));
+  OrderList* completed = malloc(sizeof(OrderList));
+  om->waitlist = waitlist;
+  om->priority = priority;
+  om->discarded_orders = discarded;
+  om->completed_orders = completed;
+  list_init(om->waitlist);
+  list_init(om->priority);
+  list_init(om->completed_orders);
+  list_init(om->discarded_orders);
+}
+
+// if waiting customers and no waiting orders -> call this function
+int customer_entertainment(EntertainmentActivity *ea) {
+    int activity = safe_rand_range(5) - 1;
+    printf("Waiter is %s, to entertain waiting customers.", ea[activity].name);
+    usleep(ea[activity].duration);
+    return ea[activity].efficacy;
 }
 
 /* --------------------------------------------------------------------------
@@ -151,22 +236,15 @@ void waiter_loop(Waiter* wtr) {
 
         switch(wtr->present) {
             case IDLE:
-                // if there are standing customer, try to accomodate one of them
-                if(!is_empty(wtr->arg->standing)) {
-                    // check if semaphore has available spaces
-                    int sval;
-                    printf("Semaphore = %d", sval);
-                    sem_getvalue(wtr->arg->rc, &sval);
-                    if(sval > 0) {
-                        wtr->future = ACCOMODATING_CUSTOMER;
-                    }
-                    else {
-                        wtr->future = ENTERTAINING;
-                    }
-                }
-
+                // if there are seated customer, try to serve them
                 if(!is_empty(wtr->arg->seated)) {
                     wtr->future = TAKING_ORDER;
+                }
+                // otherwise check for standing customer and try to accomodate them
+                else if(!is_empty(wtr->arg->standing)) {
+                    int sval;
+                    sem_getvalue(wtr->arg->rc, &sval);
+                    wtr->future = (sval > 0) ? ACCOMODATING_CUSTOMER : ENTERTAINING;
                 }
                 else {
                     wtr->future = wtr->present;
@@ -206,9 +284,16 @@ void waiter_loop(Waiter* wtr) {
                 break;
 
             case DELIVERING_FOOD:
-                // take the order and dekiver to the customer
+                // take the order and deliver to the customer
                 Order* o = list_pop(wtr->arg->om->completed_orders);
                 atomic_store(&o->c->served, true);
+                
+                if(list_peek(wtr->arg->om->completed_orders)) {
+                    wtr->future = wtr->present;
+                }
+                else {
+                    wtr->future = IDLE;
+                }
                 break;
 
             case ENTERTAINING:
@@ -256,46 +341,6 @@ void waiter_loop(Waiter* wtr) {
     }
 }
 
-void list_insert_order(OrderList* ol, Order* o, int algorithm) {
-    if (!o) return;
-    ListNode* new_node = malloc(sizeof(ListNode));
-    if (!new_node) {
-        perror("list_insert_order: malloc failed\n");
-        return;
-    }
-    new_node->o    = o;
-    new_node->prio = get_prio(o, algorithm);
-    new_node->next = NULL;
-
-    pthread_mutex_lock(&ol->lock);
-
-    if (algorithm == 2 || !ol->head) {
-        /* Append to tail */
-        if (!ol->head) {
-            ol->head = new_node;
-        } else {
-            ListNode* cur = ol->head;
-            while (cur->next) cur = cur->next;
-            cur->next = new_node;
-        }
-    } else {
-        /* Sorted insert by ascending prio */
-        if (new_node->prio < ol->head->prio) {
-            new_node->next = ol->head;
-            ol->head = new_node;
-        } else {
-            ListNode* cur = ol->head;
-            while (cur->next && cur->next->prio <= new_node->prio)
-                cur = cur->next;
-            new_node->next = cur->next;
-            cur->next = new_node;
-        }
-    }
-
-    ol->size++;
-    pthread_mutex_unlock(&ol->lock);
-}
-
 void* waiter_thread(void* args){
     if(!args) return NULL;
     // creates waiter
@@ -311,45 +356,3 @@ void* waiter_thread(void* args){
 
     return NULL;
 }
-
-void list_init(OrderList* ol){
-  ol->head = NULL;
-  ol->size = 0;
-  pthread_mutex_init(&ol->lock, NULL);
-}
-
-void om_init(OrderManager* om){
-  pthread_mutex_init(&om->lock, NULL);
-  OrderList* waitlist = malloc(sizeof(OrderList));
-  OrderList* priority = malloc(sizeof(OrderList));
-  OrderList* discarded = malloc(sizeof(OrderList));
-  OrderList* completed = malloc(sizeof(OrderList));
-  om->waitlist = waitlist;
-  om->priority = priority;
-  om->discarded_orders = discarded;
-  om->completed_orders = completed;
-  list_init(om->waitlist);
-  list_init(om->priority);
-  list_init(om->completed_orders);
-  list_init(om->discarded_orders);
-}
-
-// if waiting customers and no waiting orders -> call this function
-int customer_entertainment(EntertainmentActivity *ea) {
-    int activity = safe_rand_range(5) - 1;
-    printf("Waiter is %s, to entertain waiting customers.", ea[activity].name);
-    usleep(ea[activity].duration);
-    return ea[activity].efficacy;
-}
-/*
-void take_order(CustomerQueue* seated, CustomerQueue* waiting_food, OrderList* waiting){
-  pthread_mutex_lock(&seated->lock);
-  if(seated->size == 0){
-    pthread_mutex_unlock(&seated->lock);
-    return;
-  }
-  customer* temp = pop(seated);
-  enqueue(temp, waiting_food);
-  list_insert(temp);
-}
-*/

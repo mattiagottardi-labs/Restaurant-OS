@@ -213,7 +213,7 @@ void customer_loop(Customer* cst) {
         pthread_cond_wait(&cst->arg->sc->tick_cv, &cst->arg->sc->lock);
         pthread_mutex_unlock(&cst->arg->sc->lock);
 
-        //print_cst(cst);     
+        print_cst(cst);     
 
         cst->present = cst->patience != 0 ? cst->present : FINISHED;
 
@@ -225,6 +225,7 @@ void customer_loop(Customer* cst) {
             case SEATED:
                 sem_wait(&cst->arg->rc);
                 cst->future = WAITING_ORDER;
+                
                 break;
 
             case WAITING_ORDER:

@@ -412,4 +412,9 @@ void* cook_thread(void* args) {
     ck->arg = (CookArgs*) args;
 
     cook_loop(ck);
+
+    free(ck);
+    ck = NULL;
+
+    return NULL;
 }

@@ -3,7 +3,7 @@
 # command is the argument passed when launching the script
 command=$1
 
-flags="-Wall -Wextra -lpthread -c"
+flags="-g -Wall -Wextra -lpthread -c"
 name="program"
 
 usage() {
@@ -45,6 +45,12 @@ clean() {
 }
 
 # function to execute scenarios
+gdb() {
+    echo "Running default scenario"
+    ./bootstrap.sh debug
+}
+
+# function to execute scenarios
 run() {
     echo "Running default scenario"
     ./bootstrap.sh
@@ -60,6 +66,9 @@ case $command in
 
     clean)
         clean;;
+
+    debug)
+        gdb;;
 
     run)
         run;;

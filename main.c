@@ -36,28 +36,30 @@ int CLK_PERIOD;
 void* thread_manager(void* args) {
   if(!args) return NULL;
 
-  pthread_t* customer_tid = NULL;
+  pthread_t* customer_tid = malloc(TOTAL_CUSTOMERS * sizeof(pthread_t));
 
   CustomerArgs* arguments = (CustomerArgs*) args;
-  int customer_counter = 0;
+  CustomerArgs* customer_args = malloc(TOTAL_CUSTOMERS * sizeof(CustomerArgs));
 
   // customer threads has to be spawned at random time
   int random_delay = ((rand() % MAX_CUSTOMER_SPAWN_RATE) + 1000) / GAME_SPEED;
   
+  int customer_counter;
+
   // cycle that keeps running to manage customer threads
-  while(customer_counter < TOTAL_CUSTOMERS) {
+  for(customer_counter = 0; customer_counter < TOTAL_CUSTOMERS; customer_counter++) {
     usleep(random_delay);
 
-    void *tmp =  realloc((void*) customer_tid, (customer_counter + 1) * sizeof(pthread_t));
-    if(tmp == NULL) {
-      perror("Realloc failed!");
-      free(customer_tid);
-      return NULL;
-    }
-
-    customer_tid = (pthread_t*) tmp;
-    pthread_create(&customer_tid[customer_counter], NULL, customer_thread, (void*) arguments);
-    customer_counter++;
+    customer_args->id = customer_counter + 1;
+    customer_args->menu = arguments->menu;
+    customer_args->running = arguments->running;
+    customer_args->sc = arguments->sc;
+    customer_args->score = arguments->score;
+    customer_args->standing = arguments->standing;
+    customer_args->print = arguments->print;
+    pthread_create(&customer_tid[customer_counter], NULL, customer_thread, (void*) customer_args);
+    customer_tid++;
+    customer_args++;
   }
 
   for(int i = 0; i < customer_counter; i++) {
@@ -65,6 +67,9 @@ void* thread_manager(void* args) {
   }
 
   free(customer_tid);
+  pthread_exit(NULL);
+
+  free(customer_args);
   pthread_exit(NULL);
 }
 
@@ -137,7 +142,7 @@ void clock_destroy(SimClock* sc) {
 
 // must be in main.c since GAME_SPEED adjusts the tick speed
 void* tick_advance(void* args) {
-  SimClock* sc = args;
+  SimClock* sc = (SimClock*) args;
   while(running) {
     usleep(CLK_PERIOD);
     pthread_mutex_lock(&sc->lock);
@@ -146,17 +151,14 @@ void* tick_advance(void* args) {
     pthread_cond_broadcast(&sc->tick_cv);
     pthread_mutex_unlock(&sc->lock);
   }
+
+  return NULL;
 }
 
 // ────────────────────────────────────────────────────────
 
 int main(int argc, char* argv[]){
   printf("\nC MAIN BINARY STARTING!\n");
-
-  printf("Received arguments\n");
-  for(int i = 0; i < argc; i++) {
-    printf("\targv %d: %s\n", i, argv[i]);
-  }
 
   // check if sufficient numer of argument is passed
   if(argc < 8) {
@@ -201,7 +203,7 @@ int main(int argc, char* argv[]){
   queue_init(seated);
   clock_init(sc);
   srand(RANDOM_SEED);
-  printf("Init Successful!\n");
+  //printf("Init Successful!\n");
 
   // if nothing (in the init steps) fails, running is true
   *running = true;
@@ -223,7 +225,7 @@ int main(int argc, char* argv[]){
     pthread_create(&cooks_tid[i], NULL, cook_thread, cook_args);
     cook_args++;
   }
-  printf("Cooks created\n");
+  //printf("Cooks created\n");
 
   WaiterArgs* waiter_args = malloc(NUM_WAITERS * sizeof(WaiterArgs));
 
@@ -241,7 +243,7 @@ int main(int argc, char* argv[]){
     pthread_create(&waiters_tid[i], NULL, waiter_thread, waiter_args);
     waiter_args++;
   }
-  printf("Waiters created\n");
+  //printf("Waiters created\n");
 
   CustomerArgs* customer_args = malloc(sizeof(CustomerArgs));
   customer_args->menu = menu;
@@ -263,29 +265,6 @@ int main(int argc, char* argv[]){
   for(int i = 0; i < NUM_WAITERS; i++) {
     pthread_join(waiters_tid[i], NULL);
   }
-
-/*
-  printf("QUEUE BEFORE POPPING:\n");
-  print_queue(q);
-  while(q->size != 0){
-    list_insert(om->waitlist, pop(q), 0);
-  }
-  printf("EMPTY LIST:\n");
-  print_queue(q);
-  printf("PRIORITY LIST:\n");
-  print_list(om->priority);
-  printf("WAITLIST:\n");
-  print_list(om->waitlist);
-  refill_priority(om);
-  printf("PRIORITY LIST:\n");
-  print_list(om->priority);
-  Order* target_order = get_next_order(om);
-  Dish* target_dish = pick_dish(target_order);
-  bool* running = malloc(sizeof(bool));
-  *running = true;
-  cook_dish(target_dish, target_order, om, sc, km, running );
-  return 0;
-*/
 
   // destroy the semaphore
   sem_destroy(&restaurant_capacity);

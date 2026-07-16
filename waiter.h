@@ -67,6 +67,7 @@ extern EntertainmentActivity ea[5];
 
 int    get_prio(Order* o, int algorithm);
 void   list_insert(OrderList* ol, Customer* cst, int algorithm);
+Order* list_peek(OrderList* ol);
 Order* list_pop(OrderList* ol);
 void   refill_priority(OrderManager* om);
 void   waiter_loop(Waiter* wtr);

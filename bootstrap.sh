@@ -1,5 +1,7 @@
 #!/bin/bash
 
+mode=$1
+
 file=.env
 required_index=0
 lower_bound=1
@@ -159,5 +161,8 @@ for j in {0..7}; do
     echo -e "$key\t= $value"
 done
 
-./program "${final_args[@]}"
-#gdb --args ./program "${final_args[@]}"
+if [[ $mode == "debug" ]]; then
+    gdb --args ./program "${final_args[@]}"
+else
+    ./program "${final_args[@]}"
+fi
