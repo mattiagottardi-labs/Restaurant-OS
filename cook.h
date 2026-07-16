@@ -8,6 +8,14 @@
 
 #define DIRTY_THRESHOLD 3
 
+typedef enum CookState {
+    WAITING,
+    SELECT_DISH,
+    ACQUIRE_TOOL,
+    COOKING,
+    CLEANING
+} CookState;
+
 // cook arguments structure passed to the thread
 typedef struct CookArgs {
     OrderManager*   om;
@@ -15,6 +23,14 @@ typedef struct CookArgs {
     KitchenManager* km;
     bool*           running;
 } CookArgs;
+
+typedef struct Cook {
+    CookArgs* arg;
+    Dish*     target_dish;
+    CookState present;
+    CookState future;
+} Cook;
+
 
 // Tool helpers
 int        count_tools(Dish* d);
@@ -30,7 +46,7 @@ Dish*  pick_dish(Order* o);
 
 // cook lifecycle
 void    cook_dish(Dish* d, Order* o, OrderManager* om, SimClock* sc, KitchenManager* km, bool* running);
-void    cook_loop(OrderManager* m, SimClock* sc, KitchenManager* km, bool* running);
+void    cook_loop(Cook* ck);
 float   get_pressure(OrderList* l); //will estimate how hard the kitchen must work
 void*   cook_thread(void* arg);
 #endif

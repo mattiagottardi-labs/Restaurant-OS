@@ -136,12 +136,14 @@ void waiter_loop(Waiter* wtr) {
                 if(!is_empty(wtr->arg->standing)) {
                     // check if semaphore has available spaces
                     int sval;
-                    sem_getvalue(&wtr->arg->rc, &sval);
+                    sem_getvalue(wtr->arg->rc, &sval);
                     if(sval > 0) {
                         wtr->future = ACCOMODATING_CUSTOMER;
+                        break;
                     }
                 }
-                else if(!is_empty(wtr->arg->seated)) {
+
+                if(!is_empty(wtr->arg->seated)) {
                     wtr->future = TAKING_ORDER;
                 }
                 else {
@@ -151,7 +153,7 @@ void waiter_loop(Waiter* wtr) {
 
             // when customer is waiting outisde but there is free space, accomodate the customer
             case ACCOMODATING_CUSTOMER:
-                Customer* cst = dequeue(wtr->arg->standing);
+                Customer* cst = pop(wtr->arg->standing);
 
                 enqueue(cst, wtr->arg->seated);
                 cst->present = SEATED;
@@ -159,58 +161,32 @@ void waiter_loop(Waiter* wtr) {
                 free(cst);
                 cst = NULL;
 
-                wtr->future = IDLE;
+                wtr->future = order_ready(wtr->arg->om->completed_orders)? DELIVERING_FOOD : IDLE;
                 break;
             
             case TAKING_ORDER:
                 // obtain customer without removing from the queue
-                Customer* cst = pop(wtr->arg->seated);
-                if(cst->o != NULL) {
+                if(!peek(wtr->arg->seated)->o) {
                     // insert the order, if not NULL
-                    list_insert_order(wtr->arg->om->waitlist, cst, 0);
+                    list_insert_order(wtr->arg->om->waitlist, cst->o, 0);
 
-                    cst = dequeue(wtr->arg->seated);
+                    cst = pop(wtr->arg->seated);
                     enqueue(cst, wtr->arg->waiting_order);
                     cst->present = WAITING_ORDER;
                 }              
 
-                // free the pointer
-                free(cst);
-                cst = NULL;
-
-                if(is_empty(wtr->arg->standing) && is_empty(wtr->arg->seated)) {
-                    wtr->future = IDLE;
-                }
-                else if(!is_empty(wtr->arg->standing)) {
+                if(!is_empty(wtr->arg->standing)) {
                     wtr->future = ENTERTAINING;
                 }
                 else {
-                    wtr->future = wtr->present;
-                }
-                break;
-
-            case CHECKING_FOOD:
-                if(!order_ready(wtr->arg->om->completed_orders)) {
-                    wtr->future = DELIVERING_FOOD;
-                }
-                else {
-                    wtr->future = IDLE;
+                    wtr->future = order_ready(wtr->arg->om->completed_orders)? DELIVERING_FOOD : IDLE;
                 }
                 break;
 
             case DELIVERING_FOOD:
-                // take the order and search for the customer in the waiting_order queue
+                // take the order and dekiver to the customer
                 Order* o = list_pop(wtr->arg->om->completed_orders);
-
-                // loop through all orders and search the one pointing to the right customer
-                QueueNode* find_order = wtr->arg->waiting_order->head;
-                while(o->c != find_order->c) {
-                    find_order = find_order->next;
-                }
                 o->c->served = true;
-
-                free(find_order);
-                find_order = NULL;
                 break;
 
             case ENTERTAINING:

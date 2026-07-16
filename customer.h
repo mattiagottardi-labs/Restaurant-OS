@@ -5,6 +5,9 @@
 #include <stdatomic.h>
 #include "kitchen.h"
 #include <semaphore.h>
+#include <unistd.h>
+
+typedef struct CustomerQueue CustomerQueue;
 
 typedef enum CustomerState {
     STANDING,
@@ -30,6 +33,7 @@ typedef struct CustomerArgs {
   _Atomic float*    score;
   bool*             running;
   sem_t             rc;
+  CustomerQueue*    standing;
 } CustomerArgs;
 
 typedef struct Customer {
@@ -64,7 +68,7 @@ void        free_order(Order* o);
 // queue
 bool        is_empty(CustomerQueue* q);
 void        enqueue(Customer* c, CustomerQueue* q);
-Customer*   dequeue(CustomerQueue* q);
+void        dequeue(CustomerQueue* q);
 Customer*   pop(CustomerQueue* q);
 Customer*   peek(CustomerQueue* q);
 void        clean(CustomerQueue* q);

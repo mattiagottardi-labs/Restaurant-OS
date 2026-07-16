@@ -32,14 +32,6 @@ bool* running;
 const int MAX_CUSTOMER_SPAWN_RATE = 5000000; // caution, this time is in microseconds
 int CLK_PERIOD;
 
-void* cook_thread(void* args) {
-
-}
-
-void* waiter_thread(void* args) {
-  
-}
-
 // customer_thread_manager implements this function
 void* thread_manager(void* args) {
   if(!args) return NULL;

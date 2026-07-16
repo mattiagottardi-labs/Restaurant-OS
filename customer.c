@@ -6,7 +6,6 @@
 /* --------------------------------------------------------------------------
  * Order creation
  * -------------------------------------------------------------------------- */
-
 Order* make_order(Customer* c, Menu* menu, int num_dishes) {
     Order* o = malloc(sizeof(Order));
     if (!o) return NULL;
@@ -97,7 +96,7 @@ void enqueue(Customer* c, CustomerQueue* q) {
 /* --------------------------------------------------------------------------
  * dequeue — remove head node, returning the customer
  * -------------------------------------------------------------------------- */
-Customer* dequeue(CustomerQueue* q) {
+void dequeue(CustomerQueue* q) {
     pthread_mutex_lock(&q->lock);
 
     if (is_empty(q)) {
@@ -111,7 +110,9 @@ Customer* dequeue(CustomerQueue* q) {
     q->size--;
 
     pthread_mutex_unlock(&q->lock);
-    return old_head;
+
+    free(old_head);
+    old_head = NULL;
 }
 
 /* --------------------------------------------------------------------------
@@ -184,6 +185,8 @@ void customer_loop(Customer* cst) {
         pthread_cond_wait(&cst->arg->sc->tick_cv, &cst->arg->sc->lock);
         pthread_mutex_unlock(&cst->arg->sc->lock);
 
+        cst->present = cst->patience != 0 ? cst->present : FINISHED;
+
         // waiting outside for a free seat
         switch(cst->present) {
             case STANDING:
@@ -192,10 +195,6 @@ void customer_loop(Customer* cst) {
             case SEATED:
                 sem_wait(&cst->arg->rc);
                 cst->future = ORDERING;
-                break;
-
-            case ORDERING:
-                cst->o = make_order(cst, cst->arg->menu, safe_rand_range(5));
                 break;
 
             case WAITING_ORDER:
@@ -213,7 +212,9 @@ void customer_loop(Customer* cst) {
                 break;
 
             case FINISHED:
+                cst->arg->score += cst->served? 1 : -1;
                 sem_post(&cst->arg->rc);
+                cst->arg->running = false;
                 break;
 
             default:
@@ -272,7 +273,10 @@ void* customer_thread(void* args) {
   Customer* cst = malloc(sizeof(Customer));
   cst->present = STANDING;
   cst->arg = (CustomerArgs*) args;
+  enqueue(cst, cst->arg->standing);
 
+  cst->o = make_order(cst, cst->arg->menu, safe_rand_range(5));
+  cst->patience = get_prep_time(cst->o) + safe_rand_range(100);
   customer_loop(cst);
 
   free(cst);

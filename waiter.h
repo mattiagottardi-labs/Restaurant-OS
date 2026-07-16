@@ -14,7 +14,6 @@ typedef enum WaiterState {
     IDLE,
     ACCOMODATING_CUSTOMER,
     TAKING_ORDER,
-    CHECKING_FOOD,
     DELIVERING_FOOD,
     ENTERTAINING
 } WaiterState;

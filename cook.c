@@ -285,7 +285,55 @@ void cook_dish(Dish* d, Order* o, OrderManager* om, SimClock* sc, KitchenManager
  *             claimed Order.
  * -------------------------------------------------------------------------- */
 
-void cook_loop(OrderManager* om, SimClock* sc, KitchenManager* km, bool* running) {
+void cook_loop(Cook* ck) {
+    while(ck->arg->running) {
+        pthread_mutex_lock(&ck->arg->sc->lock);
+        pthread_cond_wait(&ck->arg->sc->tick_cv, &ck->arg->sc->lock);
+        pthread_mutex_unlock(&ck->arg->sc->lock);
+
+        switch(ck->present) {
+            case WAITING:
+                pthread_mutex_lock(&ck->arg->om->priority->lock);
+                if(ck->arg->om->priority->size > 0){
+                    ck->future = SELECT_DISH;
+                }else{
+                    ck->future = ck->present;
+                    refill_priority(ck->arg->om);
+                }
+                pthread_mutex_unlock(&ck->arg->om->priority->lock);
+                break;
+
+            case SELECT_DISH:
+                Order* o = get_next_order(ck->arg->om);
+                if(o) {
+                    ck->target_dish = pick_dish(o);
+                    ck->future = ACQUIRE_TOOL;
+                }
+                else {
+                    ck->future = WAITING;
+                    refill_priority(ck->arg->om);
+                }
+                break;
+
+            case ACQUIRE_TOOL:
+
+                break;
+
+            case COOKING:
+                
+                break;
+
+            case CLEANING:
+
+                break;
+
+            default:
+                perror("Cook - Unknown State");
+            
+        }
+        ck->present = ck->future;
+    }
+/*
     while (running) {
         Order* o = get_next_order(om);
         if (!o) continue;
@@ -298,6 +346,7 @@ void cook_loop(OrderManager* om, SimClock* sc, KitchenManager* km, bool* running
 
         cook_dish(d, o, om, sc, km, running);
     }
+*/
 }
 
 void* cook_thread(void* args) {
