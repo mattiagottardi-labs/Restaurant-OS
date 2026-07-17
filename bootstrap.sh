@@ -161,7 +161,9 @@ for j in {0..7}; do
     echo -e "$key\t= $value"
 done
 
-if [[ $mode == "debug" ]]; then
+if [[ $mode == "gdb" ]]; then
+    gdb --args ./program "${final_args[@]}"
+elif [[ $mode == "gdbt" ]]; then
     gdb -tui --args ./program "${final_args[@]}"
 else
     ./program "${final_args[@]}"

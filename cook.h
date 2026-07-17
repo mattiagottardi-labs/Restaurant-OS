@@ -17,11 +17,12 @@ typedef enum CookState {
 
 // cook arguments structure passed to the thread
 typedef struct CookArgs {
-    int             id;
-    OrderManager*   om;
-    SimClock*       sc;
-    KitchenManager* km;
-    bool*           running;
+    int                 id;
+    OrderManager*       om;
+    SimClock*           sc;
+    KitchenManager*     km;
+    bool*               running;
+    pthread_mutex_t*    print;
 } CookArgs;
 
 typedef struct Cook {

@@ -8,7 +8,7 @@ typedef struct Order Order;
 
 typedef enum Casting {
     ORDER_LIST,
-    CUSTOMER_QUEUE
+    CUSTOMER_QUEUE,
 } Casting;
 
 typedef struct ListNode {
@@ -48,4 +48,6 @@ extern pthread_mutex_t rand_mutex;
 void     seed_init(int seed);
 int      safe_rand(void);
 int      safe_rand_range(int max);
+
+void*   destructor(void* ptr, Casting cast);
 #endif

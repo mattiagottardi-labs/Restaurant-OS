@@ -82,10 +82,9 @@ bool is_empty(void* q, Casting cast) {
         break;
     
     default:
-        perror("Unknown Cast");
-        break;
+        perror("is_empty - Unknown Cast");
     }
-    // if both fails, return false
+    // if all fails, return false
     return false;
 }
 

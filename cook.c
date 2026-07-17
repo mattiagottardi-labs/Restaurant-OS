@@ -275,6 +275,30 @@ void cook_dish(Dish* d, Order* o, OrderManager* om, SimClock* sc, KitchenManager
     release_tools(used, d, km, sc);
 }
 
+void print_ck(Cook* ck) {
+    pthread_mutex_lock(ck->arg->print);
+    printf("\tCOOK %d: ", ck->arg->id);
+    switch(ck->present) {
+        case WAITING:
+            printf("waiting for an incoming order");
+            break;
+
+        case SELECT_DISH:
+            printf("selecting a dish from the order");
+            break;
+
+        case ACQUIRE_TOOL:
+            printf("trying to acquire the tools to cook");
+            break;
+
+        case COOKING:
+            printf("cooking the dish");
+            break;
+    }
+    printf("\n");
+    pthread_mutex_unlock(ck->arg->print);
+}
+
 /* --------------------------------------------------------------------------
  * cook_loop — continuously looks for orders to cook.
  *             Spins on get_next_order when nothing is available.
@@ -286,6 +310,8 @@ void cook_loop(Cook* ck) {
         pthread_mutex_lock(&ck->arg->sc->lock);
         pthread_cond_wait(&ck->arg->sc->tick_cv, &ck->arg->sc->lock);
         pthread_mutex_unlock(&ck->arg->sc->lock);
+
+        print_ck(ck);
 
         switch(ck->present) {
 
@@ -390,20 +416,6 @@ void cook_loop(Cook* ck) {
         }
         ck->present = ck->future;
     }
-/*
-    while (running) {
-        Order* o = get_next_order(om);
-        if (!o) continue;
-
-        Dish* d = pick_dish(o);
-        if (!d) {
-            sched_yield();
-            continue;
-        }
-
-        cook_dish(d, o, om, sc, km, running);
-    }
-*/
 }
 
 void* cook_thread(void* args) {
@@ -412,9 +424,6 @@ void* cook_thread(void* args) {
     ck->arg = (CookArgs*) args;
 
     cook_loop(ck);
-
-    free(ck);
-    ck = NULL;
 
     return NULL;
 }

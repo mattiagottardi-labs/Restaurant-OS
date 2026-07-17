@@ -142,7 +142,7 @@ void list_insert_order(OrderList* ol, Order* o, int algorithm) {
     if (!o) return;
     ListNode* new_node = malloc(sizeof(ListNode));
     if (!new_node) {
-        perror("list_insert_order: malloc failed\n");
+        perror("list_insert_order - malloc failed");
         return;
     }
     new_node->o    = o;
@@ -264,14 +264,27 @@ void waiter_loop(Waiter* wtr) {
                     cst->present = SEATED;
                 }
 
-                wtr->future = is_empty(wtr->arg->om->completed_orders, ORDER_LIST) ? IDLE : DELIVERING_FOOD;
+                if(wtr->arg->om->completed_orders->head != NULL) {
+                    printf("Order ready to be delivered");
+                    wtr->future = DELIVERING_FOOD;
+                }
+                else {
+                    wtr->future = IDLE;
+                }
+
+                //wtr->future = is_empty(wtr->arg->om->completed_orders, ORDER_LIST) ? IDLE : DELIVERING_FOOD;
                 break;
             
             case TAKING_ORDER:
                 // obtain customer without removing from the queue
                 cst = peek(wtr->arg->seated);
                 if(cst->o) {
-                    list_insert_order(wtr->arg->om->waitlist, cst->o, 0);
+                    if(wtr->arg->om->priority->size < 10) {
+                        list_insert_order(wtr->arg->om->priority, cst->o, 0);    
+                    }
+                    else {
+                        list_insert_order(wtr->arg->om->waitlist, cst->o, 0);
+                    }
 
                     cst = pop(wtr->arg->seated);
                     enqueue(cst, wtr->arg->waiting_order);
@@ -282,7 +295,8 @@ void waiter_loop(Waiter* wtr) {
                     wtr->future = ENTERTAINING;
                 }
                 else {
-                    wtr->future = is_empty(wtr->arg->om->completed_orders, ORDER_LIST) ? DELIVERING_FOOD : IDLE;
+                    //wtr->future = is_empty(wtr->arg->om->completed_orders, ORDER_LIST) ? DELIVERING_FOOD : IDLE;
+                    wtr->future = IDLE;
                 }
                 break;
 
@@ -312,11 +326,6 @@ void waiter_loop(Waiter* wtr) {
         // Update the state for next cycle
         wtr->present = wtr->future;
     }
-    free(cst);
-    cst = NULL;
-
-    free(o);
-    o = NULL;
 }
 
 void* waiter_thread(void* args){
@@ -328,9 +337,6 @@ void* waiter_thread(void* args){
 
     // runs waiter loop
     waiter_loop(wtr);
-
-    free(wtr);
-    wtr = NULL;
 
     return NULL;
 }

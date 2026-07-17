@@ -66,10 +66,6 @@ void* thread_manager(void* args) {
     pthread_join(customer_tid[i], NULL);
   }
 
-  free(customer_tid);
-  pthread_exit(NULL);
-
-  free(customer_args);
   pthread_exit(NULL);
 }
 
@@ -219,10 +215,12 @@ int main(int argc, char* argv[]){
   CookArgs* cook_args = malloc(NUM_COOKS * sizeof(CookArgs));
 
   for(int i = 0; i < NUM_COOKS; i++) {
+    cook_args->id = i + 1;
     cook_args->km = km;
     cook_args->om = om;
     cook_args->running = running;
     cook_args->sc = sc;
+    cook_args->print = &print;
     pthread_create(&cooks_tid[i], NULL, cook_thread, cook_args);
     cook_args++;
   }

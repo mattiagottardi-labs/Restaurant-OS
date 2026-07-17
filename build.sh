@@ -47,7 +47,12 @@ clean() {
 # function to execute scenarios
 gdb() {
     echo "Running default scenario"
-    ./bootstrap.sh debug
+    ./bootstrap.sh gdb
+}
+
+gdbt() {
+    echo "Running default scenario"
+    ./bootstrap.sh gdbt
 }
 
 # function to execute scenarios
@@ -67,8 +72,11 @@ case $command in
     clean)
         clean;;
 
-    debug)
+    gdb)
         gdb;;
+
+    gdbt)
+        gdbt;;
 
     run)
         run;;
