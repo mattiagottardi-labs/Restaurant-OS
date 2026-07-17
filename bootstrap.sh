@@ -162,7 +162,7 @@ for j in {0..7}; do
 done
 
 if [[ $mode == "debug" ]]; then
-    gdb --args ./program "${final_args[@]}"
+    gdb -tui --args ./program "${final_args[@]}"
 else
     ./program "${final_args[@]}"
 fi

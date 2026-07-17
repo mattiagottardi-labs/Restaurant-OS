@@ -153,19 +153,22 @@ void list_insert_order(OrderList* ol, Order* o, int algorithm) {
 
     if (algorithm == 2 || !ol->head) {
         /* Append to tail */
-        if (!ol->head) {
+        if(!ol->head) {
             ol->head = new_node;
-        } else {
+        }
+        else {
             ListNode* cur = ol->head;
             while (cur->next) cur = cur->next;
             cur->next = new_node;
         }
-    } else {
+    }
+    else {
         /* Sorted insert by ascending prio */
-        if (new_node->prio < ol->head->prio) {
+        if(new_node->prio < ol->head->prio) {
             new_node->next = ol->head;
             ol->head = new_node;
-        } else {
+        }
+        else {
             ListNode* cur = ol->head;
             while (cur->next && cur->next->prio <= new_node->prio)
                 cur = cur->next;
@@ -201,11 +204,20 @@ void om_init(OrderManager* om){
 }
 
 // if waiting customers and no waiting orders -> call this function
-int customer_entertainment(EntertainmentActivity *ea) {
+void customer_entertainment(Waiter* wtr, EntertainmentActivity *ea) {
     int activity = safe_rand_range(5) - 1;
-    printf("Waiter is %s, to entertain waiting customers.", ea[activity].name);
+    printf("Waiter is %s, to entertain standing customers.\n", ea[activity].name);
     usleep(ea[activity].duration);
-    return ea[activity].efficacy;
+
+    QueueNode* tmp = wtr->arg->standing->head;
+
+    for(int i = 0; i < wtr->arg->standing->size; i++) {
+        tmp->c->patience += ea[activity].efficacy;
+        tmp = tmp->next;
+    }
+
+    free(tmp);
+    tmp = NULL;
 }
 
 /* --------------------------------------------------------------------------
@@ -218,6 +230,9 @@ int customer_entertainment(EntertainmentActivity *ea) {
  *          be entertained by the waiter ![only one so mutex needed]), 
  * -------------------------------------------------------------------------- */
 void waiter_loop(Waiter* wtr) {
+    // buffer customer used to perform operation on queues
+    Customer* cst = malloc(sizeof(Customer));
+
     while (wtr->arg->running) {
         pthread_mutex_lock(&wtr->arg->sc->lock);
         pthread_cond_wait(&wtr->arg->sc->tick_cv, &wtr->arg->sc->lock);
@@ -244,27 +259,27 @@ void waiter_loop(Waiter* wtr) {
 
             // when customer is waiting outisde but there is free space, accomodate the customer
             case ACCOMODATING_CUSTOMER:
-                Customer* cst = pop(wtr->arg->standing);
+                cst = pop(wtr->arg->standing);
 
                 enqueue(cst, wtr->arg->seated);
                 cst->present = SEATED;
-
-                free(cst);
-                cst = NULL;
 
                 wtr->future = is_empty(wtr->arg->om->completed_orders, ORDER_LIST) ? DELIVERING_FOOD : IDLE;
                 break;
             
             case TAKING_ORDER:
                 // obtain customer without removing from the queue
-                if(peek(wtr->arg->seated)) {
-                    // insert the order, if not NULL
+                cst = peek(wtr->arg->seated);
+                if(cst->o) {
                     list_insert_order(wtr->arg->om->waitlist, cst->o, 0);
 
                     cst = pop(wtr->arg->seated);
                     enqueue(cst, wtr->arg->waiting_order);
                     cst->present = WAITING_ORDER;
-                }              
+                }
+                else {
+                    printf("Customer order is NULL");
+                }    
 
                 if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE)) {
                     wtr->future = ENTERTAINING;
@@ -283,6 +298,9 @@ void waiter_loop(Waiter* wtr) {
                 else {
                     printf("Order is NULL\n");
                 }
+
+                free(o);
+                o = NULL;
                 
                 if(list_peek(wtr->arg->om->completed_orders)) {
                     wtr->future = wtr->present;
@@ -293,7 +311,7 @@ void waiter_loop(Waiter* wtr) {
                 break;
 
             case ENTERTAINING:
-                customer_entertainment(ea);
+                customer_entertainment(wtr, ea);
                 wtr->future = IDLE;
                 break;
 
@@ -335,6 +353,8 @@ void waiter_loop(Waiter* wtr) {
         }
 */
     }
+    free(cst);
+    cst = NULL;
 }
 
 void* waiter_thread(void* args){

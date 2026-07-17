@@ -62,7 +62,7 @@ void free_order(Order* o) {
 }
 
 /* --------------------------------------------------------------------------
- * Queue helpers
+ * is_empty - void* and a casting type defined in utils.h enum, true if q is empty (size = 0)
  * -------------------------------------------------------------------------- */
 bool is_empty(void* q, Casting cast) {
     switch(cast) {
@@ -80,6 +80,8 @@ bool is_empty(void* q, Casting cast) {
         perror("Unknown Cast");
         break;
     }
+    // if both fails, return false
+    return false;
 }
 
 /* --------------------------------------------------------------------------
@@ -239,7 +241,6 @@ void customer_loop(Customer* cst) {
             case SEATED:
                 sem_wait(&cst->arg->rc);
                 cst->future = WAITING_ORDER;
-                
                 break;
 
             case WAITING_ORDER:

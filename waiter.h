@@ -53,17 +53,17 @@ typedef struct EntertainmentActivity {
 
 extern EntertainmentActivity ea[5];
 
-int    get_prio(Order* o, int algorithm);
-void   list_insert(OrderList* ol, Customer* cst, int algorithm);
-Order* list_peek(OrderList* ol);
-Order* list_pop(OrderList* ol);
-void   refill_priority(OrderManager* om);
-void   waiter_loop(Waiter* wtr);
-void   list_insert_order(OrderList* ol, Order* o, int algorithm);
-void*  waiter_thread(void* arg);
-void   om_init(OrderManager* om);
-void   list_init(OrderList* ol);
-int    customer_entertainment(EntertainmentActivity* ea);
+int     get_prio(Order* o, int algorithm);
+void    list_insert(OrderList* ol, Customer* cst, int algorithm);
+Order*  list_peek(OrderList* ol);
+Order*  list_pop(OrderList* ol);
+void    refill_priority(OrderManager* om);
+void    waiter_loop(Waiter* wtr);
+void    list_insert_order(OrderList* ol, Order* o, int algorithm);
+void*   waiter_thread(void* arg);
+void    om_init(OrderManager* om);
+void    list_init(OrderList* ol);
+void    customer_entertainment(Waiter* wtr, EntertainmentActivity* ea);
 //void   take_order(CustomerQueue* seated, CustomerQueue* ordered, OrderList* waiting);
 void    print_wtr(Waiter* wtr);
 #endif
