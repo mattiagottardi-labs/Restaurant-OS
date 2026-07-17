@@ -112,7 +112,7 @@ void refill_priority(OrderManager* om) {
 
 void print_wtr(Waiter* wtr) {
     pthread_mutex_lock(wtr->arg->print);
-    printf(" WAITER %d: ", wtr->arg->id);
+    printf("\tWAITER %d: ", wtr->arg->id);
     switch(wtr->present) {
         case IDLE:
             printf("idle");
@@ -230,8 +230,9 @@ void customer_entertainment(Waiter* wtr, EntertainmentActivity *ea) {
  *          be entertained by the waiter ![only one so mutex needed]), 
  * -------------------------------------------------------------------------- */
 void waiter_loop(Waiter* wtr) {
-    // buffer customer used to perform operation on queues
+    // buffer customer/order used to perform operation on queues
     Customer* cst = malloc(sizeof(Customer));
+    Order* o = malloc(sizeof(Order));
 
     while (wtr->arg->running) {
         pthread_mutex_lock(&wtr->arg->sc->lock);
@@ -248,23 +249,22 @@ void waiter_loop(Waiter* wtr) {
                 }
                 // otherwise check for standing customer and try to accomodate them
                 else if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE)) {
-                    int sval;
-                    sem_getvalue(wtr->arg->rc, &sval);
-                    wtr->future = (sval > 0) ? ACCOMODATING_CUSTOMER : ENTERTAINING;
+                    wtr->future = (sem_trywait(wtr->arg->rc) == 0) ? ACCOMODATING_CUSTOMER : ENTERTAINING;
                 }
                 else {
                     wtr->future = wtr->present;
                 }
                 break;
 
-            // when customer is waiting outisde but there is free space, accomodate the customer
+            // when customer is waiting outside but there is free space -> accomodate the customer
             case ACCOMODATING_CUSTOMER:
                 cst = pop(wtr->arg->standing);
+                if(cst) {
+                    enqueue(cst, wtr->arg->seated);
+                    cst->present = SEATED;
+                }
 
-                enqueue(cst, wtr->arg->seated);
-                cst->present = SEATED;
-
-                wtr->future = is_empty(wtr->arg->om->completed_orders, ORDER_LIST) ? DELIVERING_FOOD : IDLE;
+                wtr->future = is_empty(wtr->arg->om->completed_orders, ORDER_LIST) ? IDLE : DELIVERING_FOOD;
                 break;
             
             case TAKING_ORDER:
@@ -276,10 +276,7 @@ void waiter_loop(Waiter* wtr) {
                     cst = pop(wtr->arg->seated);
                     enqueue(cst, wtr->arg->waiting_order);
                     cst->present = WAITING_ORDER;
-                }
-                else {
-                    printf("Customer order is NULL");
-                }    
+                } 
 
                 if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE)) {
                     wtr->future = ENTERTAINING;
@@ -291,16 +288,10 @@ void waiter_loop(Waiter* wtr) {
 
             case DELIVERING_FOOD:
                 // take the order and deliver to the customer
-                Order* o = list_pop(wtr->arg->om->completed_orders);
-                if(o != NULL) {
+                o = list_pop(wtr->arg->om->completed_orders);
+                if(o) {
                     atomic_store(&o->c->served, true);
                 }
-                else {
-                    printf("Order is NULL\n");
-                }
-
-                free(o);
-                o = NULL;
                 
                 if(list_peek(wtr->arg->om->completed_orders)) {
                     wtr->future = wtr->present;
@@ -320,41 +311,12 @@ void waiter_loop(Waiter* wtr) {
         }
         // Update the state for next cycle
         wtr->present = wtr->future;
-
-        /*
-        sem_wait(&wtr->arg->ea_bin);
-        // waiter checks if a customer has to Order
-        if(!is_empty(seated)) {
-
-            // waiter checks if a Dish is ready to deliver
-            if(!order_ready(wtr->arg->m->completed_orders)) {
-
-                // waiter checks if there are standing customers waiting
-                if(!is_empty(standing)) {
-                    customer_entertainment(ea);
-                    sem_post(&ea_bin);
-                }
-            }
-        }
-        
-        else {
-
-            // moving customer from standing to seated queue
-            customer* c = NULL;
-            while ((c = pop(standing)) != NULL && seated->size < seated->max_size) {
-                if (!c->o || atomic_load(&c->o->expired)) {
-                    list_insert(m->discarded_orders, c, 2);
-                    continue;
-                }
-                list_insert(m->waitlist, c, 0);  // or 1 for SJF
-            }
-
-            refill_priority(m);
-        }
-*/
     }
     free(cst);
     cst = NULL;
+
+    free(o);
+    o = NULL;
 }
 
 void* waiter_thread(void* args){

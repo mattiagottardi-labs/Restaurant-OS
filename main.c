@@ -31,7 +31,6 @@ char* RESOURCE_FILE;
 bool* running;
 const int MAX_CUSTOMER_SPAWN_RATE = 5000000; // caution, this time is in microseconds
 int CLK_PERIOD;
-const int K = 2;  // this multiplies the time to decrese the period (higher K -> slower simulation)
 
 // customer_thread_manager implements this function
 void* thread_manager(void* args) {
@@ -148,7 +147,7 @@ void* tick_advance(void* args) {
   while(running) {
     usleep(CLK_PERIOD);
     pthread_mutex_lock(&sc->lock);
-    printf("\nTICKING: %d\n", sc->tick);
+    printf("\nTICK: %d\n", sc->tick);
     sc->tick++;
     pthread_cond_broadcast(&sc->tick_cv);
     pthread_mutex_unlock(&sc->lock);
@@ -179,7 +178,7 @@ int main(int argc, char* argv[]){
   MENU_FILE = argv[7];
   RESOURCE_FILE = argv[8];
 
-  CLK_PERIOD = (K * 1000000) / GAME_SPEED;
+  CLK_PERIOD = 1000000 / GAME_SPEED;
 
   pthread_mutex_t print = PTHREAD_MUTEX_INITIALIZER;
 

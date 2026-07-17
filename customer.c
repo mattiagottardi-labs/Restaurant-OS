@@ -7,16 +7,21 @@
  * Order creation
  * -------------------------------------------------------------------------- */
 Order* make_order(Customer* c, Menu* menu, int num_dishes) {
-    Order* o = malloc(sizeof(Order));
-    if (!o) return NULL;
 
-    o->dishes = calloc(num_dishes + 1, sizeof(Dish*));
-    if (!o->dishes) {
+    Order* o = malloc(sizeof(Order));
+    if(!o) {
+        perror("order creation - malloc");
+        return NULL;
+    }
+
+    o->dishes = calloc(num_dishes + 1, sizeof(Dish));
+    if(!o->dishes) {
+        perror("dish creation - calloc");
         free(o);
         return NULL;
     }
 
-    for (int i = 0; i < num_dishes; i++) {
+    for(int i = 0; i < num_dishes; i++) {
         o->dishes[i] = copy_dish(menu->selection[safe_rand_range(menu->num_dishes)]);
     }
     o->dishes[num_dishes] = NULL;
@@ -38,10 +43,10 @@ int get_prep_time(Order* o) {
 }
 
 Dish* copy_dish(Dish* src) {
-    if (!src) return NULL;
+    if(!src) return NULL;
 
     Dish* d = malloc(sizeof(Dish));
-    if (!d) return NULL;
+    if(!d) return NULL;
 
     *d = *src;
     atomic_store(&d->cooking, false);
@@ -189,7 +194,7 @@ void clean(CustomerQueue* q) {
 
 void print_cst(Customer* cst) {
     pthread_mutex_lock(cst->arg->print);
-    printf(" CUSTOMER %d: ", cst->arg->id);
+    printf("\tCUSTOMER %d: ", cst->arg->id);
     switch(cst->present) {
         case STANDING:
             printf("standing");
@@ -200,7 +205,7 @@ void print_cst(Customer* cst) {
             break;
 
         case WAITING_ORDER:
-            printf("waiting for my order");
+            printf("waiting for my food");
             break;
 
         case EATING:
@@ -239,8 +244,6 @@ void customer_loop(Customer* cst) {
                 break;
 
             case SEATED:
-                sem_wait(&cst->arg->rc);
-                cst->future = WAITING_ORDER;
                 break;
 
             case WAITING_ORDER:
