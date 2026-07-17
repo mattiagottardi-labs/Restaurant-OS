@@ -41,7 +41,7 @@ ToolPool* find_pool(const char* tool_name, KitchenManager* km) {
 }
 
 Tool* acquire_pool(ToolPool* pool) {
-    printf("acquiring pool %s\n", pool->name);
+    //printf("\tAcquiring pool %s\n", pool->name);
     pthread_mutex_lock(&pool->lock);
     while (pool->in_use >= pool->quantity)
         pthread_cond_wait(&pool->cv, &pool->lock);
@@ -60,7 +60,7 @@ Tool* acquire_pool(ToolPool* pool) {
 }
 
 void release_pool(ToolPool* pool, Tool* t, SimClock* sc, KitchenManager* km) {
-    printf("realeasing pool %s\n", pool->name);
+    //printf("\tRealeasing pool %s\n", pool->name);
     t->dirty_usages++;
     bool clean_condition = t->dirty_usages >= DIRTY_THRESHOLD;
     if (clean_condition) {
@@ -99,7 +99,7 @@ Tool** acquire_tools(Dish* d, KitchenManager* km) {
 
 void release_tools(Tool** used, Dish* d, KitchenManager* km, SimClock* sc) {
     if (!used) return;
-    printf("releasing tools\n");
+    //printf("\tReleasing tools\n");
     for (int i = 0; d->tools[i] != NULL; i++) {
         if (!used[i]) continue;
         ToolPool* pool = find_pool(d->tools[i], km);
@@ -171,15 +171,15 @@ Dish* pick_dish(Order* o) {
 
     for (int i = 0; o->dishes[i] != NULL; i++) {
         Dish* d = o->dishes[i];
-        printf("selecting Dish...");
+        //printf("\tselecting Dish...\n");
         if (atomic_load(&d->cooking) || atomic_load(&d->ready)){
-            printf("Dish %s is being cooked or ready\n", d->name);
+            printf("\tDish %s is being cooked or ready\n", d->name);
             continue;
         }
 
         int n = count_tools(d);
         if (n < min_tools) {
-            printf("Dish %s has been selected\n", d->name);
+            //printf("\tDish %s has been selected\n", d->name);
             min_tools = n;
             best = d;
         }
@@ -191,7 +191,7 @@ Dish* pick_dish(Order* o) {
     bool expected = false;
     if (!atomic_compare_exchange_strong(&best->cooking, &expected, true))
         return NULL;
-    printf("Dish %s has been deemed best\n", best->name);
+    printf("\tDish %s has been deemed best\n", best->name);
     return best;
 }
 
@@ -311,7 +311,7 @@ void cook_loop(Cook* ck) {
         pthread_cond_wait(&ck->arg->sc->tick_cv, &ck->arg->sc->lock);
         pthread_mutex_unlock(&ck->arg->sc->lock);
 
-        print_ck(ck);
+        // print_ck(ck);
 
         switch(ck->present) {
 
