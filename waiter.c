@@ -263,6 +263,9 @@ void waiter_loop(Waiter* wtr) {
                         wtr->future = wtr->present;
                     }
                 }
+                else if(!is_empty(wtr->arg->om->completed_orders, ORDER_LIST)) {
+                    wtr->future = DELIVERING_FOOD;
+                }
                 else {
                     wtr->future = wtr->present;
                 }
