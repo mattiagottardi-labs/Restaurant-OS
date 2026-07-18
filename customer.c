@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdio.h>
 
-const int DEFAULT_PATIENCE = 50;
+const int DEFAULT_PATIENCE = 40;
 
 /* --------------------------------------------------------------------------
  * Order creation
@@ -203,7 +203,7 @@ void print_cst(Customer* cst) {
     printf(CYAN " CUSTOMER %d" RESET ":\t", cst->arg->id);
     switch(cst->present) {
         case STANDING:
-            printf("standing");
+            printf(GRAY "standing" RESET);
             break;
 
         case SEATED:
@@ -215,11 +215,11 @@ void print_cst(Customer* cst) {
             break;
 
         case EATING:
-            printf("eating");
+            printf(RED "eating" RESET);
             break;
 
         case FINISHED:
-            printf("done");
+            printf(GREEN "done" RESET);
             break;
     }
     printf(", patience = %d \n", cst->patience);
@@ -238,9 +238,7 @@ void customer_loop(Customer* cst) {
     while(cst->arg->running) {
         pthread_mutex_lock(&cst->arg->sc->lock);
         pthread_cond_wait(&cst->arg->sc->tick_cv, &cst->arg->sc->lock);
-        pthread_mutex_unlock(&cst->arg->sc->lock);
-
-        print_cst(cst);     
+        pthread_mutex_unlock(&cst->arg->sc->lock);   
 
         cst->present = cst->patience > 0 ? cst->present : FINISHED;
 
@@ -253,23 +251,23 @@ void customer_loop(Customer* cst) {
                 cst->o = make_order(cst, cst->arg->menu, safe_rand_range(5));
                 cst->patience += get_prep_time(cst->o) + safe_rand_range(10);
                 if(cst->patience < 0) {
-                    cst->future = FINISHED;
+                    atomic_store(&cst->future, FINISHED);
                 }
                 break;
 
             case WAITING_ORDER:
                 if(cst->served) {
-                    cst->future = EATING;
+                    atomic_store(&cst->future, EATING);
                 }
                 else {
-                    cst->future = cst->present;
+                    atomic_store(&cst->future, cst->present);
                 }
                 break;
 
             case EATING:
                 // eating time = 1 s (just to test the code)
                 usleep(100000);
-                cst->future = FINISHED;
+                atomic_store(&cst->future, FINISHED);
                 break;
 
             case FINISHED:
@@ -282,7 +280,8 @@ void customer_loop(Customer* cst) {
                 perror("Customer - Unknown State");
             
         }
-        cst->present = cst->future;
+        print_cst(cst);
+        atomic_store(&cst->present, cst->future);
         cst->patience--;
     }
 
@@ -293,7 +292,7 @@ void* customer_thread(void* args) {
   if(!args) return NULL;
   //creates customer then goes into customer loop
   Customer* cst = malloc(sizeof(Customer));
-  cst->present = STANDING;
+  atomic_store(&cst->present, STANDING);
   cst->arg = (CustomerArgs*) args;
   cst->patience = DEFAULT_PATIENCE;
   enqueue(cst, cst->arg->standing);

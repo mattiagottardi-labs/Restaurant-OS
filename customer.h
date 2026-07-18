@@ -38,14 +38,14 @@ typedef struct CustomerArgs {
 } CustomerArgs;
 
 typedef struct Customer {
-    Order*          o;
-    int             patience;
-    _Atomic bool    served;
-    _Atomic bool    discarded;
-    pthread_mutex_t lock;
-    CustomerState   present;
-    CustomerState   future;
-    CustomerArgs*   arg;
+    Order*                  o;
+    int                     patience;
+    _Atomic bool            served;
+    _Atomic bool            discarded;
+    pthread_mutex_t         lock;
+    _Atomic CustomerState   present;
+    _Atomic CustomerState   future;
+    CustomerArgs*           arg;
 } Customer;
 
 typedef struct QueueNode {

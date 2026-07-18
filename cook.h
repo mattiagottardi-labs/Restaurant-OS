@@ -28,11 +28,11 @@ typedef struct CookArgs {
 } CookArgs;
 
 typedef struct Cook {
-    CookArgs* arg;
-    Dish*     target_dish;
-    Tool**    claimed_tools;
-    CookState present;
-    CookState future;
+    CookArgs*           arg;
+    Dish*               target_dish;
+    Tool**              claimed_tools;
+    _Atomic CookState   present;
+    _Atomic CookState   future;
 } Cook;
 
 

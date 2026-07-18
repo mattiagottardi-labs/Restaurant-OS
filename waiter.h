@@ -40,9 +40,9 @@ typedef struct WaiterArgs {
 } WaiterArgs;
 
 typedef struct Waiter {
-    WaiterArgs*     arg;
-    WaiterState     present;
-    WaiterState     future;
+    WaiterArgs*         arg;
+    _Atomic WaiterState present;
+    _Atomic WaiterState future;
 } Waiter;
 
 typedef struct EntertainmentActivity {
