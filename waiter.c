@@ -247,8 +247,8 @@ void waiter_loop(Waiter* wtr) {
         switch(wtr->present) {
             case IDLE:
                 // if there are seated customer, try to serve them
-                if(!is_empty(wtr->arg->seated, CUSTOMER_QUEUE)) {
-                    wtr->future = TAKING_ORDER;
+                if(!is_empty(wtr->arg->om->completed_orders, ORDER_LIST)) {
+                    wtr->future = DELIVERING_FOOD;
                 }
                 // otherwise check for standing customer and try to accomodate them
                 else if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE)) {
@@ -263,8 +263,8 @@ void waiter_loop(Waiter* wtr) {
                         wtr->future = wtr->present;
                     }
                 }
-                else if(!is_empty(wtr->arg->om->completed_orders, ORDER_LIST)) {
-                    wtr->future = DELIVERING_FOOD;
+                else if(!is_empty(wtr->arg->seated, CUSTOMER_QUEUE)) {
+                    wtr->future = TAKING_ORDER;
                 }
                 else {
                     wtr->future = wtr->present;
