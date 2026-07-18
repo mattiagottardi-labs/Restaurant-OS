@@ -331,6 +331,7 @@ void cook_loop(Cook* ck) {
                     ck->future = SELECT_DISH;
                 }
                 else {
+                    refill_priority(ck->arg->om);
                     ck->future = ck->present;
                 }
                 pthread_mutex_unlock(&ck->arg->om->priority->lock);

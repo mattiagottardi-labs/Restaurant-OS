@@ -252,7 +252,6 @@ void customer_loop(Customer* cst) {
             case SEATED:
                 cst->o = make_order(cst, cst->arg->menu, safe_rand_range(5));
                 cst->patience += get_prep_time(cst->o) + safe_rand_range(10);
-                cst->patience -= DEFAULT_PATIENCE;
                 if(cst->patience < 0) {
                     cst->future = FINISHED;
                 }
@@ -270,6 +269,7 @@ void customer_loop(Customer* cst) {
             case EATING:
                 // eating time = 1 s (just to test the code)
                 usleep(100000);
+                cst->future = FINISHED;
                 break;
 
             case FINISHED:

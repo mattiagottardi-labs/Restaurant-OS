@@ -246,46 +246,21 @@ void waiter_loop(Waiter* wtr) {
 
         switch(wtr->present) {
             case IDLE:
-                // if there are seated customer, try to serve them
-                if(!is_empty(wtr->arg->om->completed_orders, ORDER_LIST)) {
-                    wtr->future = DELIVERING_FOOD;
+                if  (!is_empty(wtr->arg->seated, CUSTOMER_QUEUE)){
+                  wtr->future = is_empty(wtr->arg->om->completed_orders, ORDER_LIST) ? TAKING_ORDER : DELIVERING_FOOD;
                 }
-                // otherwise check for standing customer and try to accomodate them
-                else if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE)) {
-                    // sem_trywait returns 0 if decrements succeded
-                    if(sem_trywait(wtr->arg->rc) == 0) {
-                        wtr->future = ACCOMODATING_CUSTOMER;
-                    }
-                    else if(sem_trywait(wtr->arg->ea_bin) == 0) {
-                        wtr->future = ENTERTAINING;
-                    }
-                    else {
-                        wtr->future = wtr->present;
-                    }
+                else if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE)){
+                  wtr->future =  (sem_trywait(wtr->arg->rc) == 0) ? ACCOMODATING_CUSTOMER : ENTERTAINING;
                 }
-                else if(!is_empty(wtr->arg->seated, CUSTOMER_QUEUE)) {
-                    wtr->future = TAKING_ORDER;
-                }
-                else {
-                    wtr->future = wtr->present;
-                }
+                else wtr->future = ENTERTAINING;
                 break;
-
-            // when customer is waiting outside but there is free space -> accomodate the customer
             case ACCOMODATING_CUSTOMER:
                 cst = pop(wtr->arg->standing);
                 if(cst) {
                     cst->future = SEATED;
                     enqueue(cst, wtr->arg->seated);
                 }
-
-                if(!is_empty(wtr->arg->om->completed_orders, ORDER_LIST)) {
-                    printf("Order ready to be delivered");
-                    wtr->future = DELIVERING_FOOD;
-                }
-                else {
-                    wtr->future = IDLE;
-                }
+                wtr->future = TAKING_ORDER;
                 break;
             
             case TAKING_ORDER:
@@ -308,9 +283,6 @@ void waiter_loop(Waiter* wtr) {
                         wtr->future = IDLE;
                     }
                 }
-                else {
-                    wtr->future = IDLE;
-                }
                 break;
 
             case DELIVERING_FOOD:
@@ -329,8 +301,8 @@ void waiter_loop(Waiter* wtr) {
                 break;
 
             case ENTERTAINING:
-                customer_entertainment(wtr, ea);
-                wtr->future = IDLE;
+                // customer_entertainment(wtr, ea);
+                wtr->future = is_empty(wtr->arg->om->completed_orders, ORDER_LIST) ? IDLE : DELIVERING_FOOD;
                 break;
 
             default:
