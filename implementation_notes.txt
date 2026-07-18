@@ -1,0 +1,61 @@
+The current implementation of the different parties work as follows:
+
+CUSTOMER LOOP:
+- The customer generates a random order.
+- The customer places himself in the customer queue.
+- The customer waits until the order is fulfilled, or time runs out.
+- If the order is fulfilled, the customer applies bonus and returns.
+- If time runs out, the customer joins the dissatified queue.
+- The dissatified queue is handled at the end of the simulation, and applies all the malus. 
+- Alternatively, if the score is requested at runtime, the malus calculation is done at runtime.
+
+
+WAITER LOOP:
+- The waiter checks the customer queue.
+- If there is a customer, the waiter takes the order and places it in the correct order queue. (MLFQ)
+note:   order queues are implemented to make the cooks only worry about  
+        a reduced pool of orders with the highest priority, and choose the one closest to completion. (SJF)
+- The waiter checks the finished orders queue.
+- The waiter is responsible for QUEUE SANITIAZATION meaning it must take care of orders whose customers are out of patience for.
+- If there is a finished order, the waiter takes it and delivers it to the customer.
+
+
+COOK LOOP:
+- checks the order queue with the highest priority
+- chooses the order closest to completion (SJF)
+- if no order is available in the queue, checks for the next queue.
+
+The data is organized in the following way:
+
+CUSTOMERS: 
+- There is a customer queue where customers wait for their orders to be taken by the waiters.
+
+ORDERS:
+- There is an order manager, which contains the order queues (MLFQ) and the finished orders queue.
+- The waiters and cooks interact with the order manager to take and place orders.
+- The order manager is responsible for managing the order queues and ensuring that orders 
+  are processed according to the MLFQ and SJF policies.
+- The order manager also handles the synchronization between the different parties, ensuring that
+  the waiters and cooks can access the order queues without conflicts.
+
+MENU:
+- The menu is a list of dishes, each with a name, preparation time, and price.
+- The menu is used by the customers to generate their orders, and by the cooks to know how long it takes to prepare each dish.
+- The menu is a global variable that can be accessed by all parties, but it is read-only to prevent conflicts.
+
+Lifetime of the program:
+- Start the program, initialize the menu and the order manager.
+- Waits for signals that enumarate the number of customer threads, waiter threads, and cook threads.
+- The threads will run indefinitely, simulating the restaurant operation.
+- The program can be terminated by a signal (e.g., SIGINT) or after a certain amount of time.
+
+SIGNALS:
+- The program can handle signals to allow for graceful shutdowns or to trigger certain actions (e.g., print statistics).
+- The .sh file is tasked with sending signals to the program to inform it about the number of 
+  customers, waiters, and cooks to create, as well as to trigger the termination of the program 
+  after a certain time, it can also be used to send signals to print statistics or perform other actions 
+  during the program's execution.
+LIST OF SIGNALS:
+//todo
+STATISTICS:
+//todo
