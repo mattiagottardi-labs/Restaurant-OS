@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdio.h>
 
-const int DEFAULT_PATIENCE = 10;
+const int DEFAULT_PATIENCE = 50;
 
 /* --------------------------------------------------------------------------
  * Order creation
@@ -15,7 +15,7 @@ Order* make_order(Customer* c, Menu* menu, int num_dishes) {
         return NULL;
     }
 
-    o->dishes = calloc(num_dishes + 1, sizeof(Dish));
+    o->dishes = calloc(num_dishes + 1, sizeof(Dish*));
     if(!o->dishes) {
         perror("dish creation - calloc");
         free(o);
@@ -146,9 +146,9 @@ void dequeue(CustomerQueue* q) {
  * peek — return pointer to head customer without removing
  * -------------------------------------------------------------------------- */
 Customer* peek(CustomerQueue* q) {
-    pthread_mutex_lock(&q->lock);
+    //pthread_mutex_lock(&q->lock);
     Customer* c = is_empty(q, CUSTOMER_QUEUE) ? NULL : q->head->c;
-    pthread_mutex_unlock(&q->lock);
+    //pthread_mutex_unlock(&q->lock);
     return c;
 }
 
@@ -200,7 +200,7 @@ void clean(CustomerQueue* q) {
 
 void print_cst(Customer* cst) {
     pthread_mutex_lock(cst->arg->print);
-    printf("\tCUSTOMER %d: ", cst->arg->id);
+    printf(CYAN " CUSTOMER %d" RESET ":\t", cst->arg->id);
     switch(cst->present) {
         case STANDING:
             printf("standing");
@@ -240,7 +240,7 @@ void customer_loop(Customer* cst) {
         pthread_cond_wait(&cst->arg->sc->tick_cv, &cst->arg->sc->lock);
         pthread_mutex_unlock(&cst->arg->sc->lock);
 
-        // print_cst(cst);     
+        print_cst(cst);     
 
         cst->present = cst->patience > 0 ? cst->present : FINISHED;
 
@@ -251,7 +251,8 @@ void customer_loop(Customer* cst) {
 
             case SEATED:
                 cst->o = make_order(cst, cst->arg->menu, safe_rand_range(5));
-                cst->patience = get_prep_time(cst->o) + safe_rand_range(10) - DEFAULT_PATIENCE;
+                cst->patience += get_prep_time(cst->o) + safe_rand_range(10);
+                cst->patience -= DEFAULT_PATIENCE;
                 if(cst->patience < 0) {
                     cst->future = FINISHED;
                 }

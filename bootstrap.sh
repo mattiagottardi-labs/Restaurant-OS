@@ -165,6 +165,8 @@ if [[ $mode == "gdb" ]]; then
     gdb --args ./program "${final_args[@]}"
 elif [[ $mode == "gdbt" ]]; then
     gdb -tui --args ./program "${final_args[@]}"
+elif [[ $mode == "gdbc" ]]; then
+    gdb core --args ./program "${final_args[@]}"
 else
     ./program "${final_args[@]}"
 fi

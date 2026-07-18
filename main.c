@@ -44,25 +44,24 @@ void* thread_manager(void* args) {
   // customer threads has to be spawned at random time
   int random_delay = ((rand() % MAX_CUSTOMER_SPAWN_RATE) + 1000) / GAME_SPEED;
   
-  int customer_counter;
+  // customer counter index
+  int cc;
 
   // cycle that keeps running to manage customer threads
-  for(customer_counter = 0; customer_counter < TOTAL_CUSTOMERS; customer_counter++) {
+  for(cc = 0; cc < TOTAL_CUSTOMERS; cc++) {
     usleep(random_delay);
 
-    customer_args->id = customer_counter + 1;
-    customer_args->menu = arguments->menu;
-    customer_args->running = arguments->running;
-    customer_args->sc = arguments->sc;
-    customer_args->score = arguments->score;
-    customer_args->standing = arguments->standing;
-    customer_args->print = arguments->print;
-    pthread_create(&customer_tid[customer_counter], NULL, customer_thread, (void*) customer_args);
-    customer_tid++;
-    customer_args++;
+    customer_args[cc].id = cc + 1;
+    customer_args[cc].menu = arguments->menu;
+    customer_args[cc].running = arguments->running;
+    customer_args[cc].sc = arguments->sc;
+    customer_args[cc].score = arguments->score;
+    customer_args[cc].standing = arguments->standing;
+    customer_args[cc].print = arguments->print;
+    pthread_create(&customer_tid[cc], NULL, customer_thread, (void*) &customer_args[cc]);
   }
 
-  for(int i = 0; i < customer_counter; i++) {
+  for(int i = 0; i < cc; i++) {
     pthread_join(customer_tid[i], NULL);
   }
 

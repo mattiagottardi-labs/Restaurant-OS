@@ -9,7 +9,7 @@
  * Tool helpers
  * -------------------------------------------------------------------------- */
 
- int count_tools(Dish* d) {
+int count_tools(Dish* d) {
     int i = 0;
     while (d->tools[i] != NULL) i++;
     return i;
@@ -277,22 +277,30 @@ void cook_dish(Dish* d, Order* o, OrderManager* om, SimClock* sc, KitchenManager
 
 void print_ck(Cook* ck) {
     pthread_mutex_lock(ck->arg->print);
-    printf("\tCOOK %d: ", ck->arg->id);
+    printf(PURPLE " COOK %d" RESET ":\t", ck->arg->id);
     switch(ck->present) {
         case WAITING:
             printf("waiting for an incoming order");
             break;
 
         case SELECT_DISH:
-            printf("selecting a dish from the order");
+            printf(YELLOW "selecting a dish from the order" RESET);
             break;
 
         case ACQUIRE_TOOL:
-            printf("trying to acquire the tools to cook");
+            printf(ORANGE "trying to acquire the tools to cook" RESET);
             break;
 
         case COOKING:
-            printf("cooking the dish");
+            printf(RED "cooking the dish" RESET);
+            break;
+
+        case COMPLETED:
+            printf(GREEN "dish completed" RESET);
+            break;
+
+        case CLEANING:
+            printf("cleaning the tools");
             break;
     }
     printf("\n");
@@ -306,6 +314,7 @@ void print_ck(Cook* ck) {
  *             claimed Order.
  * -------------------------------------------------------------------------- */
 void cook_loop(Cook* ck) {
+    Order* o;
     while(ck->arg->running) {
         pthread_mutex_lock(&ck->arg->sc->lock);
         pthread_cond_wait(&ck->arg->sc->tick_cv, &ck->arg->sc->lock);
@@ -329,7 +338,7 @@ void cook_loop(Cook* ck) {
 
             // pick a dish from the selected order and then try to acquire tools
             case SELECT_DISH:
-                Order* o = get_next_order(ck->arg->om);
+                o = get_next_order(ck->arg->om);
                 if(o) {
                     ck->target_dish = pick_dish(o);
                     ck->future = ACQUIRE_TOOL;
@@ -364,14 +373,21 @@ void cook_loop(Cook* ck) {
                 pthread_mutex_unlock(&ck->arg->sc->lock);
 
                 atomic_store(&ck->target_dish->ready, true);
-                printf("Dish %s is completed", ck->target_dish->name);
+                //printf("Dish %s is completed", ck->target_dish->name);
                 atomic_store(&ck->target_dish->cooking, false);
 
                 /* Decrement Order remaining time */
                 atomic_fetch_sub(&o->remaining_time, ck->target_dish->time);
 
+                release_tools(ck->claimed_tools, ck->target_dish, ck->arg->km, ck->arg->sc);
+
+                ck->future = COMPLETED;
+                break;
+
+            case COMPLETED:
                 /* Check if all dishes are ready */
                 if (atomic_load(&o->remaining_time) == 0) {
+                    ck->future = WAITING;
                     printf("Order completed\n");
                     bool expected = false;
 
@@ -406,8 +422,12 @@ void cook_loop(Cook* ck) {
                     }
                     refill_priority(ck->arg->om);
                 }
+                else {
+                    ck->future = SELECT_DISH;
+                }
+                break;
 
-                release_tools(ck->claimed_tools, ck->target_dish, ck->arg->km, ck->arg->sc);
+            case CLEANING:
                 break;
 
             default:

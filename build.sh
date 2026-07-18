@@ -55,6 +55,11 @@ gdbt() {
     ./bootstrap.sh gdbt
 }
 
+gdbc() {
+    echo "Running default scenario"
+    ./bootstrap.sh gdbc
+}
+
 # function to execute scenarios
 run() {
     echo "Running default scenario"
@@ -77,6 +82,9 @@ case $command in
 
     gdbt)
         gdbt;;
+
+    gdbc)
+        gdbc;;
 
     run)
         run;;

@@ -2,7 +2,18 @@
 #define UTILS_H
 
 #include <pthread.h>
-//#include "customer.h"
+
+#define RED     "\033[31m"
+#define ORANGE  "\033[38;5;208m"
+#define YELLOW  "\033[33m"
+#define GREEN   "\033[32m"
+#define BLUE    "\033[34m"
+#define CYAN    "\033[36m"
+#define MAGENTA "\033[35m"
+#define PURPLE  "\033[38;5;141m"
+#define WHITE   "\033[37m"
+#define GRAY    "\033[38;5;244m"
+#define RESET   "\033[0m"
 
 typedef struct Order Order;
 

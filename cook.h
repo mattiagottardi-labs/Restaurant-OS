@@ -12,7 +12,9 @@ typedef enum CookState {
     WAITING,
     SELECT_DISH,
     ACQUIRE_TOOL,
-    COOKING
+    COOKING,
+    COMPLETED,
+    CLEANING
 } CookState;
 
 // cook arguments structure passed to the thread

@@ -197,10 +197,10 @@ void customer_entertainment(Waiter* wtr, EntertainmentActivity *ea) {
 
 void print_wtr(Waiter* wtr) {
     pthread_mutex_lock(wtr->arg->print);
-    printf("\tWAITER %d: ", wtr->arg->id);
+    printf(MAGENTA " WAITER %d" RESET ":\t", wtr->arg->id);
     switch(wtr->present) {
         case IDLE:
-            printf("idle");
+            printf(GRAY "idle" RESET);
             break;
 
         case ACCOMODATING_CUSTOMER:
@@ -272,8 +272,8 @@ void waiter_loop(Waiter* wtr) {
             case ACCOMODATING_CUSTOMER:
                 cst = pop(wtr->arg->standing);
                 if(cst) {
-                    enqueue(cst, wtr->arg->seated);
                     cst->future = SEATED;
+                    enqueue(cst, wtr->arg->seated);
                 }
 
                 if(!is_empty(wtr->arg->om->completed_orders, ORDER_LIST)) {
@@ -295,14 +295,14 @@ void waiter_loop(Waiter* wtr) {
                     cst = pop(wtr->arg->seated);
                     cst->future = WAITING_ORDER;
                     enqueue(cst, wtr->arg->waiting_order);
-                } 
+                }
 
                 if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE)) {
                     if(sem_trywait(wtr->arg->ea_bin) == 0) {
                         wtr->future = ENTERTAINING;
                     }
                     else {
-                        wtr->future = wtr->present;
+                        wtr->future = IDLE;
                     }
                 }
                 else {
