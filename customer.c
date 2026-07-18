@@ -3,11 +3,12 @@
 #include <string.h>
 #include <stdio.h>
 
+const int DEFAULT_PATIENCE = 10;
+
 /* --------------------------------------------------------------------------
  * Order creation
  * -------------------------------------------------------------------------- */
 Order* make_order(Customer* c, Menu* menu, int num_dishes) {
-
     Order* o = malloc(sizeof(Order));
     if(!o) {
         perror("order creation - malloc");
@@ -70,22 +71,28 @@ void free_order(Order* o) {
  * is_empty - void* and a casting type defined in utils.h enum, true if q is empty (size = 0)
  * -------------------------------------------------------------------------- */
 bool is_empty(void* q, Casting cast) {
+    bool empty;
     switch(cast) {
-    case ORDER_LIST:
-        OrderList* ol = (OrderList*) q;
-        return ol->size == 0;
-        break;
+        case ORDER_LIST: {
+            OrderList* ol = (OrderList*) q;
+            pthread_mutex_lock(&ol->lock);
+            empty = (ol->size == 0);
+            pthread_mutex_unlock(&ol->lock);
+            return empty;
+        }
 
-    case CUSTOMER_QUEUE:
-        CustomerQueue* cq = (CustomerQueue*) q;
-        return cq->size == 0;
-        break;
-    
-    default:
-        perror("is_empty - Unknown Cast");
+        case CUSTOMER_QUEUE: {
+            CustomerQueue* cq = (CustomerQueue*) q;
+            pthread_mutex_lock(&cq->lock);
+            empty = (cq->size == 0);
+            pthread_mutex_unlock(&cq->lock);
+            return empty;
+        }
+        
+        default:
+            perror("is_empty - Unknown Cast");
+            return false; // see note below
     }
-    // if all fails, return false
-    return false;
 }
 
 /* --------------------------------------------------------------------------
@@ -233,9 +240,9 @@ void customer_loop(Customer* cst) {
         pthread_cond_wait(&cst->arg->sc->tick_cv, &cst->arg->sc->lock);
         pthread_mutex_unlock(&cst->arg->sc->lock);
 
-        print_cst(cst);     
+        // print_cst(cst);     
 
-        cst->present = cst->patience != 0 ? cst->present : FINISHED;
+        cst->present = cst->patience > 0 ? cst->present : FINISHED;
 
         // waiting outside for a free seat
         switch(cst->present) {
@@ -243,6 +250,11 @@ void customer_loop(Customer* cst) {
                 break;
 
             case SEATED:
+                cst->o = make_order(cst, cst->arg->menu, safe_rand_range(5));
+                cst->patience = get_prep_time(cst->o) + safe_rand_range(10) - DEFAULT_PATIENCE;
+                if(cst->patience < 0) {
+                    cst->future = FINISHED;
+                }
                 break;
 
             case WAITING_ORDER:
@@ -282,10 +294,9 @@ void* customer_thread(void* args) {
   Customer* cst = malloc(sizeof(Customer));
   cst->present = STANDING;
   cst->arg = (CustomerArgs*) args;
+  cst->patience = DEFAULT_PATIENCE;
   enqueue(cst, cst->arg->standing);
 
-  cst->o = make_order(cst, cst->arg->menu, safe_rand_range(5));
-  cst->patience = get_prep_time(cst->o) + safe_rand_range(100);
   customer_loop(cst);
 
   return NULL;

@@ -234,8 +234,8 @@ void print_wtr(Waiter* wtr) {
  * -------------------------------------------------------------------------- */
 void waiter_loop(Waiter* wtr) {
     // buffer customer/order used to perform operation on queues
-    Customer* cst = malloc(sizeof(Customer));
-    Order* o = malloc(sizeof(Order));
+    Customer* cst = NULL;
+    Order* o = NULL;
 
     while (wtr->arg->running) {
         pthread_mutex_lock(&wtr->arg->sc->lock);
@@ -252,11 +252,12 @@ void waiter_loop(Waiter* wtr) {
                 }
                 // otherwise check for standing customer and try to accomodate them
                 else if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE)) {
-                    if(sem_trywait(wtr->arg->ea_bin) == 0) {
-                        wtr->future = ENTERTAINING;
-                    }
-                    else if(sem_trywait(wtr->arg->rc) == 0) {
+                    // sem_trywait returns 0 if decrements succeded
+                    if(sem_trywait(wtr->arg->rc) == 0) {
                         wtr->future = ACCOMODATING_CUSTOMER;
+                    }
+                    else if(sem_trywait(wtr->arg->ea_bin) == 0) {
+                        wtr->future = ENTERTAINING;
                     }
                     else {
                         wtr->future = wtr->present;
@@ -275,21 +276,19 @@ void waiter_loop(Waiter* wtr) {
                     cst->future = SEATED;
                 }
 
-                if(wtr->arg->om->completed_orders->head != NULL) {
+                if(!is_empty(wtr->arg->om->completed_orders, ORDER_LIST)) {
                     printf("Order ready to be delivered");
                     wtr->future = DELIVERING_FOOD;
                 }
                 else {
                     wtr->future = IDLE;
                 }
-
-                //wtr->future = is_empty(wtr->arg->om->completed_orders, ORDER_LIST) ? IDLE : DELIVERING_FOOD;
                 break;
             
             case TAKING_ORDER:
                 // obtain customer without removing from the queue
                 cst = peek(wtr->arg->seated);
-                if(cst->o) {
+                if(cst && cst->o) {
                     list_insert_order(wtr->arg->om->waitlist, cst->o, 0);
                     refill_priority(wtr->arg->om);
                     
@@ -303,11 +302,10 @@ void waiter_loop(Waiter* wtr) {
                         wtr->future = ENTERTAINING;
                     }
                     else {
-                        wtr->future = IDLE;
+                        wtr->future = wtr->present;
                     }
                 }
                 else {
-                    //wtr->future = is_empty(wtr->arg->om->completed_orders, ORDER_LIST) ? DELIVERING_FOOD : IDLE;
                     wtr->future = IDLE;
                 }
                 break;
