@@ -417,8 +417,6 @@ void cook_loop(Cook* ck) {
 
                             /* Move to completed and signal customer */
                             list_insert_order(ck->arg->om->completed_orders, o, 2);
-                            
-                            atomic_store(&o->c->served, true);
                         }  
                     }
                     refill_priority(ck->arg->om);

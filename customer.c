@@ -222,7 +222,7 @@ void print_cst(Customer* cst) {
             printf("done");
             break;
     }
-    printf("\n");
+    printf(", patience = %d \n", cst->patience);
     pthread_mutex_unlock(cst->arg->print);
 }
 
