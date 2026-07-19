@@ -272,7 +272,7 @@ void waiter_loop(Waiter* wtr) {
         pthread_mutex_lock(&wtr->arg->sc->lock);
         pthread_cond_wait(&wtr->arg->sc->tick_cv, &wtr->arg->sc->lock);
         pthread_mutex_unlock(&wtr->arg->sc->lock);
-
+        clean_queues(wtr);
         switch(wtr->present) {
             case IDLE:
                 // if customers are seated, take their order
