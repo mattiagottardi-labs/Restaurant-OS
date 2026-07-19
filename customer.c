@@ -34,7 +34,14 @@ Order* make_order(Customer* c, Menu* menu, int num_dishes) {
     pthread_mutex_init(&o->lock, NULL);
     return o;
 }
-
+float atomic_float_add(_Atomic float *target, float amount) {
+    float old_val = atomic_load(target);
+    float new_val;
+    do {
+        new_val = old_val + amount;
+    } while (!atomic_compare_exchange_weak(target, &old_val, new_val));
+    return new_val;
+}
 int get_prep_time(Order* o) {
     int tot = 0;
     for (int i = 0; o->dishes[i] != NULL; i++) {
@@ -281,7 +288,7 @@ void customer_loop(Customer* cst) {
                 break;
 
             case FINISHED:
-                atomic_fetch_add(cst->arg->score, cst->o->total_price * (1.0f - ( tts / cst->patience)));
+                atomic_float_add(cst->arg->score, cst->o->total_price * (1.0f - (tts / cst->patience)));
                 sem_post(cst->arg->rc);
                 printf(CYAN " CUSTOMER %d" RESET ":\t", cst->arg->id);
                 printf(GREEN "done, bye\n" RESET);

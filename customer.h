@@ -78,6 +78,7 @@ Customer*   peek(CustomerQueue* q);
 void        clean(CustomerQueue* q);
 int         get_prep_time(Order* o);
 int         get_price(Order* o);
+float       atomic_float_add(_Atomic float *target, float amount);
 // customer lifecycle
 void        customer_loop(Customer* c);
 void*       customer_thread(void* arg);
