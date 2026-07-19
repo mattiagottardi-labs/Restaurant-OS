@@ -322,7 +322,7 @@ void cook_loop(Cook* ck) {
             // check into the priority list for an order
             case WAITING:
                 pthread_mutex_lock(&ck->arg->om->priority->lock);
-                if(!is_empty(ck->arg->om->priority, ORDER_LIST)) {
+                if(ck->arg->om->priority->size > 0) {
                     atomic_store(&ck->future, SELECT_DISH);
                 }
                 else {

@@ -284,14 +284,14 @@ void waiter_loop(Waiter* wtr) {
                     enqueue(cst, wtr->arg->waiting_order);
                 }
 
-                if(!is_empty(wtr->arg->om->completed_orders, ORDER_LIST) {
+                if(wtr->arg->seated->size > 0) {
                     //printf(BOLD_U "\t\tIn taking_order and seated is not empty\n" RESET);
                     atomic_store(&wtr->future, wtr->present);
                 }
-                else if(!is_empty(wtr->arg->seated, CUSTOMER_QUEUE)) {
+                else if(wtr->arg->om->completed_orders->size > 0) {
                     atomic_store(&wtr->future, DELIVERING_FOOD);
                 }
-                else if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE) && (sem_trywait(wtr->arg->ea_bin) == 0)) {
+                else if(wtr->arg->standing->size > 0 && (sem_trywait(wtr->arg->ea_bin) == 0)) {
                     atomic_store(&wtr->future, ENTERTAINING);
                 }
                 else {
