@@ -14,8 +14,6 @@ void queue_init(CustomerQueue* q);
 void print_customer(Customer* C);
 void print_queue(CustomerQueue* q);
 void print_list(OrderList* ol);
-//char* resources_path = "resources.csv";
-//char* menu_path = "menu.csv";
 
 _Atomic float score = 0;
 
@@ -214,34 +212,30 @@ int main(int argc, char* argv[]){
   CookArgs* cook_args = malloc(NUM_COOKS * sizeof(CookArgs));
 
   for(int i = 0; i < NUM_COOKS; i++) {
-    cook_args->id = i + 1;
-    cook_args->km = km;
-    cook_args->om = om;
-    cook_args->running = running;
-    cook_args->sc = sc;
-    cook_args->print = &print;
+    cook_args[i].id = i + 1;
+    cook_args[i].km = km;
+    cook_args[i].om = om;
+    cook_args[i].running = running;
+    cook_args[i].sc = sc;
+    cook_args[i].print = &print;
     pthread_create(&cooks_tid[i], NULL, cook_thread, cook_args);
-    cook_args++;
   }
-  //printf("Cooks created\n");
 
   WaiterArgs* waiter_args = malloc(NUM_WAITERS * sizeof(WaiterArgs));
 
   for(int i = 0; i < NUM_WAITERS; i++) {
-    waiter_args->id = i + 1;
-    waiter_args->ea_bin = &ea_bin;
-    waiter_args->om = om;
-    waiter_args->running = running;
-    waiter_args->sc = sc;
-    waiter_args->seated = seated;
-    waiter_args->standing = standing;
-    waiter_args->waiting_order = waiting_order;
-    waiter_args->rc = &restaurant_capacity;
-    waiter_args->print = &print;
+    waiter_args[i].id = i + 1;
+    waiter_args[i].ea_bin = &ea_bin;
+    waiter_args[i].om = om;
+    waiter_args[i].running = running;
+    waiter_args[i].sc = sc;
+    waiter_args[i].seated = seated;
+    waiter_args[i].standing = standing;
+    waiter_args[i].waiting_order = waiting_order;
+    waiter_args[i].rc = &restaurant_capacity;
+    waiter_args[i].print = &print;
     pthread_create(&waiters_tid[i], NULL, waiter_thread, waiter_args);
-    waiter_args++;
   }
-  //printf("Waiters created\n");
 
   CustomerArgs* customer_args = malloc(sizeof(CustomerArgs));
   customer_args->menu = menu;
@@ -251,6 +245,7 @@ int main(int argc, char* argv[]){
   customer_args->standing = standing;
   customer_args->id = 0;
   customer_args->print = &print;
+  customer_args->GAME_SPEED = GAME_SPEED;
 
   // thread_manager manages all customer threads
   pthread_create(&customer_thread_manager, NULL, thread_manager, customer_args);
@@ -264,8 +259,10 @@ int main(int argc, char* argv[]){
     pthread_join(waiters_tid[i], NULL);
   }
 
+  // destroy the simulation clock
+  clock_destroy(sc);
+
   // destroy the semaphore
   sem_destroy(&restaurant_capacity);
   sem_destroy(&ea_bin);
-  printf("Semaphores destroyed");
 }

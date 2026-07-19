@@ -211,15 +211,15 @@ void print_cst(Customer* cst) {
             break;
 
         case WAITING_ORDER:
-            printf("waiting for my food");
+            printf(YELLOW "waiting for my food" RESET);
             break;
 
         case EATING:
-            printf(RED "eating" RESET);
+            printf(ORANGE "eating" RESET);
             break;
 
         case FINISHED:
-            printf(GREEN "done" RESET);
+            cst->served ? printf(GREEN "done" RESET) : printf(RED "tired of waiting" RESET);
             break;
     }
     printf(", patience = %d \n", cst->patience);
@@ -240,9 +240,6 @@ void customer_loop(Customer* cst) {
         pthread_cond_wait(&cst->arg->sc->tick_cv, &cst->arg->sc->lock);
         pthread_mutex_unlock(&cst->arg->sc->lock);   
 
-        cst->present = cst->patience > 0 ? cst->present : FINISHED;
-
-        // waiting outside for a free seat
         switch(cst->present) {
             case STANDING:
                 break;
@@ -250,9 +247,6 @@ void customer_loop(Customer* cst) {
             case SEATED:
                 cst->o = make_order(cst, cst->arg->menu, safe_rand_range(5));
                 cst->patience += get_prep_time(cst->o) + safe_rand_range(10);
-                if(cst->patience < 0) {
-                    atomic_store(&cst->future, FINISHED);
-                }
                 break;
 
             case WAITING_ORDER:
@@ -266,7 +260,7 @@ void customer_loop(Customer* cst) {
 
             case EATING:
                 // eating time = 1 s (just to test the code)
-                usleep(100000);
+                usleep(1 / cst->arg->GAME_SPEED);
                 atomic_store(&cst->future, FINISHED);
                 break;
 
@@ -281,8 +275,14 @@ void customer_loop(Customer* cst) {
             
         }
         print_cst(cst);
+
+        if(cst->patience > 0) {
+            cst->patience--;
+        }
+        else {
+            atomic_store(&cst->future, FINISHED);
+        }
         atomic_store(&cst->present, cst->future);
-        cst->patience--;
     }
 
     // clean memory    

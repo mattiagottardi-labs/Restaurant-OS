@@ -35,6 +35,7 @@ typedef struct CustomerArgs {
     sem_t               rc;
     CustomerQueue*      standing;
     pthread_mutex_t*    print;
+    int                 GAME_SPEED;
 } CustomerArgs;
 
 typedef struct Customer {

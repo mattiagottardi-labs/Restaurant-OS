@@ -246,14 +246,10 @@ void waiter_loop(Waiter* wtr) {
             case IDLE:
                 // if customers are seated, take their order
                 if(!is_empty(wtr->arg->seated, CUSTOMER_QUEUE)) {
-                    printf("Seated customers present\n");
-                    if(is_empty(wtr->arg->om->completed_orders, ORDER_LIST)) {
-                        atomic_store(&wtr->future, TAKING_ORDER);
-                    }
-                    else {
-                        printf("Delivering food\n");
-                        atomic_store(&wtr->future, DELIVERING_FOOD);
-                    }
+                    atomic_store(&wtr->future, TAKING_ORDER);
+                }
+                else if(!is_empty(wtr->arg->om->completed_orders, ORDER_LIST)) {
+                    atomic_store(&wtr->future, DELIVERING_FOOD);
                 }
                 else if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE) && (sem_trywait(wtr->arg->rc) == 0)) {
                     atomic_store(&wtr->future, ACCOMODATING_CUSTOMER);
