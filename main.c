@@ -91,7 +91,7 @@ void print_queue(CustomerQueue* q) {
     if (!q->head) {
         printf("queue is empty\n");
     } else {
-        printf("head is there, printing QUEUE:\n");
+        printf("printing QUEUE:\n");
         QueueNode* current = q->head;
         int i = 0;
         while (current != NULL) {
@@ -123,6 +123,30 @@ void queue_init(CustomerQueue* q){
   pthread_mutex_init(&q->lock, NULL);
 }
 
+typedef struct queue_args{
+  SimClock* sc;
+  OrderManager* om;
+  pthread_mutex_t* print;
+}queue_args;
+
+void* queue_thread(void* arg){
+  pthread_mutex_lock(arguments->print);
+  queue_args* arguments = (queue_args*) arg;
+  SimClock* sc = (SimClock*) arguments->sc
+  OrderManager* om = (OrderManager*) arguments->om;
+  pthread_mutex_lock(&sc->lock);
+  pthread_cond_wait(&sc->tick_cv, &sc->lock);
+  pthread_mutex_unlock(&sc->lock);
+  printf("WAITLIST:\n");
+  print_list(om->waitlist);
+  printf("PRIORITY\n");
+  print_list(om->priority);
+  printf("COMPLETED\n");
+  print_list(om->completed_orders);
+  printf("DISCARDED\n");
+  print_list(om->discarded_orders);
+  pthread_mutex_unlock(arguments->print);
+}
 // ─── simulation clock ───────────────────────────────────
 
 void clock_init(SimClock* sc) {
@@ -252,9 +276,14 @@ int main(int argc, char* argv[]){
   customer_args->id = 0;
   customer_args->print = &print;
 
+  queue_args* qa = malloc(sizeof(queue_args));
+  qa->om = om;
+  qa->sc = sc;
+  qa->print = &print;
+
   // thread_manager manages all customer threads
   pthread_create(&customer_thread_manager, NULL, thread_manager, customer_args);
-
+  pthread_create(&queue_thread, NULL,queue_thread, queue_args);
   // Missing pthread_join for cooks and waiters
   for(int i = 0; i < NUM_COOKS; i++) {
     pthread_join(cooks_tid[i], NULL);
@@ -269,3 +298,5 @@ int main(int argc, char* argv[]){
   sem_destroy(&ea_bin);
   printf("Semaphores destroyed");
 }
+
+
