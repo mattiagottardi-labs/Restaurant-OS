@@ -234,17 +234,28 @@ void print_wtr(Waiter* wtr) {
 void clean_queue(CustomerQueue* q) {
     QueueNode* tmp = q->head;
     QueueNode* prev = NULL;
-    while(tmp->c->patience == 0){
-      q->head = tmp->next;
+
+    // Strip leading nodes with patience == 0
+    while (tmp && tmp->c->patience == 0) {
+        q->head = tmp->next;
+        free(tmp);              // + free tmp->c if the queue owns it
+        tmp = q->head;
     }
-    prev = q->head;
+
+    if (!tmp) return;           // whole queue emptied out
+
+    prev = tmp;
     tmp = tmp->next;
-    while(tmp){
-      if(tmp->c->patience == 0){
-        prev->next = tmp->next;
-      }
-      prev = temp;
-      tmp = tmp->next;
+
+    while (tmp) {
+        if (tmp->c->patience == 0) {
+            prev->next = tmp->next;
+            free(tmp);
+            tmp = prev->next;   // prev stays put, only tmp advances
+        } else {
+            prev = tmp;
+            tmp = tmp->next;
+        }
     }
 }
 
@@ -296,6 +307,7 @@ void waiter_loop(Waiter* wtr) {
             case ACCOMODATING_CUSTOMER:
                 cst = pop(wtr->arg->standing);
                 if(cst) {
+                    atomic_store(&cst->order_made, (cst->arg->sc->tick + 1));
                     atomic_store(&cst->future, SEATED);
                     enqueue(cst, wtr->arg->seated);
                 }
@@ -345,7 +357,7 @@ void waiter_loop(Waiter* wtr) {
                 break;
 
             case ENTERTAINING:
-                customer_entertainment(wtr, ea);
+                //customer_entertainment(wtr, ea);
 
                 if(is_empty(wtr->arg->om->completed_orders, ORDER_LIST)) {
                     atomic_store(&wtr->future, IDLE);

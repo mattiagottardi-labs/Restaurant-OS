@@ -50,10 +50,10 @@ void* thread_manager(void* args) {
   CustomerArgs* arguments = (CustomerArgs*) args;
   CustomerArgs* customer_args = malloc(TOTAL_CUSTOMERS * sizeof(CustomerArgs));
 
-  MAX_CUSTOMER_SPAWN_RATE = 10000000 / GAME_SPEED;
+  MAX_CUSTOMER_SPAWN_RATE = 100000000 / GAME_SPEED;
 
   // customer threads has to be spawned at random time
-  int random_delay = ((rand() % MAX_CUSTOMER_SPAWN_RATE) + 1000) / GAME_SPEED;
+  int random_delay = ((rand() % MAX_CUSTOMER_SPAWN_RATE) + 10000) / GAME_SPEED;
   
   // customer counter index
   int cc;
@@ -203,7 +203,7 @@ void* info_thread(void* args) {
     pthread_cond_wait(&arg->sc->tick_cv, &arg->sc->lock);
     pthread_mutex_unlock(&arg->sc->lock);
 
-    pthread_mutex_lock(arg->print);
+    pthread_mutex_lock(arg->print);/*
     printf(BOLD_U "\nTICK: %d\n" RESET, arg->sc->tick);
 
     printf("Standing customer/s:\n");
@@ -214,6 +214,8 @@ void* info_thread(void* args) {
 
     printf("Waiting Order customer/s:\n");
     print_queue(arg->waiting_order);
+*/
+    printf(BOLD_U "\nSCORE: %f\n" RESET, score);
 
     pthread_mutex_unlock(arg->print);
   }
