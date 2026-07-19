@@ -9,15 +9,24 @@
 #include <pthread.h>
 #include <stdatomic.h>
 
+#define INVALID_PARAMETER -1
+#define INVALID_FILE -2
+
+typedef struct InfoArgs {
+    SimClock*           sc;
+    CustomerQueue*      standing;
+    CustomerQueue*      seated;
+    CustomerQueue*      waiting_order;
+    pthread_mutex_t*    print;
+} InfoArgs;
+
 void print_tool_status(KitchenManager* km);
 void queue_init(CustomerQueue* q);
 void print_customer(Customer* C);
 void print_queue(CustomerQueue* q);
 void print_list(OrderList* ol);
-//char* resources_path = "resources.csv";
-//char* menu_path = "menu.csv";
 
-_Atomic float score = 0;
+_Atomic float score = 0.0f;
 
 int NUM_COOKS;
 int NUM_WAITERS;
@@ -29,7 +38,7 @@ char* MENU_FILE;
 char* RESOURCE_FILE;
 
 bool* running;
-const int MAX_CUSTOMER_SPAWN_RATE = 5000000; // caution, this time is in microseconds
+int MAX_CUSTOMER_SPAWN_RATE; // caution, this time is in microseconds
 int CLK_PERIOD;
 
 // customer_thread_manager implements this function
@@ -40,6 +49,8 @@ void* thread_manager(void* args) {
 
   CustomerArgs* arguments = (CustomerArgs*) args;
   CustomerArgs* customer_args = malloc(TOTAL_CUSTOMERS * sizeof(CustomerArgs));
+
+  MAX_CUSTOMER_SPAWN_RATE = 10000000 / GAME_SPEED;
 
   // customer threads has to be spawned at random time
   int random_delay = ((rand() % MAX_CUSTOMER_SPAWN_RATE) + 1000) / GAME_SPEED;
@@ -53,17 +64,20 @@ void* thread_manager(void* args) {
 
     customer_args[cc].id = cc + 1;
     customer_args[cc].menu = arguments->menu;
+    customer_args[cc].rc = arguments->rc;
     customer_args[cc].running = arguments->running;
+    customer_args[cc].print = arguments->print;
     customer_args[cc].sc = arguments->sc;
     customer_args[cc].score = arguments->score;
     customer_args[cc].standing = arguments->standing;
-    customer_args[cc].print = arguments->print;
     pthread_create(&customer_tid[cc], NULL, customer_thread, (void*) &customer_args[cc]);
   }
 
   for(int i = 0; i < cc; i++) {
     pthread_join(customer_tid[i], NULL);
   }
+
+  running = false;
 
   pthread_exit(NULL);
 }
@@ -160,31 +174,82 @@ void clock_destroy(SimClock* sc) {
     pthread_cond_destroy(&sc->tick_cv);
 }
 
-// must be in main.c since GAME_SPEED adjusts the tick speed
 void* tick_advance(void* args) {
   SimClock* sc = (SimClock*) args;
   while(running) {
     usleep(CLK_PERIOD);
     pthread_mutex_lock(&sc->lock);
-    printf("\nTICK: %d\n", sc->tick);
     sc->tick++;
+    printf(BOLD_U "\nTICK: %d\n" RESET, sc->tick);
     pthread_cond_broadcast(&sc->tick_cv);
     pthread_mutex_unlock(&sc->lock);
   }
-
   return NULL;
 }
 
 // ────────────────────────────────────────────────────────
 
+// prints the linked list
+void print_ll(CustomerQueue* q) {
+  QueueNode* tmp = q->head;
+
+  pthread_mutex_lock(&q->lock);
+  while(tmp->next != NULL) {
+    printf("%d -> ", tmp->c->arg->id);
+    tmp = tmp->next;
+  }
+  pthread_mutex_unlock(&q->lock);
+}
+
+void* info_thread(void* args) {
+  InfoArgs* arg = (InfoArgs*) args;
+  while(running) {
+    pthread_mutex_lock(&arg->sc->lock);
+    pthread_cond_wait(&arg->sc->tick_cv, &arg->sc->lock);
+    pthread_mutex_unlock(&arg->sc->lock);
+
+    pthread_mutex_lock(arg->print);
+    printf(BOLD_U "\nTICK: %d\n" RESET, arg->sc->tick);
+/*
+    printf("Standing customer/s:\n");
+    print_ll(arg->standing);
+
+    printf("Seated customer/s:\n");
+    print_ll(arg->seated);
+
+    printf("Waiting Order customer/s:\n");
+    print_ll(arg->waiting_order);
+*/
+    pthread_mutex_unlock(arg->print);
+  }
+
+  return NULL;
+}
+
 int main(int argc, char* argv[]){
-  printf("\nC MAIN BINARY STARTING!\n");
+  printf(BOLD_U "\nC MAIN BINARY STARTING!\n" RESET);
 
   // check if sufficient numer of argument is passed
   if(argc < 8) {
-    perror("Too few arguments passed, while launching main binary!\n");
+    perror("Too few arguments passed while launching main binary!\n");
     return 1;
   }
+
+  // handles the error in the arguments
+  for(int i = 0; i < argc; i++) {
+    switch(atoi(argv[i])) {
+      case INVALID_PARAMETER:
+        perror("Invalid parameter passed!\n");
+        return 1;
+        break;
+
+      case INVALID_FILE:
+        perror("Invalid file passed!\n");
+        return 1;
+        break;
+    }
+  }
+
   // variables sent by bootstrap.sh
   NUM_COOKS = atoi(argv[1]);
   NUM_WAITERS = atoi(argv[2]);
@@ -234,47 +299,54 @@ int main(int argc, char* argv[]){
   pthread_t customer_thread_manager;
 
   pthread_create(&clock, NULL, tick_advance, sc);
+/*
+  pthread_t info;
+  InfoArgs* info_args = malloc(sizeof(InfoArgs));
 
+  info_args->print = &print;
+  info_args->sc = sc;
+  info_args->seated = seated;
+  info_args->standing = standing;
+  info_args->waiting_order = waiting_order;
+  pthread_create(&info, NULL, info_thread, info_args);
+*/
   CookArgs* cook_args = malloc(NUM_COOKS * sizeof(CookArgs));
 
   for(int i = 0; i < NUM_COOKS; i++) {
-    cook_args->id = i + 1;
-    cook_args->km = km;
-    cook_args->om = om;
-    cook_args->running = running;
-    cook_args->sc = sc;
-    cook_args->print = &print;
-    pthread_create(&cooks_tid[i], NULL, cook_thread, cook_args);
-    cook_args++;
+    cook_args[i].id = i + 1;
+    cook_args[i].km = km;
+    cook_args[i].om = om;
+    cook_args[i].running = running;
+    cook_args[i].sc = sc;
+    cook_args[i].print = &print;
+    pthread_create(&cooks_tid[i], NULL, cook_thread, &cook_args[i]);
   }
-  //printf("Cooks created\n");
 
   WaiterArgs* waiter_args = malloc(NUM_WAITERS * sizeof(WaiterArgs));
 
   for(int i = 0; i < NUM_WAITERS; i++) {
-    waiter_args->id = i + 1;
-    waiter_args->ea_bin = &ea_bin;
-    waiter_args->om = om;
-    waiter_args->running = running;
-    waiter_args->sc = sc;
-    waiter_args->seated = seated;
-    waiter_args->standing = standing;
-    waiter_args->waiting_order = waiting_order;
-    waiter_args->rc = &restaurant_capacity;
-    waiter_args->print = &print;
-    pthread_create(&waiters_tid[i], NULL, waiter_thread, waiter_args);
-    waiter_args++;
+    waiter_args[i].id = i + 1;
+    waiter_args[i].ea_bin = &ea_bin;
+    waiter_args[i].om = om;
+    waiter_args[i].running = running;
+    waiter_args[i].sc = sc;
+    waiter_args[i].seated = seated;
+    waiter_args[i].standing = standing;
+    waiter_args[i].waiting_order = waiting_order;
+    waiter_args[i].rc = &restaurant_capacity;
+    waiter_args[i].print = &print;
+    pthread_create(&waiters_tid[i], NULL, waiter_thread, &waiter_args[i]);
   }
-  //printf("Waiters created\n");
 
   CustomerArgs* customer_args = malloc(sizeof(CustomerArgs));
+  customer_args->id = 0;
   customer_args->menu = menu;
+  customer_args->print = &print;
+  customer_args->rc = &restaurant_capacity;
   customer_args->running = running;
   customer_args->sc = sc;
   customer_args->score = &score;
   customer_args->standing = standing;
-  customer_args->id = 0;
-  customer_args->print = &print;
 
   queue_args* qa = malloc(sizeof(queue_args));
   qa->om = om;
@@ -293,10 +365,17 @@ int main(int argc, char* argv[]){
     pthread_join(waiters_tid[i], NULL);
   }
 
+  // destroy the simulation clock
+  clock_destroy(sc);
+
   // destroy the semaphore
   sem_destroy(&restaurant_capacity);
   sem_destroy(&ea_bin);
+
   printf("Semaphores destroyed");
 }
 
+
+
+}
 

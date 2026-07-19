@@ -9,6 +9,8 @@ upper_bound=10
 max_customers_upper_bound=20
 total_customers_upper_bound=99
 missing_arg_flag=0
+menu_file=menu.csv
+resources_file=resources.csv
 
 # save all the names in order to check if there are really the needed parameters (there could be repetitions of arguments too fool the code)
 required_args=("NUM_COOKS" "NUM_WAITERS" "MAX_CUSTOMERS" "TOTAL_CUSTOMERS" "GAME_SPEED" "RANDOM_SEED" "MENU_FILE" "RESOURCE_FILE")
@@ -40,32 +42,43 @@ parse_file() {
             # reindex the array, since unset leaves a hole in the array
             dropped_required_args=("${dropped_required_args[@]}")
 
+            # check if it is a number
             if [[ $line =~ [0-9]+ ]]; then
                 # use parameter expansion: everything dropped up to = sign
                 arg_number="${line#*=}"
 
                 # check if the number read is positive and in a reasonable range
                 if [[ $arg_number -ge $lower_bound ]]; then
+                    # check if max customers are in a max range
                     if [[ $arg_name = "MAX_CUSTOMERS" && $arg_number -le max_customers_upper_bound ]]; then
                         arg_dict[$arg_name]=$arg_number
+                    # check if customers total are in a max range
                     elif [[ $arg_name = "TOTAL_CUSTOMERS" && $arg_number -le total_customers_upper_bound ]]; then
                         arg_dict[$arg_name]=$arg_number
                     elif [[ $arg_number -le upper_bound ]]; then
                         arg_dict[$arg_name]=$arg_number
                     else
                         echo "Number: $arg_number too large!"
+                        arg_dict[$arg_name]=-1
                     fi
                 else
                     echo "Number: $arg_number out of range!"
                     arg_dict[$arg_name]=-1
                 fi
+            # else it is a string that represents a file name
             else
                 arg_string="${line#*=}"
-                #echo "NaN argument: $arg_string"
-                #echo "Name: $arg_name"
-                arg_dict[$arg_name]=$arg_string
+
+                # check if the file name is correct or not
+                if [[ $arg_string = $menu_file || $arg_string = $resources_file ]]; then
+                    arg_dict[$arg_name]=$arg_string
+                # else save the name as -2 that is INVALID FILE
+                else
+                    echo -e "$arg_string is NOT a valid file"
+                    arg_dict[$arg_name]=-2
+                fi
             fi
-            echo -e "$arg_name\t=\t${arg_dict[$arg_name]}"
+            echo -e "$arg_name\t= ${arg_dict[$arg_name]}"
         fi
 
         dropped_required_args=("${required_args[@]}")
@@ -153,6 +166,8 @@ done
 
 # 4) print the final arguments that will be passed to the main binary
 final_args=()
+
+echo -e "FINAL ARGUMENTS PASSED TO THE MAIN BINARY:"
 
 for j in {0..7}; do
     key="${required_args[$j]}"

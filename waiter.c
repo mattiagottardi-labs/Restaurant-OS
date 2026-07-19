@@ -69,9 +69,9 @@ void list_insert(OrderList* ol, Customer* cst, int algorithm) {
 }
 
 /* --------------------------------------------------------------------------
- * list_pop — remove and return the Order at the head of the list
+ * list_pop_order — remove and return the Order at the head of the list
  * -------------------------------------------------------------------------- */
-Order* list_pop(OrderList* ol) {
+Order* list_pop_order(OrderList* ol) {
     pthread_mutex_lock(&ol->lock);
 
     if(!ol->head) {
@@ -90,9 +90,9 @@ Order* list_pop(OrderList* ol) {
 }
 
 /* --------------------------------------------------------------------------
- * list_peek — return pointer to head order without removing
+ * list_peek_order — return pointer to head order without removing
  * -------------------------------------------------------------------------- */
-Order* list_peek(OrderList* ol) {
+Order* list_peek_order(OrderList* ol) {
     pthread_mutex_lock(&ol->lock);
     Order* o  = ol->size == 0 ? NULL : ol->head->o;
     pthread_mutex_unlock(&ol->lock);
@@ -104,7 +104,7 @@ Order* list_peek(OrderList* ol) {
  * -------------------------------------------------------------------------- */
 void refill_priority(OrderManager* om) {
     while (om->priority->size < 10) {
-        Order* o = list_pop(om->waitlist);
+        Order* o = list_pop_order(om->waitlist);
         if (!o) break;
         list_insert_order(om->priority, o, 1);
     }
@@ -182,16 +182,18 @@ void customer_entertainment(Waiter* wtr, EntertainmentActivity *ea) {
     printf("Waiter is %s, to entertain standing customers.\n", ea[activity].name);
     usleep(ea[activity].duration);
 
+    pthread_mutex_lock(&wtr->arg->standing->lock);
     QueueNode* tmp = wtr->arg->standing->head;
 
     for(int i = 0; i < wtr->arg->standing->size; i++) {
         tmp->c->patience += ea[activity].efficacy;
         tmp = tmp->next;
     }
+    pthread_mutex_unlock(&wtr->arg->standing->lock);
 
     free(tmp);
     tmp = NULL;
-
+    
     sem_post(wtr->arg->ea_bin);
 }
 
@@ -212,7 +214,7 @@ void print_wtr(Waiter* wtr) {
             break;
 
         case DELIVERING_FOOD:
-            printf("delivering the food");
+            printf(BLUE "delivering the food" RESET);
             break;
 
         case ENTERTAINING:
@@ -242,74 +244,99 @@ void waiter_loop(Waiter* wtr) {
         pthread_cond_wait(&wtr->arg->sc->tick_cv, &wtr->arg->sc->lock);
         pthread_mutex_unlock(&wtr->arg->sc->lock);
 
-        print_wtr(wtr);
-
         switch(wtr->present) {
             case IDLE:
-                if  (!is_empty(wtr->arg->seated, CUSTOMER_QUEUE)){
-                  wtr->future = is_empty(wtr->arg->om->completed_orders, ORDER_LIST) ? TAKING_ORDER : DELIVERING_FOOD;
+                // if customers are seated, take their order
+                if(!is_empty(wtr->arg->seated, CUSTOMER_QUEUE)) {
+                    atomic_store(&wtr->future, TAKING_ORDER);
                 }
-                else if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE)){
-                  wtr->future =  (sem_trywait(wtr->arg->rc) == 0) ? ACCOMODATING_CUSTOMER : ENTERTAINING;
+                else if(!is_empty(wtr->arg->om->completed_orders, ORDER_LIST)) {
+                    atomic_store(&wtr->future, DELIVERING_FOOD);
                 }
-                else wtr->future = ENTERTAINING;
+                else if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE) && (sem_trywait(wtr->arg->rc) == 0)) {
+                    atomic_store(&wtr->future, ACCOMODATING_CUSTOMER);
+                }
+                else if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE) && (sem_trywait(wtr->arg->ea_bin) == 0)){
+                    atomic_store(&wtr->future, ENTERTAINING);
+                }
+                else {
+                    atomic_store(&wtr->future, wtr->present);
+                }
                 break;
+
             case ACCOMODATING_CUSTOMER:
                 cst = pop(wtr->arg->standing);
                 if(cst) {
-                    cst->future = SEATED;
+                    atomic_store(&cst->future, SEATED);
                     enqueue(cst, wtr->arg->seated);
                 }
-                wtr->future = TAKING_ORDER;
+                atomic_store(&wtr->future, TAKING_ORDER);
                 break;
             
             case TAKING_ORDER:
-                // obtain customer without removing from the queue
                 cst = peek(wtr->arg->seated);
                 if(cst && cst->o) {
-                    list_insert_order(wtr->arg->om->waitlist, cst->o, 0);
+                    cst = pop(wtr->arg->seated);
+                    list_insert_order(wtr->arg->om->waitlist, cst->o, 2);
                     refill_priority(wtr->arg->om);
                     
-                    cst = pop(wtr->arg->seated);
-                    cst->future = WAITING_ORDER;
+                    atomic_store(&cst->future, WAITING_ORDER);
                     enqueue(cst, wtr->arg->waiting_order);
                 }
 
-                if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE)) {
-                    if(sem_trywait(wtr->arg->ea_bin) == 0) {
-                        wtr->future = ENTERTAINING;
-                    }
-                    else {
-                        wtr->future = IDLE;
-                    }
+                if(!is_empty(wtr->arg->seated, CUSTOMER_QUEUE)) {
+                    //printf(BOLD_U "\t\tIn taking_order and seated is not empty\n" RESET);
+                    atomic_store(&wtr->future, wtr->present);
+                }
+                else if(!is_empty(wtr->arg->om->completed_orders, ORDER_LIST)) {
+                    atomic_store(&wtr->future, DELIVERING_FOOD);
+                }
+                else if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE) && (sem_trywait(wtr->arg->ea_bin) == 0)) {
+                    atomic_store(&wtr->future, ENTERTAINING);
+                }
+                else {
+                    atomic_store(&wtr->future, IDLE);
                 }
                 break;
 
             case DELIVERING_FOOD:
                 // take the order and deliver to the customer
-                o = list_pop(wtr->arg->om->completed_orders);
-                if(o) {
-                    atomic_store(&o->c->served, true);
+                o = list_pop_order(wtr->arg->om->completed_orders);
+                if (o) {
+                    if (!atomic_load(&o->expired)) {
+                        atomic_store(&o->c->served, true);
+                    }
+                    else {
+                        list_insert_order(wtr->arg->om->discarded_orders, o, 2);
+                    }
                 }
-                
-                if(list_peek(wtr->arg->om->completed_orders)) {
-                    wtr->future = wtr->present;
+
+                if(!is_empty(wtr->arg->om->completed_orders, ORDER_LIST)) {
+                    atomic_store(&wtr->future, wtr->present);
                 }
                 else {
-                    wtr->future = IDLE;
+                    atomic_store(&wtr->future, IDLE);
                 }
                 break;
 
             case ENTERTAINING:
-                // customer_entertainment(wtr, ea);
-                wtr->future = is_empty(wtr->arg->om->completed_orders, ORDER_LIST) ? IDLE : DELIVERING_FOOD;
+                customer_entertainment(wtr, ea);
+
+                if(is_empty(wtr->arg->om->completed_orders, ORDER_LIST)) {
+                    atomic_store(&wtr->future, IDLE);
+                }
+                else {
+                    atomic_store(&wtr->future, DELIVERING_FOOD);
+                }
                 break;
 
             default:
                 perror("Waiter - Unknown state!");          
         }
+        print_wtr(wtr);
+
         // Update the state for next cycle
-        wtr->present = wtr->future;
+        atomic_store(&wtr->present, wtr->future);
     }
 }
 

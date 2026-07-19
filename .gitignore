@@ -10,3 +10,4 @@
 *.ko
 *.obj
 *.elf
+.env program

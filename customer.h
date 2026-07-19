@@ -14,16 +14,18 @@ typedef enum CustomerState {
     SEATED,
     WAITING_ORDER,
     EATING,
-    FINISHED
+    FINISHED,
+    TIRED
 } CustomerState;
 
 typedef struct Order {
-    Dish**           dishes;
-    _Atomic int      remaining_time;
-    _Atomic bool     expired;
-    _Atomic bool     completed;
-    struct Customer* c;
-    pthread_mutex_t  lock;
+    Dish**              dishes;
+    _Atomic int         remaining_time;
+    _Atomic bool        expired;
+    _Atomic bool        completed;
+    _Atomic int         total_price;
+    struct Customer*    c;
+    pthread_mutex_t     lock;
 } Order;
 
 typedef struct CustomerArgs {
@@ -32,20 +34,21 @@ typedef struct CustomerArgs {
     Menu*               menu;
     _Atomic float*      score;
     bool*               running;
-    sem_t               rc;
+    sem_t*              rc;
     CustomerQueue*      standing;
     pthread_mutex_t*    print;
 } CustomerArgs;
 
 typedef struct Customer {
-    Order*          o;
-    int             patience;
-    _Atomic bool    served;
-    _Atomic bool    discarded;
-    pthread_mutex_t lock;
-    CustomerState   present;
-    CustomerState   future;
-    CustomerArgs*   arg;
+    Order*                  o;
+    int                     patience;
+    _Atomic bool            served;
+    int                     order_made;
+    int                     order_received;
+    pthread_mutex_t         lock;
+    _Atomic CustomerState   present;
+    _Atomic CustomerState   future;
+    CustomerArgs*           arg;
 } Customer;
 
 typedef struct QueueNode {
@@ -74,6 +77,7 @@ Customer*   pop(CustomerQueue* q);
 Customer*   peek(CustomerQueue* q);
 void        clean(CustomerQueue* q);
 int         get_prep_time(Order* o);
+int         get_price(Order* o);
 // customer lifecycle
 void        customer_loop(Customer* c);
 void*       customer_thread(void* arg);

@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdio.h>
 
-const int DEFAULT_PATIENCE = 50;
+const int DEFAULT_PATIENCE = 40;
 
 /* --------------------------------------------------------------------------
  * Order creation
@@ -28,6 +28,7 @@ Order* make_order(Customer* c, Menu* menu, int num_dishes) {
     o->dishes[num_dishes] = NULL;
     atomic_store(&o->completed, false);
     atomic_store(&o->remaining_time, get_prep_time(o));
+    atomic_store(&o->total_price, get_price(o));
     atomic_store(&o->expired, false);
     o->c = c;
     pthread_mutex_init(&o->lock, NULL);
@@ -39,6 +40,15 @@ int get_prep_time(Order* o) {
     for (int i = 0; o->dishes[i] != NULL; i++) {
         if (atomic_load(&o->dishes[i]->ready)) continue;
         tot += o->dishes[i]->time;
+    }
+    return tot;
+}
+
+int get_price(Order* o) {
+    int tot = 0;
+    for (int i = 0; o->dishes[i] != NULL; i++) {
+        if (atomic_load(&o->dishes[i]->ready)) continue;
+        tot += o->dishes[i]->price;
     }
     return tot;
 }
@@ -203,7 +213,7 @@ void print_cst(Customer* cst) {
     printf(CYAN " CUSTOMER %d" RESET ":\t", cst->arg->id);
     switch(cst->present) {
         case STANDING:
-            printf("standing");
+            printf(GRAY "standing" RESET);
             break;
 
         case SEATED:
@@ -211,15 +221,17 @@ void print_cst(Customer* cst) {
             break;
 
         case WAITING_ORDER:
-            printf("waiting for my food");
+            printf(YELLOW "waiting for my food" RESET);
             break;
 
         case EATING:
-            printf("eating");
+            printf(ORANGE "eating" RESET);
             break;
 
         case FINISHED:
-            printf("done");
+            break;
+            
+        case TIRED:
             break;
     }
     printf(", patience = %d \n", cst->patience);
@@ -235,16 +247,14 @@ void print_cst(Customer* cst) {
  * 4. Update score automically
  * -------------------------------------------------------------------------- */
 void customer_loop(Customer* cst) {
+    // time to serve
+    float tts = cst->order_made - cst->order_received;
+
     while(cst->arg->running) {
         pthread_mutex_lock(&cst->arg->sc->lock);
         pthread_cond_wait(&cst->arg->sc->tick_cv, &cst->arg->sc->lock);
-        pthread_mutex_unlock(&cst->arg->sc->lock);
+        pthread_mutex_unlock(&cst->arg->sc->lock);   
 
-        print_cst(cst);     
-
-        cst->present = cst->patience > 0 ? cst->present : FINISHED;
-
-        // waiting outside for a free seat
         switch(cst->present) {
             case STANDING:
                 break;
@@ -252,38 +262,56 @@ void customer_loop(Customer* cst) {
             case SEATED:
                 cst->o = make_order(cst, cst->arg->menu, safe_rand_range(5));
                 cst->patience += get_prep_time(cst->o) + safe_rand_range(10);
-                if(cst->patience < 0) {
-                    cst->future = FINISHED;
-                }
+                cst->order_made = cst->arg->sc->tick;
                 break;
 
             case WAITING_ORDER:
                 if(cst->served) {
-                    cst->future = EATING;
+                    cst->order_received = cst->arg->sc->tick;
+                    atomic_store(&cst->future, EATING);
                 }
                 else {
-                    cst->future = cst->present;
+                    atomic_store(&cst->future, cst->present);
                 }
                 break;
 
             case EATING:
-                // eating time = 1 s (just to test the code)
-                usleep(100000);
-                cst->future = FINISHED;
+                atomic_store(&cst->future, FINISHED);
                 break;
 
             case FINISHED:
-                cst->arg->score += cst->served? 1 : -1;
-                sem_post(&cst->arg->rc);
-                cst->arg->running = false;
+                atomic_store(cst->arg->score, cst->o->total_price * (1.0f - ( tts / cst->patience)));
+                sem_post(cst->arg->rc);
+                printf(CYAN " CUSTOMER %d" RESET ":\t", cst->arg->id);
+                printf(GREEN "done, bye\n" RESET);
+                return;
+                break;
+
+            case TIRED:
+                if(cst->o) {
+                    atomic_store(&cst->o->expired, true);
+                    printf("\t\t\tOrder discarded (1 true, 0 false): %d\n", cst->o->expired);
+                }
+                // cst->arg->score = ;
+                sem_post(cst->arg->rc);
+                printf(CYAN " CUSTOMER %d" RESET ":\t", cst->arg->id);
+                printf(RED "tired of waiting\n" RESET);
+                return;
                 break;
 
             default:
                 perror("Customer - Unknown State");
             
         }
-        cst->present = cst->future;
-        cst->patience--;
+        print_cst(cst);
+
+        if(cst->patience > 0) {
+            cst->patience--;
+        }
+        else {
+            atomic_store(&cst->future, TIRED);
+        }
+        atomic_store(&cst->present, cst->future);
     }
 
     // clean memory    
@@ -293,7 +321,7 @@ void* customer_thread(void* args) {
   if(!args) return NULL;
   //creates customer then goes into customer loop
   Customer* cst = malloc(sizeof(Customer));
-  cst->present = STANDING;
+  atomic_store(&cst->present, STANDING);
   cst->arg = (CustomerArgs*) args;
   cst->patience = DEFAULT_PATIENCE;
   enqueue(cst, cst->arg->standing);

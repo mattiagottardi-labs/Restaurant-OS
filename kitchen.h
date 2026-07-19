@@ -36,7 +36,6 @@ typedef struct Dish {
     char*           name;
     int             price;
     int             time;
-    struct Order*   o;
     char**          tools;
     _Atomic bool    ready;
     _Atomic bool    cooking;
