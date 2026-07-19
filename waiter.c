@@ -234,22 +234,18 @@ void print_wtr(Waiter* wtr) {
 void clean_queue(CustomerQueue* q) {
     QueueNode* tmp = q->head;
     QueueNode* prev = NULL;
-
-    while(tmp->next) {
-        if(tmp->c->patience == 0) {
-            prev->next = tmp->next;
-        }
-        else {
-            prev = tmp;
-        }
-        tmp = tmp->next;
+    while(tmp->c->patience == 0){
+      q->head = tmp->next;
     }
-
-    free(tmp);
-    tmp = NULL;
-
-    free(prev);
-    prev = NULL;
+    prev = q->head;
+    tmp = tmp->next;
+    while(tmp){
+      if(tmp->c->patience == 0){
+        prev->next = tmp->next;
+      }
+      prev = temp;
+      tmp = tmp->next;
+    }
 }
 
 void clean_queues(Waiter* wtr) {
