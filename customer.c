@@ -219,7 +219,11 @@ void print_cst(Customer* cst) {
             break;
 
         case FINISHED:
-            cst->served ? printf(GREEN "done" RESET) : printf(RED "tired of waiting" RESET);
+            printf(GREEN "done, bye" RESET);
+            break;
+            
+        case TIRED:
+            printf(RED "tired of waiting" RESET);
             break;
     }
     printf(", patience = %d \n", cst->patience);
@@ -235,6 +239,9 @@ void print_cst(Customer* cst) {
  * 4. Update score automically
  * -------------------------------------------------------------------------- */
 void customer_loop(Customer* cst) {
+    // time to serve
+    float tts = cst->order_made - cst->order_received;
+
     while(cst->arg->running) {
         pthread_mutex_lock(&cst->arg->sc->lock);
         pthread_cond_wait(&cst->arg->sc->tick_cv, &cst->arg->sc->lock);
@@ -247,10 +254,12 @@ void customer_loop(Customer* cst) {
             case SEATED:
                 cst->o = make_order(cst, cst->arg->menu, safe_rand_range(5));
                 cst->patience += get_prep_time(cst->o) + safe_rand_range(10);
+                cst->order_made = cst->arg->sc->tick;
                 break;
 
             case WAITING_ORDER:
                 if(cst->served) {
+                    cst->order_received = cst->arg->sc->tick;
                     atomic_store(&cst->future, EATING);
                 }
                 else {
@@ -259,13 +268,17 @@ void customer_loop(Customer* cst) {
                 break;
 
             case EATING:
-                // eating time = 1 s (just to test the code)
-                usleep(1 / cst->arg->GAME_SPEED);
                 atomic_store(&cst->future, FINISHED);
                 break;
 
             case FINISHED:
-                cst->arg->score += cst->served? 1 : -1;
+                atomic_store(cst->arg->score, cst->o->price * (1.0f - ( tts / cst->patience)));
+                sem_post(&cst->arg->rc);
+                cst->arg->running = false;
+                break;
+
+            case TIRED:
+                // cst->arg->score = ;
                 sem_post(&cst->arg->rc);
                 cst->arg->running = false;
                 break;

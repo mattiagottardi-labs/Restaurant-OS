@@ -182,16 +182,18 @@ void customer_entertainment(Waiter* wtr, EntertainmentActivity *ea) {
     printf("Waiter is %s, to entertain standing customers.\n", ea[activity].name);
     usleep(ea[activity].duration);
 
+    pthread_mutex_lock(&wtr->arg->standing->lock);
     QueueNode* tmp = wtr->arg->standing->head;
 
     for(int i = 0; i < wtr->arg->standing->size; i++) {
         tmp->c->patience += ea[activity].efficacy;
         tmp = tmp->next;
     }
+    pthread_mutex_unlock(&wtr->arg->standing->lock);
 
     free(tmp);
     tmp = NULL;
-
+    
     sem_post(wtr->arg->ea_bin);
 }
 
@@ -272,8 +274,9 @@ void waiter_loop(Waiter* wtr) {
                 break;
             
             case TAKING_ORDER:
-                cst = pop(wtr->arg->seated);
+                cst = peek(wtr->arg->seated);
                 if(cst && cst->o) {
+                    cst = pop(wtr->arg->seated);
                     list_insert_order(wtr->arg->om->waitlist, cst->o, 2);
                     refill_priority(wtr->arg->om);
                     
@@ -317,7 +320,7 @@ void waiter_loop(Waiter* wtr) {
                     atomic_store(&wtr->future, IDLE);
                 }
                 else {
-                    atomic_store(&wtr->future, wtr->present);
+                    atomic_store(&wtr->future, DELIVERING_FOOD);
                 }
                 break;
 

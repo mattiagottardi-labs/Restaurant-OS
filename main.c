@@ -15,7 +15,7 @@ void print_customer(Customer* C);
 void print_queue(CustomerQueue* q);
 void print_list(OrderList* ol);
 
-_Atomic float score = 0;
+_Atomic float score = 0.0f;
 
 int NUM_COOKS;
 int NUM_WAITERS;
@@ -27,7 +27,7 @@ char* MENU_FILE;
 char* RESOURCE_FILE;
 
 bool* running;
-const int MAX_CUSTOMER_SPAWN_RATE = 5000000; // caution, this time is in microseconds
+int MAX_CUSTOMER_SPAWN_RATE; // caution, this time is in microseconds
 int CLK_PERIOD;
 
 // customer_thread_manager implements this function
@@ -38,6 +38,8 @@ void* thread_manager(void* args) {
 
   CustomerArgs* arguments = (CustomerArgs*) args;
   CustomerArgs* customer_args = malloc(TOTAL_CUSTOMERS * sizeof(CustomerArgs));
+
+  MAX_CUSTOMER_SPAWN_RATE = 50000000 / GAME_SPEED;
 
   // customer threads has to be spawned at random time
   int random_delay = ((rand() % MAX_CUSTOMER_SPAWN_RATE) + 1000) / GAME_SPEED;
@@ -218,7 +220,7 @@ int main(int argc, char* argv[]){
     cook_args[i].running = running;
     cook_args[i].sc = sc;
     cook_args[i].print = &print;
-    pthread_create(&cooks_tid[i], NULL, cook_thread, cook_args);
+    pthread_create(&cooks_tid[i], NULL, cook_thread, &cook_args[i]);
   }
 
   WaiterArgs* waiter_args = malloc(NUM_WAITERS * sizeof(WaiterArgs));
@@ -234,7 +236,7 @@ int main(int argc, char* argv[]){
     waiter_args[i].waiting_order = waiting_order;
     waiter_args[i].rc = &restaurant_capacity;
     waiter_args[i].print = &print;
-    pthread_create(&waiters_tid[i], NULL, waiter_thread, waiter_args);
+    pthread_create(&waiters_tid[i], NULL, waiter_thread, &waiter_args[i]);
   }
 
   CustomerArgs* customer_args = malloc(sizeof(CustomerArgs));
@@ -245,7 +247,6 @@ int main(int argc, char* argv[]){
   customer_args->standing = standing;
   customer_args->id = 0;
   customer_args->print = &print;
-  customer_args->GAME_SPEED = GAME_SPEED;
 
   // thread_manager manages all customer threads
   pthread_create(&customer_thread_manager, NULL, thread_manager, customer_args);
