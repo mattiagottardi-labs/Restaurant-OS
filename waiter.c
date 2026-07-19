@@ -285,7 +285,7 @@ void waiter_loop(Waiter* wtr) {
                 }
 
                 if(!is_empty(wtr->arg->seated, CUSTOMER_QUEUE)) {
-                    printf(BOLD_U "\t\tIn taking_order and seated is not empty\n" RESET);
+                    //printf(BOLD_U "\t\tIn taking_order and seated is not empty\n" RESET);
                     atomic_store(&wtr->future, wtr->present);
                 }
                 else if(!is_empty(wtr->arg->om->completed_orders, ORDER_LIST)) {

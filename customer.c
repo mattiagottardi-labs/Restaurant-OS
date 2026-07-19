@@ -28,6 +28,7 @@ Order* make_order(Customer* c, Menu* menu, int num_dishes) {
     o->dishes[num_dishes] = NULL;
     atomic_store(&o->completed, false);
     atomic_store(&o->remaining_time, get_prep_time(o));
+    atomic_store(&o->total_price, get_price(o));
     atomic_store(&o->expired, false);
     o->c = c;
     pthread_mutex_init(&o->lock, NULL);
@@ -39,6 +40,15 @@ int get_prep_time(Order* o) {
     for (int i = 0; o->dishes[i] != NULL; i++) {
         if (atomic_load(&o->dishes[i]->ready)) continue;
         tot += o->dishes[i]->time;
+    }
+    return tot;
+}
+
+int get_price(Order* o) {
+    int tot = 0;
+    for (int i = 0; o->dishes[i] != NULL; i++) {
+        if (atomic_load(&o->dishes[i]->ready)) continue;
+        tot += o->dishes[i]->price;
     }
     return tot;
 }
@@ -219,11 +229,9 @@ void print_cst(Customer* cst) {
             break;
 
         case FINISHED:
-            printf(GREEN "done, bye" RESET);
             break;
             
         case TIRED:
-            printf(RED "tired of waiting" RESET);
             break;
     }
     printf(", patience = %d \n", cst->patience);
@@ -272,8 +280,10 @@ void customer_loop(Customer* cst) {
                 break;
 
             case FINISHED:
-                atomic_store(cst->arg->score, cst->o->price * (1.0f - ( tts / cst->patience)));
+                atomic_store(cst->arg->score, cst->o->total_price * (1.0f - ( tts / cst->patience)));
                 sem_post(cst->arg->rc);
+                printf(CYAN " CUSTOMER %d" RESET ":\t", cst->arg->id);
+                printf(GREEN "done, bye\n" RESET);
                 return;
                 break;
 
@@ -284,6 +294,8 @@ void customer_loop(Customer* cst) {
                 }
                 // cst->arg->score = ;
                 sem_post(cst->arg->rc);
+                printf(CYAN " CUSTOMER %d" RESET ":\t", cst->arg->id);
+                printf(RED "tired of waiting\n" RESET);
                 return;
                 break;
 

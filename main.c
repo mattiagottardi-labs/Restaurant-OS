@@ -77,6 +77,8 @@ void* thread_manager(void* args) {
     pthread_join(customer_tid[i], NULL);
   }
 
+  running = false;
+
   pthread_exit(NULL);
 }
 
@@ -267,13 +269,14 @@ int main(int argc, char* argv[]){
   // if nothing (in the init steps) fails, running is true
   *running = true;
 
-  pthread_t info, clock;
+  pthread_t clock;
   pthread_t cooks_tid[NUM_COOKS];
   pthread_t waiters_tid[NUM_WAITERS];
   pthread_t customer_thread_manager;
 
   pthread_create(&clock, NULL, tick_advance, sc);
 /*
+  pthread_t info;
   InfoArgs* info_args = malloc(sizeof(InfoArgs));
 
   info_args->print = &print;

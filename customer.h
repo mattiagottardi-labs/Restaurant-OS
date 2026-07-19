@@ -23,7 +23,7 @@ typedef struct Order {
     _Atomic int         remaining_time;
     _Atomic bool        expired;
     _Atomic bool        completed;
-    int                 price;
+    _Atomic int         total_price;
     struct Customer*    c;
     pthread_mutex_t     lock;
 } Order;
@@ -77,6 +77,7 @@ Customer*   pop(CustomerQueue* q);
 Customer*   peek(CustomerQueue* q);
 void        clean(CustomerQueue* q);
 int         get_prep_time(Order* o);
+int         get_price(Order* o);
 // customer lifecycle
 void        customer_loop(Customer* c);
 void*       customer_thread(void* arg);
