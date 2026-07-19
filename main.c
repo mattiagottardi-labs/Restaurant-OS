@@ -203,16 +203,16 @@ void* info_thread(void* args) {
 
     pthread_mutex_lock(arg->print);
     printf(BOLD_U "\nTICK: %d\n" RESET, arg->sc->tick);
-/*
+
     printf("Standing customer/s:\n");
-    print_ll(arg->standing);
+    print_queue(arg->standing);
 
     printf("Seated customer/s:\n");
-    print_ll(arg->seated);
+    print_queue(arg->seated);
 
     printf("Waiting Order customer/s:\n");
-    print_ll(arg->waiting_order);
-*/
+    print_queue(arg->waiting_order);
+
     pthread_mutex_unlock(arg->print);
   }
 
@@ -292,7 +292,7 @@ int main(int argc, char* argv[]){
   pthread_t customer_thread_manager;
 
   pthread_create(&clock, NULL, tick_advance, sc);
-/*
+
   pthread_t info;
   InfoArgs* info_args = malloc(sizeof(InfoArgs));
 
@@ -302,7 +302,7 @@ int main(int argc, char* argv[]){
   info_args->standing = standing;
   info_args->waiting_order = waiting_order;
   pthread_create(&info, NULL, info_thread, info_args);
-*/
+
   CookArgs* cook_args = malloc(NUM_COOKS * sizeof(CookArgs));
 
   for(int i = 0; i < NUM_COOKS; i++) {
