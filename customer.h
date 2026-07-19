@@ -43,8 +43,8 @@ typedef struct Customer {
     Order*                  o;
     int                     patience;
     _Atomic bool            served;
-    int                     order_made;
-    int                     order_received;
+    _Atomic int             order_made;
+    _Atomic int             order_received;
     pthread_mutex_t         lock;
     _Atomic CustomerState   present;
     _Atomic CustomerState   future;

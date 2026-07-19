@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdio.h>
 
-const int DEFAULT_PATIENCE = 40;
+const int DEFAULT_PATIENCE = 50;
 
 /* --------------------------------------------------------------------------
  * Order creation
@@ -157,7 +157,7 @@ void dequeue(CustomerQueue* q) {
  * -------------------------------------------------------------------------- */
 Customer* peek(CustomerQueue* q) {
     //pthread_mutex_lock(&q->lock);
-    Customer* c = is_empty(q, CUSTOMER_QUEUE) ? NULL : q->head->c;
+    Customer* c = (!q->head) ? NULL : q->head->c;
     //pthread_mutex_unlock(&q->lock);
     return c;
 }
@@ -260,9 +260,10 @@ void customer_loop(Customer* cst) {
                 break;
 
             case SEATED:
-                cst->o = make_order(cst, cst->arg->menu, safe_rand_range(5));
-                cst->patience += get_prep_time(cst->o) + safe_rand_range(10);
-                cst->order_made = cst->arg->sc->tick;
+                if(cst->arg->sc->tick == cst->order_made) {
+                    cst->o = make_order(cst, cst->arg->menu, safe_rand_range(5));
+                    cst->patience += get_prep_time(cst->o) + safe_rand_range(10);
+                }
                 break;
 
             case WAITING_ORDER:
@@ -280,7 +281,7 @@ void customer_loop(Customer* cst) {
                 break;
 
             case FINISHED:
-                atomic_store(cst->arg->score, cst->o->total_price * (1.0f - ( tts / cst->patience)));
+                atomic_fetch_add(cst->arg->score, cst->o->total_price * (1.0f - ( tts / cst->patience)));
                 sem_post(cst->arg->rc);
                 printf(CYAN " CUSTOMER %d" RESET ":\t", cst->arg->id);
                 printf(GREEN "done, bye\n" RESET);

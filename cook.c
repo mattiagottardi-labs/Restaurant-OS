@@ -335,7 +335,7 @@ void cook_loop(Cook* ck) {
             // pick a dish from the selected order and then try to acquire tools
             case SELECT_DISH:
                 o = get_next_order(ck->arg->om);
-                if(o && !atomic_load(&o->expired)) {
+                if(o) {
                     ck->target_dish = pick_dish(o);
                     atomic_store(&ck->future, ACQUIRE_TOOL);
                 }
