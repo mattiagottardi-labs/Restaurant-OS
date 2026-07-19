@@ -144,22 +144,26 @@ typedef struct queue_args{
 }queue_args;
 
 void* queue_thread(void* arg){
-  pthread_mutex_lock(arguments->print);
   queue_args* arguments = (queue_args*) arg;
-  SimClock* sc = (SimClock*) arguments->sc
+  SimClock* sc = (SimClock*) arguments->sc;
   OrderManager* om = (OrderManager*) arguments->om;
-  pthread_mutex_lock(&sc->lock);
-  pthread_cond_wait(&sc->tick_cv, &sc->lock);
-  pthread_mutex_unlock(&sc->lock);
-  printf("WAITLIST:\n");
-  print_list(om->waitlist);
-  printf("PRIORITY\n");
-  print_list(om->priority);
-  printf("COMPLETED\n");
-  print_list(om->completed_orders);
-  printf("DISCARDED\n");
-  print_list(om->discarded_orders);
-  pthread_mutex_unlock(arguments->print);
+  while(running) {
+    pthread_mutex_lock(&sc->lock);
+    pthread_cond_wait(&sc->tick_cv, &sc->lock);
+    pthread_mutex_unlock(&sc->lock);
+        pthread_mutex_lock(arguments->print);
+
+    printf("WAITLIST:\n");
+    print_list(om->waitlist);
+    printf("PRIORITY\n");
+    print_list(om->priority);
+    printf("COMPLETED\n");
+    print_list(om->completed_orders);
+    printf("DISCARDED\n");
+    print_list(om->discarded_orders);
+    pthread_mutex_unlock(arguments->print);
+  }
+  return NULL;
 }
 // ─── simulation clock ───────────────────────────────────
 
@@ -189,17 +193,6 @@ void* tick_advance(void* args) {
 
 // ────────────────────────────────────────────────────────
 
-// prints the linked list
-void print_ll(CustomerQueue* q) {
-  QueueNode* tmp = q->head;
-
-  pthread_mutex_lock(&q->lock);
-  while(tmp->next != NULL) {
-    printf("%d -> ", tmp->c->arg->id);
-    tmp = tmp->next;
-  }
-  pthread_mutex_unlock(&q->lock);
-}
 
 void* info_thread(void* args) {
   InfoArgs* arg = (InfoArgs*) args;
@@ -353,9 +346,12 @@ int main(int argc, char* argv[]){
   qa->sc = sc;
   qa->print = &print;
 
+  pthread_t queue_t;
+  
+
   // thread_manager manages all customer threads
   pthread_create(&customer_thread_manager, NULL, thread_manager, customer_args);
-  pthread_create(&queue_thread, NULL,queue_thread, queue_args);
+  //pthread_create(&queue_t, NULL,queue_thread, qa);
   // Missing pthread_join for cooks and waiters
   for(int i = 0; i < NUM_COOKS; i++) {
     pthread_join(cooks_tid[i], NULL);
@@ -373,9 +369,5 @@ int main(int argc, char* argv[]){
   sem_destroy(&ea_bin);
 
   printf("Semaphores destroyed");
+  return 0;
 }
-
-
-
-}
-

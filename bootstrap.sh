@@ -2,7 +2,7 @@
 
 mode=$1
 
-file=.env
+file=correct.env
 required_index=0
 lower_bound=1
 upper_bound=10
