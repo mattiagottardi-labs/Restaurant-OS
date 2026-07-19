@@ -34,7 +34,7 @@ typedef struct CustomerArgs {
     Menu*               menu;
     _Atomic float*      score;
     bool*               running;
-    sem_t               rc;
+    sem_t*              rc;
     CustomerQueue*      standing;
     pthread_mutex_t*    print;
 } CustomerArgs;
@@ -43,7 +43,6 @@ typedef struct Customer {
     Order*                  o;
     int                     patience;
     _Atomic bool            served;
-    _Atomic bool            discarded;
     int                     order_made;
     int                     order_received;
     pthread_mutex_t         lock;

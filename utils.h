@@ -14,6 +14,7 @@
 #define WHITE   "\033[37m"
 #define GRAY    "\033[38;5;244m"
 #define RESET   "\033[0m"
+#define BOLD_U  "\033[1;4m"
 
 typedef struct Order Order;
 
@@ -48,8 +49,8 @@ typedef struct ClockThreadArgs {
     unsigned        tick_ms;
 } ClockThreadArgs;
 
-void clock_init(SimClock* sim);
-void clock_destroy(SimClock* sim);
+void clock_init(SimClock* sc);
+void clock_destroy(SimClock* sc);
 void* tick_advance(void* args);
 
 // ─── random ──────────────────────────────────────────────────────────────────

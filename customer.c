@@ -273,7 +273,7 @@ void customer_loop(Customer* cst) {
 
             case FINISHED:
                 atomic_store(cst->arg->score, cst->o->price * (1.0f - ( tts / cst->patience)));
-                sem_post(&cst->arg->rc);
+                sem_post(cst->arg->rc);
                 return;
                 break;
 
@@ -282,7 +282,7 @@ void customer_loop(Customer* cst) {
                     atomic_store(&cst->o->expired, true);
                 }
                 // cst->arg->score = ;
-                sem_post(&cst->arg->rc);
+                sem_post(cst->arg->rc);
                 return;
                 break;
 
