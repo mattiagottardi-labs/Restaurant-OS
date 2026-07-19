@@ -69,9 +69,9 @@ void list_insert(OrderList* ol, Customer* cst, int algorithm) {
 }
 
 /* --------------------------------------------------------------------------
- * list_pop — remove and return the Order at the head of the list
+ * list_pop_order — remove and return the Order at the head of the list
  * -------------------------------------------------------------------------- */
-Order* list_pop(OrderList* ol) {
+Order* list_pop_order(OrderList* ol) {
     pthread_mutex_lock(&ol->lock);
 
     if(!ol->head) {
@@ -90,9 +90,9 @@ Order* list_pop(OrderList* ol) {
 }
 
 /* --------------------------------------------------------------------------
- * list_peek — return pointer to head order without removing
+ * list_peek_order — return pointer to head order without removing
  * -------------------------------------------------------------------------- */
-Order* list_peek(OrderList* ol) {
+Order* list_peek_order(OrderList* ol) {
     pthread_mutex_lock(&ol->lock);
     Order* o  = ol->size == 0 ? NULL : ol->head->o;
     pthread_mutex_unlock(&ol->lock);
@@ -104,7 +104,7 @@ Order* list_peek(OrderList* ol) {
  * -------------------------------------------------------------------------- */
 void refill_priority(OrderManager* om) {
     while (om->priority->size < 10) {
-        Order* o = list_pop(om->waitlist);
+        Order* o = list_pop_order(om->waitlist);
         if (!o) break;
         list_insert_order(om->priority, o, 1);
     }
@@ -247,7 +247,7 @@ void waiter_loop(Waiter* wtr) {
         switch(wtr->present) {
             case IDLE:
                 // if customers are seated, take their order
-                if(!is_empty(wtr->arg->seated, CUSTOMER_QUEUE) && peek(wtr->arg->seated)) {
+                if(!is_empty(wtr->arg->seated, CUSTOMER_QUEUE)) {
                     atomic_store(&wtr->future, TAKING_ORDER);
                 }
                 else if(!is_empty(wtr->arg->om->completed_orders, ORDER_LIST)) {
@@ -301,7 +301,7 @@ void waiter_loop(Waiter* wtr) {
 
             case DELIVERING_FOOD:
                 // take the order and deliver to the customer
-                o = list_pop(wtr->arg->om->completed_orders);
+                o = list_pop_order(wtr->arg->om->completed_orders);
                 if (o) {
                     if (!atomic_load(&o->expired)) {
                         atomic_store(&o->c->served, true);

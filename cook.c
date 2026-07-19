@@ -8,7 +8,6 @@
 /* --------------------------------------------------------------------------
  * Tool helpers
  * -------------------------------------------------------------------------- */
-
 int count_tools(Dish* d) {
     int i = 0;
     while (d->tools[i] != NULL) i++;
@@ -120,10 +119,10 @@ Order* get_next_order(OrderManager* om) {
     ListNode* prev = NULL;
     ListNode* node = om->priority->head;
 
-    while (node) {
+    while(node) {
         Order* o = node->o;
 
-        if (atomic_load(&o->expired)) {
+        if(atomic_load(&o->expired)) {
             /* Defensively remove expired Order from priority list */
             ListNode* to_free = node;
             node = node->next;
@@ -140,14 +139,13 @@ Order* get_next_order(OrderManager* om) {
         }
 
         bool has_available = false;
-        for (int i = 0; o->dishes[i] != NULL; i++) {
-            if (!atomic_load(&o->dishes[i]->cooking) &&
-                !atomic_load(&o->dishes[i]->ready)) {
+        for(int i = 0; o->dishes[i] != NULL; i++) {
+            if (!atomic_load(&o->dishes[i]->cooking) && !atomic_load(&o->dishes[i]->ready)) {
                 has_available = true;
                 break;
             }
         }
-        if (has_available) {
+        if(has_available) {
             pthread_mutex_unlock(&om->priority->lock);
             return o;
         }
@@ -169,28 +167,27 @@ Dish* pick_dish(Order* o) {
     Dish* best      = NULL;
     int   min_tools = INT_MAX;
 
-    for (int i = 0; o->dishes[i] != NULL; i++) {
+    for(int i = 0; o->dishes[i] != NULL; i++) {
         Dish* d = o->dishes[i];
         //printf("\tselecting Dish...\n");
-        if (atomic_load(&d->cooking) || atomic_load(&d->ready)){
+        if(atomic_load(&d->cooking) || atomic_load(&d->ready)){
             //printf("\tDish %s is being cooked or ready\n", d->name);
             continue;
         }
 
         int n = count_tools(d);
-        if (n < min_tools) {
+        if(n < min_tools) {
             //printf("\tDish %s has been selected\n", d->name);
             min_tools = n;
             best = d;
         }
     }
 
-    if (!best) return NULL;
+    if(!best) return NULL;
 
     /* CAS claim — if another cook beat us return NULL */
     bool expected = false;
-    if (!atomic_compare_exchange_strong(&best->cooking, &expected, true))
-        return NULL;
+    if(!atomic_compare_exchange_strong(&best->cooking, &expected, true)) return NULL;
     //printf("\tDish %s has been deemed best\n", best->name);
     return best;
 }
@@ -325,7 +322,7 @@ void cook_loop(Cook* ck) {
             // check into the priority list for an order
             case WAITING:
                 pthread_mutex_lock(&ck->arg->om->priority->lock);
-                if(ck->arg->om->priority->size > 0) {
+                if(!is_empty(ck->arg->om->priority, ORDER_LIST)) {
                     atomic_store(&ck->future, SELECT_DISH);
                 }
                 else {
@@ -384,20 +381,20 @@ void cook_loop(Cook* ck) {
                 break;
 
             case COMPLETED:
-                /* Check if all dishes are ready */
-                if (atomic_load(&o->remaining_time) == 0) {
+                // Check if all dishes are ready
+                if(atomic_load(&o->remaining_time) == 0) {
                     atomic_store(&ck->future, WAITING);
                     printf(GREEN "\t\tORDER COMPLETED\n" RESET);
                     bool expected = false;
 
-                    if (atomic_compare_exchange_strong(&o->completed, &expected, true)) {
-                        /* Check expiry — customer may have timed out while we were cooking */
-                        if (!atomic_load(&o->expired)) {
-                            /* Remove from priority list */
+                    if(atomic_compare_exchange_strong(&o->completed, &expected, true)) {
+                        // Check expiry — customer may have timed out while we were cooking
+                        if(!atomic_load(&o->expired)) {
+                            // Remove from priority list
                             pthread_mutex_lock(&ck->arg->om->priority->lock);
                             ListNode* prev = NULL;
                             ListNode* node = ck->arg->om->priority->head;
-                            while (node) {
+                            while(node) {
                                 if (node->o == o) {
                                     if (prev) prev->next = node->next;
                                     else      ck->arg->om->priority->head = node->next;
