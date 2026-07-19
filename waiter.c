@@ -247,7 +247,7 @@ void waiter_loop(Waiter* wtr) {
         switch(wtr->present) {
             case IDLE:
                 // if customers are seated, take their order
-                if(!is_empty(wtr->arg->seated, CUSTOMER_QUEUE)) {
+                if(!is_empty(wtr->arg->seated, CUSTOMER_QUEUE) && peek(wtr->arg->seated)) {
                     atomic_store(&wtr->future, TAKING_ORDER);
                 }
                 else if(!is_empty(wtr->arg->om->completed_orders, ORDER_LIST)) {
@@ -285,6 +285,7 @@ void waiter_loop(Waiter* wtr) {
                 }
 
                 if(!is_empty(wtr->arg->seated, CUSTOMER_QUEUE)) {
+                    printf(BOLD_U "\t\tIn taking_order and seated is not empty\n" RESET);
                     atomic_store(&wtr->future, wtr->present);
                 }
                 else if(!is_empty(wtr->arg->om->completed_orders, ORDER_LIST)) {
@@ -310,11 +311,11 @@ void waiter_loop(Waiter* wtr) {
                     }
                 }
 
-                if(is_empty(wtr->arg->om->completed_orders, ORDER_LIST)) {
-                    atomic_store(&wtr->future, IDLE);
+                if(!is_empty(wtr->arg->om->completed_orders, ORDER_LIST)) {
+                    atomic_store(&wtr->future, wtr->present);
                 }
                 else {
-                    atomic_store(&wtr->future, wtr->present);
+                    atomic_store(&wtr->future, IDLE);
                 }
                 break;
 

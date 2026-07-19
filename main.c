@@ -209,6 +209,7 @@ int main(int argc, char* argv[]){
     return 1;
   }
 
+  // handles the error in the arguments
   for(int i = 0; i < argc; i++) {
     switch(atoi(argv[i])) {
       case INVALID_PARAMETER:

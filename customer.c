@@ -280,6 +280,7 @@ void customer_loop(Customer* cst) {
             case TIRED:
                 if(cst->o) {
                     atomic_store(&cst->o->expired, true);
+                    printf("\t\t\tOrder discarded (1 true, 0 false): %d\n", cst->o->expired);
                 }
                 // cst->arg->score = ;
                 sem_post(cst->arg->rc);
