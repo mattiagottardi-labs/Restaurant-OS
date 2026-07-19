@@ -274,13 +274,16 @@ void customer_loop(Customer* cst) {
             case FINISHED:
                 atomic_store(cst->arg->score, cst->o->price * (1.0f - ( tts / cst->patience)));
                 sem_post(&cst->arg->rc);
-                cst->arg->running = false;
+                return;
                 break;
 
             case TIRED:
+                if(cst->o) {
+                    atomic_store(&cst->o->expired, true);
+                }
                 // cst->arg->score = ;
                 sem_post(&cst->arg->rc);
-                cst->arg->running = false;
+                return;
                 break;
 
             default:
@@ -293,7 +296,7 @@ void customer_loop(Customer* cst) {
             cst->patience--;
         }
         else {
-            atomic_store(&cst->future, FINISHED);
+            atomic_store(&cst->future, TIRED);
         }
         atomic_store(&cst->present, cst->future);
     }

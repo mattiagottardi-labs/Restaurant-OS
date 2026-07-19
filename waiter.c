@@ -301,8 +301,13 @@ void waiter_loop(Waiter* wtr) {
             case DELIVERING_FOOD:
                 // take the order and deliver to the customer
                 o = list_pop(wtr->arg->om->completed_orders);
-                if(o) {
-                    atomic_store(&o->c->served, true);
+                if (o) {
+                    if (!atomic_load(&o->expired)) {
+                        atomic_store(&o->c->served, true);
+                    }
+                    else {
+                        list_insert_order(wtr->arg->om->discarded_orders, o, 2);
+                    }
                 }
 
                 if(is_empty(wtr->arg->om->completed_orders, ORDER_LIST)) {

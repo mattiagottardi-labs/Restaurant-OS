@@ -173,7 +173,7 @@ Dish* pick_dish(Order* o) {
         Dish* d = o->dishes[i];
         //printf("\tselecting Dish...\n");
         if (atomic_load(&d->cooking) || atomic_load(&d->ready)){
-            printf("\tDish %s is being cooked or ready\n", d->name);
+            //printf("\tDish %s is being cooked or ready\n", d->name);
             continue;
         }
 
@@ -191,7 +191,7 @@ Dish* pick_dish(Order* o) {
     bool expected = false;
     if (!atomic_compare_exchange_strong(&best->cooking, &expected, true))
         return NULL;
-    printf("\tDish %s has been deemed best\n", best->name);
+    //printf("\tDish %s has been deemed best\n", best->name);
     return best;
 }
 
@@ -338,7 +338,7 @@ void cook_loop(Cook* ck) {
             // pick a dish from the selected order and then try to acquire tools
             case SELECT_DISH:
                 o = get_next_order(ck->arg->om);
-                if(o) {
+                if(o && !atomic_load(&o->expired)) {
                     ck->target_dish = pick_dish(o);
                     atomic_store(&ck->future, ACQUIRE_TOOL);
                 }
@@ -387,16 +387,12 @@ void cook_loop(Cook* ck) {
                 /* Check if all dishes are ready */
                 if (atomic_load(&o->remaining_time) == 0) {
                     atomic_store(&ck->future, WAITING);
-                    printf("Order completed\n");
+                    printf(GREEN "\t\tORDER COMPLETED\n" RESET);
                     bool expected = false;
 
                     if (atomic_compare_exchange_strong(&o->completed, &expected, true)) {
-
                         /* Check expiry — customer may have timed out while we were cooking */
-                        if (atomic_load(&o->expired)) {
-                            list_insert_order(ck->arg->om->discarded_orders, o, 2);
-                        }
-                        else {
+                        if (!atomic_load(&o->expired)) {
                             /* Remove from priority list */
                             pthread_mutex_lock(&ck->arg->om->priority->lock);
                             ListNode* prev = NULL;
