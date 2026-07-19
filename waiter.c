@@ -17,7 +17,13 @@ EntertainmentActivity ea[5] = {
 int get_prio(Order* o, int algorithm) {
     switch (algorithm) {
         case 0:  /* Slack time — most urgent first */
-            return o->c->patience - atomic_load(&o->remaining_time);
+            if(o) {
+                return o->c->patience - atomic_load(&o->remaining_time);
+            }
+            else {
+                return 100;
+            }
+
         case 1:  /* SJF — shortest job first */
             return atomic_load(&o->remaining_time);
         case 2:  /* Unsorted — append to tail, prio irrelevant */
@@ -223,6 +229,33 @@ void print_wtr(Waiter* wtr) {
     }
     printf("\n");
     pthread_mutex_unlock(wtr->arg->print);
+}
+
+void clean_queue(CustomerQueue* q) {
+    QueueNode* tmp = q->head;
+    QueueNode* prev = NULL;
+
+    while(tmp->next) {
+        if(tmp->c->patience == 0) {
+            prev->next = tmp->next;
+        }
+        else {
+            prev = tmp;
+        }
+        tmp = tmp->next;
+    }
+
+    free(tmp);
+    tmp = NULL;
+
+    free(prev);
+    prev = NULL;
+}
+
+void clean_queues(Waiter* wtr) {
+    clean_queue(wtr->arg->seated);
+    clean_queue(wtr->arg->standing);
+    clean_queue(wtr->arg->waiting_order);
 }
 
 /* --------------------------------------------------------------------------

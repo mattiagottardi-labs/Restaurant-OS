@@ -91,11 +91,13 @@ void print_tool_status(KitchenManager* km){
 
 void print_customer(Customer* C){
   printf("Customer's stats:");
-  printf("\n\tPatience: %d", C->patience);
-  printf("\n\tSlack: %d", get_prio(C->o, 0));
-  printf("\n\tOrder:\n");
-  for(int i = 0; C->o->dishes[i] != NULL; i++){
-    printf("%s\n", C->o->dishes[i]->name);
+  printf("\n\tPatience: %d\n", C->patience);
+  if(C->o) {
+   printf("\n\tSlack: %d", get_prio(C->o, 0));
+    printf("\n\tOrder:\n");
+    for(int i = 0; C->o->dishes[i] != NULL; i++){
+      printf("%s\n", C->o->dishes[i]->name);
+    }
   }
 }
 
