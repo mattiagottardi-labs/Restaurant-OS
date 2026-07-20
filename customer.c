@@ -160,13 +160,12 @@ void enqueue(Customer* c, CustomerQueue* cq) {
  * dequeue — remove head node, returning the customer
  * -------------------------------------------------------------------------- */
 Customer* dequeue(CustomerQueue* cq) {
-    pthread_mutex_lock(&cq->lock);
-
     if(is_empty(cq, CUSTOMER_QUEUE)) {
         pthread_mutex_unlock(&cq->lock);
         return NULL;
     }
-
+    pthread_mutex_lock(&cq->lock);
+    
     QueueNode* old_head = cq->head;
     Customer* c = old_head->c;
 
