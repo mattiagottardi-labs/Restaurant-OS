@@ -11,3 +11,6 @@
 *.obj
 *.elf
 .env program
+core
+core.*
+*.core
