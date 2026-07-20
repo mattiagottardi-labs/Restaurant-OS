@@ -291,7 +291,6 @@ int main(int argc, char* argv[]){
   CustomerQueue* seated = malloc(sizeof(CustomerQueue));
   CustomerQueue* waiting_order = malloc(sizeof(CustomerQueue));
   OrderManager* om = malloc(sizeof(OrderManager));
-  DishList* dl = malloc(sizeof(DishList));
 
   //init structs
   make_tools(RESOURCE_FILE, km, 10);

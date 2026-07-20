@@ -96,6 +96,27 @@ Order* list_pop_order(OrderList* ol) {
 }
 
 /* --------------------------------------------------------------------------
+ * list_pop_dish — remove and return the Dish at the head of the list
+ * -------------------------------------------------------------------------- */
+Dish* list_pop_dish(DishList* dl) {
+    pthread_mutex_lock(&dl->lock);
+
+    if(!dl->head) {
+        pthread_mutex_unlock(&dl->lock);
+        return NULL;
+    }
+
+    DishListNode* old_head  = dl->head;
+    Dish* d = old_head->d;
+    dl->head = old_head->next;
+    dl->size--;
+
+    pthread_mutex_unlock(&dl->lock);
+
+    return d;
+}
+
+/* --------------------------------------------------------------------------
  * list_peek_order — return pointer to head order without removing
  * -------------------------------------------------------------------------- */
 Order* list_peek_order(OrderList* ol) {
@@ -159,7 +180,13 @@ void list_insert_order(OrderList* ol, Order* o, int algorithm) {
     pthread_mutex_unlock(&ol->lock);
 }
 
-void list_init(OrderList* ol){
+void dishlist_init(DishList* dl){
+  dl->head = NULL;
+  dl->size = 0;
+  pthread_mutex_init(&dl->lock, NULL);
+}
+
+void orderlist_init(OrderList* ol){
   ol->head = NULL;
   ol->size = 0;
   pthread_mutex_init(&ol->lock, NULL);
@@ -167,18 +194,23 @@ void list_init(OrderList* ol){
 
 void om_init(OrderManager* om){
   pthread_mutex_init(&om->lock, NULL);
+  DishList* completed_dish = malloc(sizeof(DishList));
   OrderList* waitlist = malloc(sizeof(OrderList));
   OrderList* priority = malloc(sizeof(OrderList));
   OrderList* discarded = malloc(sizeof(OrderList));
   OrderList* completed = malloc(sizeof(OrderList));
+
+  om->completed_dishes = completed_dish;
   om->waitlist = waitlist;
   om->priority = priority;
   om->discarded_orders = discarded;
   om->completed_orders = completed;
-  list_init(om->waitlist);
-  list_init(om->priority);
-  list_init(om->completed_orders);
-  list_init(om->discarded_orders);
+
+  dishlist_init(om->completed_dishes);
+  orderlist_init(om->waitlist);
+  orderlist_init(om->priority);
+  orderlist_init(om->completed_orders);
+  orderlist_init(om->discarded_orders);
 }
 
 // if waiting customers and no waiting orders -> call this function
@@ -338,7 +370,7 @@ void waiter_loop(Waiter* wtr) {
                 if(!is_empty(wtr->arg->seated, CUSTOMER_QUEUE)) {
                     atomic_store(&wtr->future, TAKING_ORDER);
                 }
-                else if(!is_empty(wtr->arg->dl, DISH_LIST)) {
+                else if(!is_empty(wtr->arg->om->completed_dishes, DISH_LIST)) {
                     atomic_store(&wtr->future, DELIVERING_FOOD);
                 }
                 else if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE) && (sem_trywait(wtr->arg->rc) == 0)) {
@@ -380,7 +412,7 @@ void waiter_loop(Waiter* wtr) {
                     enqueue(cst, wtr->arg->waiting_order);
                 }
 
-                if(!is_empty(wtr->arg->dl, DISH_LIST)) {
+                if(!is_empty(wtr->arg->om->completed_dishes, DISH_LIST)) {
                     atomic_store(&wtr->future, DELIVERING_FOOD);
                 }
                 else if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE) && (sem_trywait(wtr->arg->ea_bin) == 0)) {
@@ -393,12 +425,12 @@ void waiter_loop(Waiter* wtr) {
 
             case DELIVERING_FOOD:
                 // take the order and deliver to the customer
-                d = list_pop_order(wtr->arg->dl);
+                d = list_pop_dish(wtr->arg->om->completed_dishes);
                 if(d) {
                     atomic_store(&o->c->served, true);
                 }
                 
-                if(!is_empty(wtr->arg->dl, DISH_LIST)) {
+                if(!is_empty(wtr->arg->om->completed_dishes, DISH_LIST)) {
                     atomic_store(&wtr->future, wtr->present);
                 }
                 else {
@@ -410,7 +442,7 @@ void waiter_loop(Waiter* wtr) {
                 customer_entertainment(wtr, ea);
                 // release the entertainment resource now that this cycle is done
                 sem_post(wtr->arg->ea_bin);
-                if(is_empty(wtr->arg->dl, DISH_LIST)) {
+                if(is_empty(wtr->arg->om->completed_dishes, DISH_LIST)) {
                     atomic_store(&wtr->future, IDLE);
                 }
                 else {

@@ -7,6 +7,7 @@ please notify before making structural changes.
 #define WAITER_H
 #include <pthread.h>
 #include <stdatomic.h>
+
 #include "customer.h"
 #include "kitchen.h"
 
@@ -19,16 +20,16 @@ typedef enum WaiterState {
 } WaiterState;
 
 typedef struct OrderManager {
+    DishList*       completed_dishes;
     OrderList*      waitlist;
     OrderList*      priority;
-    //OrderList*      completed_orders;
+    OrderList*      completed_orders;
     OrderList*      discarded_orders;
     pthread_mutex_t lock;
 } OrderManager;
 
 typedef struct WaiterArgs {
     int                 id;
-    DishList*           dl;
     OrderManager*       om;
     CustomerQueue*      standing;
     CustomerQueue*      seated;

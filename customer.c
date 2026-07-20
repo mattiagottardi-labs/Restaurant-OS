@@ -318,7 +318,7 @@ void customer_loop(Customer* cst) {
                 if(cst->o) {
                     atomic_store(&cst->o->expired, true);
                 }
-                atomic_float_subtract(cst->arg->score, cst->o->total_price * log2f(1));
+                //atomic_float_sub(cst->arg->score, cst->o->total_price * log2f(1));
                 sem_post(cst->arg->rc);
                 printf(CYAN " CUSTOMER %d" RESET ":\t", cst->arg->id);
                 printf(RED "tired of waiting\n" RESET);
