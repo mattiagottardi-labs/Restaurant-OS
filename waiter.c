@@ -37,7 +37,7 @@ void list_insert(OrderList* ol, Customer* cst, int algorithm) {
     Order* o = cst->o;
     if (!o) return;
 
-    ListNode* new_node = malloc(sizeof(ListNode));
+    OrderListNode* new_node = malloc(sizeof(OrderListNode));
     if (!new_node) {
         perror("list_insert: malloc failed\n");
         return;
@@ -53,7 +53,7 @@ void list_insert(OrderList* ol, Customer* cst, int algorithm) {
         if (!ol->head) {
             ol->head = new_node;
         } else {
-            ListNode* cur = ol->head;
+            OrderListNode* cur = ol->head;
             while (cur->next) cur = cur->next;
             cur->next = new_node;
         }
@@ -63,7 +63,7 @@ void list_insert(OrderList* ol, Customer* cst, int algorithm) {
             new_node->next = ol->head;
             ol->head = new_node;
         } else {
-            ListNode* cur = ol->head;
+            OrderListNode* cur = ol->head;
             while (cur->next && cur->next->prio <= new_node->prio) cur = cur->next;
             new_node->next = cur->next;
             cur->next = new_node;
@@ -85,7 +85,7 @@ Order* list_pop_order(OrderList* ol) {
         return NULL;
     }
 
-    ListNode* old_head  = ol->head;
+    OrderListNode* old_head  = ol->head;
     Order*    o         = old_head->o;
     ol->head = old_head->next;
     ol->size--;
@@ -118,7 +118,7 @@ void refill_priority(OrderManager* om) {
 
 void list_insert_order(OrderList* ol, Order* o, int algorithm) {
     if (!o) return;
-    ListNode* new_node = malloc(sizeof(ListNode));
+    OrderListNode* new_node = malloc(sizeof(OrderListNode));
     if (!new_node) {
         perror("list_insert_order - malloc failed");
         return;
@@ -135,7 +135,7 @@ void list_insert_order(OrderList* ol, Order* o, int algorithm) {
             ol->head = new_node;
         }
         else {
-            ListNode* cur = ol->head;
+            OrderListNode* cur = ol->head;
             while (cur->next) cur = cur->next;
             cur->next = new_node;
         }
@@ -147,7 +147,7 @@ void list_insert_order(OrderList* ol, Order* o, int algorithm) {
             ol->head = new_node;
         }
         else {
-            ListNode* cur = ol->head;
+            OrderListNode* cur = ol->head;
             while (cur->next && cur->next->prio <= new_node->prio)
                 cur = cur->next;
             new_node->next = cur->next;
@@ -272,8 +272,8 @@ void clean_queues(Waiter* wtr) {
 
 void clean_list(OrderList* ol) {
     pthread_mutex_lock(&ol->lock);
-    ListNode* tmp = ol->head;
-    ListNode* prev = NULL;
+    OrderListNode* tmp = ol->head;
+    OrderListNode* prev = NULL;
 
     // Strip leading nodes with patience == 0
     while (tmp && tmp->o->expired) {
@@ -323,12 +323,13 @@ void waiter_loop(Waiter* wtr) {
     // buffer customer/order used to perform operation on queues
     Customer* cst = NULL;
     Order* o = NULL;
+    Dish* d = NULL;
 
     while(wtr->arg->running) {
         pthread_mutex_lock(&wtr->arg->sc->lock);
         pthread_cond_wait(&wtr->arg->sc->tick_cv, &wtr->arg->sc->lock);
         pthread_mutex_unlock(&wtr->arg->sc->lock);
-        //clean_queues(wtr);
+        clean_queues(wtr);
         //clean_lists(wtr->arg->om);
 
         switch(wtr->present) {
@@ -337,7 +338,7 @@ void waiter_loop(Waiter* wtr) {
                 if(!is_empty(wtr->arg->seated, CUSTOMER_QUEUE)) {
                     atomic_store(&wtr->future, TAKING_ORDER);
                 }
-                else if(!is_empty(wtr->arg->om->completed_orders, ORDER_LIST)) {
+                else if(!is_empty(wtr->arg->dl, DISH_LIST)) {
                     atomic_store(&wtr->future, DELIVERING_FOOD);
                 }
                 else if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE) && (sem_trywait(wtr->arg->rc) == 0)) {
@@ -379,7 +380,7 @@ void waiter_loop(Waiter* wtr) {
                     enqueue(cst, wtr->arg->waiting_order);
                 }
 
-                if(!is_empty(wtr->arg->om->completed_orders, ORDER_LIST)) {
+                if(!is_empty(wtr->arg->dl, DISH_LIST)) {
                     atomic_store(&wtr->future, DELIVERING_FOOD);
                 }
                 else if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE) && (sem_trywait(wtr->arg->ea_bin) == 0)) {
@@ -392,16 +393,12 @@ void waiter_loop(Waiter* wtr) {
 
             case DELIVERING_FOOD:
                 // take the order and deliver to the customer
-                o = list_pop_order(wtr->arg->om->completed_orders);
-                if (o) {
-                    if (!atomic_load(&o->expired) && o->c) {
-                        atomic_store(&o->c->served, true);
-                    }
-                    else {
-                        list_insert_order(wtr->arg->om->discarded_orders, o, 2);
-                    }
+                d = list_pop_order(wtr->arg->dl);
+                if(d) {
+                    atomic_store(&o->c->served, true);
                 }
-                if(!is_empty(wtr->arg->om->completed_orders, ORDER_LIST)) {
+                
+                if(!is_empty(wtr->arg->dl, DISH_LIST)) {
                     atomic_store(&wtr->future, wtr->present);
                 }
                 else {
@@ -413,7 +410,7 @@ void waiter_loop(Waiter* wtr) {
                 customer_entertainment(wtr, ea);
                 // release the entertainment resource now that this cycle is done
                 sem_post(wtr->arg->ea_bin);
-                if(is_empty(wtr->arg->om->completed_orders, ORDER_LIST)) {
+                if(is_empty(wtr->arg->dl, DISH_LIST)) {
                     atomic_store(&wtr->future, IDLE);
                 }
                 else {

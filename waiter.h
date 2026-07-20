@@ -21,13 +21,14 @@ typedef enum WaiterState {
 typedef struct OrderManager {
     OrderList*      waitlist;
     OrderList*      priority;
-    OrderList*      completed_orders;
+    //OrderList*      completed_orders;
     OrderList*      discarded_orders;
     pthread_mutex_t lock;
 } OrderManager;
 
 typedef struct WaiterArgs {
     int                 id;
+    DishList*           dl;
     OrderManager*       om;
     CustomerQueue*      standing;
     CustomerQueue*      seated;

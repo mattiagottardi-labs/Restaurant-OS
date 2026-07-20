@@ -126,7 +126,7 @@ void print_queue(CustomerQueue* q) {
 }
 
 void print_list(OrderList* ol){
-  ListNode* current = ol->head;
+  OrderListNode* current = ol->head;
   printf("list begin\n");
   for(int i = 0; i < ol->size; i++){
     printf("%d: ", i);
@@ -291,6 +291,7 @@ int main(int argc, char* argv[]){
   CustomerQueue* seated = malloc(sizeof(CustomerQueue));
   CustomerQueue* waiting_order = malloc(sizeof(CustomerQueue));
   OrderManager* om = malloc(sizeof(OrderManager));
+  DishList* dl = malloc(sizeof(DishList));
 
   //init structs
   make_tools(RESOURCE_FILE, km, 10);

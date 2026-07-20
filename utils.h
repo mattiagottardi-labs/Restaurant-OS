@@ -17,20 +17,34 @@
 #define BOLD_U  "\033[1;4m"
 
 typedef struct Order Order;
+typedef struct Dish Dish;
 
 typedef enum Casting {
+    DISH_LIST,
     ORDER_LIST,
     CUSTOMER_QUEUE,
 } Casting;
 
-typedef struct ListNode {
+typedef struct DishListNode {
+    Dish*            d;
+    int              prio;
+    struct DishListNode* next;
+} DishListNode;
+
+typedef struct DishList {
+    DishListNode*   head;
+    int             size;
+    pthread_mutex_t lock;
+} DishList;
+
+typedef struct OrderListNode {
     Order*           o;
     int              prio;
-    struct ListNode* next;
-} ListNode;
+    struct OrderListNode* next;
+} OrderListNode;
 
 typedef struct OrderList {
-    ListNode*       head;
+    OrderListNode*       head;
     int             size;
     pthread_mutex_t lock;
 } OrderList;

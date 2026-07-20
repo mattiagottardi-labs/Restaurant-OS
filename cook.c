@@ -20,7 +20,7 @@ float get_pressure(OrderList* ol){
   int tot_prio;
   int tot_orders;
   pthread_mutex_lock(&ol->lock);
-  ListNode* current = ol->head;
+  OrderListNode* current = ol->head;
   for(int i = 0; i < ol->size; i++){
     if(atomic_load(&current->o->completed) || atomic_load(&current->o->expired)){
       current = current->next;
@@ -117,15 +117,15 @@ void release_tools(Tool** used, Dish* d, KitchenManager* km, SimClock* sc) {
  * -------------------------------------------------------------------------- */
 Order* get_next_order(OrderManager* om) {
     pthread_mutex_lock(&om->priority->lock);
-    ListNode* prev = NULL;
-    ListNode* node = om->priority->head;
+    OrderListNode* prev = NULL;
+    OrderListNode* node = om->priority->head;
 
     while(node) {
         Order* o = node->o;
 
         if(atomic_load(&o->expired)) {
             /* Defensively remove expired Order from priority list */
-            ListNode* to_free = node;
+            OrderListNode* to_free = node;
             node = node->next;
             if (prev) prev->next = node;
             else      om->priority->head = node;
@@ -193,6 +193,33 @@ Dish* pick_dish(Order* o) {
     return best;
 }
 
+void list_insert_dish(DishList* dl, Dish* d) {
+    pthread_mutex_lock(&dl->lock);
+    if (!d) return;
+    DishListNode* new_node = malloc(sizeof(DishListNode));
+    if (!new_node) {
+        perror("list_insert_order - malloc failed");
+        return;
+    }
+    new_node->d    = d;
+    new_node->next = NULL;
+
+    DishListNode* tmp = dl->head;
+
+    if (!dl->head) {
+        dl->head = new_node;
+    }
+    else {
+        while(tmp->next != NULL) {
+            tmp = tmp->next;
+        }
+        tmp->next = new_node;
+    }
+    dl->size++;
+
+    pthread_mutex_unlock(&dl->lock);
+}
+
 /* --------------------------------------------------------------------------
  * cook_dish — acquire tools, wait clock ticks, mark ready,
  *             check if Order is complete and signal customer if so.
@@ -248,8 +275,8 @@ void cook_dish(Dish* d, Order* o, OrderManager* om, SimClock* sc, KitchenManager
             } else {
                 /* Remove from priority list */
                 pthread_mutex_lock(&om->priority->lock);
-                ListNode* prev = NULL;
-                ListNode* node = om->priority->head;
+                OrderListNode* prev = NULL;
+                OrderListNode* node = om->priority->head;
                 while (node) {
                     if (node->o == o) {
                         if (prev) prev->next = node->next;
@@ -379,6 +406,9 @@ void cook_loop(Cook* ck) {
 
                 release_tools(ck->claimed_tools, ck->target_dish, ck->arg->km, ck->arg->sc);
 
+                // insert ready dish in dish list so then the waiter can pick it up
+                list_insert_dish(ck->arg->dl, ck->target_dish);
+
                 atomic_store(&ck->future, COMPLETED);
                 break;
 
@@ -395,8 +425,8 @@ void cook_loop(Cook* ck) {
                         if(!atomic_load(&o->expired)) {
                             // Remove from priority list
                             pthread_mutex_lock(&ck->arg->om->priority->lock);
-                            ListNode* prev = NULL;
-                            ListNode* node = ck->arg->om->priority->head;
+                            OrderListNode* prev = NULL;
+                            OrderListNode* node = ck->arg->om->priority->head;
                             while(node) {
                                 if (node->o == o) {
                                     if (prev) prev->next = node->next;

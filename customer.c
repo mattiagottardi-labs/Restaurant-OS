@@ -1,7 +1,9 @@
-#include "customer.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <math.h>
+
+#include "customer.h"
 
 const int DEFAULT_PATIENCE = 60;
 
@@ -92,6 +94,14 @@ void free_order(Order* o) {
 bool is_empty(void* q, Casting cast) {
     bool empty;
     switch(cast) {
+        case DISH_LIST: {
+            DishList* dl = (DishList*) q;
+            pthread_mutex_lock(&dl->lock);
+            empty = (dl->head == NULL);
+            pthread_mutex_unlock(&dl->lock);
+            return empty;
+        }
+
         case ORDER_LIST: {
             OrderList* ol = (OrderList*) q;
             pthread_mutex_lock(&ol->lock);
@@ -308,7 +318,7 @@ void customer_loop(Customer* cst) {
                 if(cst->o) {
                     atomic_store(&cst->o->expired, true);
                 }
-                // cst->arg->score = ;
+                atomic_float_subtract(cst->arg->score, cst->o->total_price * log2f(1));
                 sem_post(cst->arg->rc);
                 printf(CYAN " CUSTOMER %d" RESET ":\t", cst->arg->id);
                 printf(RED "tired of waiting\n" RESET);
