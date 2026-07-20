@@ -78,8 +78,9 @@ void* thread_manager(void* args) {
   }
 
   running = false;
+  printf(BOLD_U "\nRUNNING SET TO FALSE!\n" RESET);
 
-  pthread_exit(NULL);
+  return NULL;
 }
 
 void print_tool_status(KitchenManager* km){
@@ -139,34 +140,6 @@ void queue_init(CustomerQueue* q){
   pthread_mutex_init(&q->lock, NULL);
 }
 
-typedef struct queue_args{
-  SimClock* sc;
-  OrderManager* om;
-  pthread_mutex_t* print;
-}queue_args;
-
-void* queue_thread(void* arg){
-  queue_args* arguments = (queue_args*) arg;
-  SimClock* sc = (SimClock*) arguments->sc;
-  OrderManager* om = (OrderManager*) arguments->om;
-  while(running) {
-    pthread_mutex_lock(&sc->lock);
-    pthread_cond_wait(&sc->tick_cv, &sc->lock);
-    pthread_mutex_unlock(&sc->lock);
-        pthread_mutex_lock(arguments->print);
-
-    printf("WAITLIST:\n");
-    print_list(om->waitlist);
-    printf("PRIORITY\n");
-    print_list(om->priority);
-    printf("COMPLETED\n");
-    print_list(om->completed_orders);
-    printf("DISCARDED\n");
-    print_list(om->discarded_orders);
-    pthread_mutex_unlock(arguments->print);
-  }
-  return NULL;
-}
 // ─── simulation clock ───────────────────────────────────
 
 void clock_init(SimClock* sc) {
@@ -186,7 +159,7 @@ void* tick_advance(void* args) {
     usleep(CLK_PERIOD);
     pthread_mutex_lock(&sc->lock);
     sc->tick++;
-    printf(BOLD_U "\nTICK: %d\n" RESET, sc->tick);
+    
     pthread_cond_broadcast(&sc->tick_cv);
     pthread_mutex_unlock(&sc->lock);
   }
@@ -215,7 +188,8 @@ void* info_thread(void* args) {
     printf("Waiting Order customer/s:\n");
     print_queue(arg->waiting_order);
 */
-    printf(BOLD_U "\nSCORE: %f\n" RESET, score);
+    printf(BOLD_U "\nTICK: %d" RESET, arg->sc->tick);
+    printf(BOLD_U "\tSCORE: %f\n" RESET, score);
 
     pthread_mutex_unlock(arg->print);
   }
@@ -290,14 +264,13 @@ int main(int argc, char* argv[]){
   // if nothing (in the init steps) fails, running is true
   *running = true;
 
-  pthread_t clock;
+  pthread_t clock, info;
   pthread_t cooks_tid[NUM_COOKS];
   pthread_t waiters_tid[NUM_WAITERS];
   pthread_t customer_thread_manager;
 
   pthread_create(&clock, NULL, tick_advance, sc);
 
-  pthread_t info;
   InfoArgs* info_args = malloc(sizeof(InfoArgs));
 
   info_args->print = &print;
@@ -345,17 +318,9 @@ int main(int argc, char* argv[]){
   customer_args->score = &score;
   customer_args->standing = standing;
 
-  queue_args* qa = malloc(sizeof(queue_args));
-  qa->om = om;
-  qa->sc = sc;
-  qa->print = &print;
-
-  pthread_t queue_t;
-  
-
   // thread_manager manages all customer threads
   pthread_create(&customer_thread_manager, NULL, thread_manager, customer_args);
-  //pthread_create(&queue_t, NULL,queue_thread, qa);
+
   // Missing pthread_join for cooks and waiters
   for(int i = 0; i < NUM_COOKS; i++) {
     pthread_join(cooks_tid[i], NULL);
