@@ -127,83 +127,68 @@ bool is_empty(void* q, Casting cast) {
 /* --------------------------------------------------------------------------
  * enqueue — allocate a new node and append to tail
  * -------------------------------------------------------------------------- */
-void enqueue(Customer* c, CustomerQueue* q) {
-    QueueNode* node = malloc(sizeof(QueueNode));
-    if (!node) {
-        perror("enqueue: malloc failed\n");
+void enqueue(Customer* c, CustomerQueue* cq) {
+    if(cq == NULL || c == NULL) {
+        perror("null pointers passed!");
         return;
     }
-    node->c    = c;
+
+    QueueNode* node = malloc(sizeof(QueueNode));
+    if(node == NULL) {
+        return;
+    }
+    node->c = c;
     node->next = NULL;
 
-    pthread_mutex_lock(&q->lock);
+    pthread_mutex_lock(&cq->lock);
 
-    if (q->tail) {
-        q->tail->next = node;
-    } else {
-        q->head = node;
+    if(cq->tail == NULL) {
+        cq->head = node;
+        cq->tail = node;
     }
-    q->tail = node;
-    q->size++;
+    else {
+        cq->tail->next = node;
+        cq->tail = node;
+    }
+    cq->size++;
 
-    pthread_mutex_unlock(&q->lock);
+    pthread_mutex_unlock(&cq->lock);
+
+    return;
 }
 
 /* --------------------------------------------------------------------------
  * dequeue — remove head node, returning the customer
  * -------------------------------------------------------------------------- */
-void dequeue(CustomerQueue* q) {
-    pthread_mutex_lock(&q->lock);
+Customer* dequeue(CustomerQueue* cq) {
+    pthread_mutex_lock(&cq->lock);
 
-    if (is_empty(q, CUSTOMER_QUEUE)) {
-        pthread_mutex_unlock(&q->lock);
-        return;
+    if(is_empty(cq, CUSTOMER_QUEUE)) {
+        pthread_mutex_unlock(&cq->lock);
+        return NULL;
     }
 
-    QueueNode* old_head = q->head;
-    q->head = old_head->next;
-    if (!q->head) q->tail = NULL;
-    q->size--;
+    QueueNode* old_head = cq->head;
+    Customer* c = old_head->c;
 
-    pthread_mutex_unlock(&q->lock);
+    cq->head = old_head->next;
+    if (!cq->head) cq->tail = NULL;
+    cq->size--;
 
+    pthread_mutex_unlock(&cq->lock);
     free(old_head);
-    old_head = NULL;
+
+    return c;
 }
 
 /* --------------------------------------------------------------------------
  * peek — return pointer to head customer without removing
  * -------------------------------------------------------------------------- */
-Customer* peek(CustomerQueue* q) {
-    //pthread_mutex_lock(&q->lock);
-    Customer* c = (!q->head) ? NULL : q->head->c;
-    //pthread_mutex_unlock(&q->lock);
+Customer* peek(CustomerQueue* cq) {
+    pthread_mutex_lock(&cq->lock);
+    Customer* c = (!cq->head) ? NULL : cq->head->c;
+    pthread_mutex_unlock(&cq->lock);
     return c;
-}
-
-/* --------------------------------------------------------------------------
- * pop — return the first customer whose patience >= Order remaining_time.
- *       Impatient or expired customers are signalled and removed immediately.
- *       Uses prev pointer to correctly unlink any node in the list.
- * -------------------------------------------------------------------------- */
-Customer* pop(CustomerQueue* q) {
-    pthread_mutex_lock(&q->lock);
-
-    if (!q->head) {
-        pthread_mutex_unlock(&q->lock);
-        return NULL;
-    }
-
-    QueueNode* old_head = q->head;
-    Customer* result = old_head->c;
-
-    q->head = old_head->next;
-    if (!q->head) q->tail = NULL;
-    q->size--;
-
-    free(old_head);
-    pthread_mutex_unlock(&q->lock);
-    return result;
 }
 
 /* --------------------------------------------------------------------------
@@ -243,8 +228,8 @@ void print_cst(Customer* cst) {
             printf("order chosen");
             break;
 
-        case WAITING_ORDER:
-            printf(YELLOW "waiting for my food" RESET);
+        case WAITING_DISH:
+            printf(YELLOW "waiting for a dish" RESET);
             break;
 
         case EATING:
@@ -292,22 +277,31 @@ void customer_loop(Customer* cst) {
             case ORDER_CHOSEN:
                 break;
 
-            case WAITING_ORDER:
-                if(cst->served) {
-                    cst->order_received = cst->arg->sc->tick;
-                    atomic_store(&cst->future, EATING);
-                }
-                else {
-                    atomic_store(&cst->future, cst->present);
+            case WAITING_DISH:
+                for(int i = 0; i < cst->o->num_dishes; i++) {
+                    if(cst->o->dishes[i]->delivered) {
+                        atomic_store(&cst->future, EATING);
+                    }
+                    else {
+                        atomic_store(&cst->future, cst->present);
+                    }
                 }
                 break;
 
             case EATING:
-                atomic_store(&cst->future, FINISHED);
+                if(atomic_load(&cst->o->completed)) {
+                    atomic_store(&cst->future, FINISHED);
+                }
+                else {
+                    atomic_store(&cst->future, WAITING_DISH);
+                }
                 break;
 
             case FINISHED:
+                cst->order_received = cst->arg->sc->tick;
+                tts = cst->order_received - cst->order_made;
                 atomic_float_add(cst->arg->score, cst->o->total_price * (1.0f - (tts / cst->patience)));
+
                 sem_post(cst->arg->rc);
                 printf(CYAN " CUSTOMER %d" RESET ":\t", cst->arg->id);
                 printf(GREEN "done, bye\n" RESET);

@@ -39,6 +39,7 @@ typedef struct Dish {
     char**          tools;
     _Atomic bool    ready;
     _Atomic bool    cooking;
+    bool            delivered;
     pthread_mutex_t lock;
 } Dish;
 

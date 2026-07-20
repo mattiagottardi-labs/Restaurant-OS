@@ -13,7 +13,7 @@ typedef enum CustomerState {
     STANDING,
     SEATED,
     ORDER_CHOSEN,
-    WAITING_ORDER,
+    WAITING_DISH,
     EATING,
     FINISHED,
     LEFT_TIRED
@@ -21,6 +21,7 @@ typedef enum CustomerState {
 
 typedef struct Order {
     Dish**              dishes;
+    int                 num_dishes;
     _Atomic int         remaining_time;
     _Atomic bool        expired;
     _Atomic bool        completed;
@@ -61,7 +62,6 @@ typedef struct CustomerQueue {
     QueueNode*      head;
     QueueNode*      tail;
     int             size;
-    int             max_size;
     pthread_mutex_t lock;
 } CustomerQueue;
 
@@ -73,7 +73,7 @@ void        free_order(Order* o);
 // queue
 bool        is_empty(void* q, Casting cast);
 void        enqueue(Customer* c, CustomerQueue* q);
-void        dequeue(CustomerQueue* q);
+Customer*   dequeue(CustomerQueue* q);
 Customer*   pop(CustomerQueue* q);
 Customer*   peek(CustomerQueue* q);
 void        clean(CustomerQueue* q);

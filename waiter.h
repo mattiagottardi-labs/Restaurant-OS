@@ -15,7 +15,7 @@ typedef enum WaiterState {
     IDLE,
     ACCOMODATING_CUSTOMER,
     TAKING_ORDER,
-    DELIVERING_FOOD,
+    DELIVERING_DISH,
     ENTERTAINING
 } WaiterState;
 
@@ -42,9 +42,9 @@ typedef struct WaiterArgs {
 } WaiterArgs;
 
 typedef struct Waiter {
-    WaiterArgs*         arg;
-    _Atomic WaiterState present;
-    _Atomic WaiterState future;
+    WaiterArgs* arg;
+    WaiterState present;
+    WaiterState future;
 } Waiter;
 
 typedef struct EntertainmentActivity {
@@ -57,11 +57,13 @@ extern EntertainmentActivity ea[5];
 
 int     get_prio(Order* o, int algorithm);
 void    list_insert(OrderList* ol, Customer* cst, int algorithm);
+void    list_insert_dish(DishList* dl, Dish* d);
+void    list_insert_order(OrderList* ol, Order* o, int algorithm);
 Order*  list_peek(OrderList* ol);
-Order*  list_pop(OrderList* ol);
+Order*  list_remove_order(OrderList* ol);
+Dish*   list_remove_dish(DishList* dl);
 void    refill_priority(OrderManager* om);
 void    waiter_loop(Waiter* wtr);
-void    list_insert_order(OrderList* ol, Order* o, int algorithm);
 void*   waiter_thread(void* arg);
 void    om_init(OrderManager* om);
 void    list_init(OrderList* ol);

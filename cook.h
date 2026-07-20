@@ -2,6 +2,7 @@
 #define COOK_H
 #include <pthread.h>
 #include <stdatomic.h>
+
 #include "kitchen.h"
 #include "waiter.h"
 #include "utils.h"
@@ -30,11 +31,11 @@ typedef struct CookArgs {
 } CookArgs;
 
 typedef struct Cook {
-    CookArgs*           arg;
-    Dish*               target_dish;
-    Tool**              claimed_tools;
-    _Atomic CookState   present;
-    _Atomic CookState   future;
+    CookArgs*   arg;
+    Dish*       target_dish;
+    Tool**      claimed_tools;
+    CookState   present;
+    CookState   future;
 } Cook;
 
 

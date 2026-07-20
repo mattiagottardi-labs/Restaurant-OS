@@ -56,7 +56,7 @@ void* thread_manager(void* args) {
   MAX_CUSTOMER_SPAWN_RATE = 100000000 / GAME_SPEED;
 
   // customer threads has to be spawned at random time
-  int random_delay = ((rand() % MAX_CUSTOMER_SPAWN_RATE) + 10000) / GAME_SPEED;
+  int random_delay = ((rand() % MAX_CUSTOMER_SPAWN_RATE) + 50000) / GAME_SPEED;
   
   // customer counter index
   int cc;
