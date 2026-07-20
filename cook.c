@@ -1,9 +1,11 @@
-#include "cook.h"
-#include "customer.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <limits.h>
+
+#include "cook.h"
+#include "customer.h"
+
 
 /* --------------------------------------------------------------------------
  * Tool helpers
@@ -115,7 +117,6 @@ void release_tools(Tool** used, Dish* d, KitchenManager* km, SimClock* sc) {
  * -------------------------------------------------------------------------- */
 Order* get_next_order(OrderManager* om) {
     pthread_mutex_lock(&om->priority->lock);
-
     ListNode* prev = NULL;
     ListNode* node = om->priority->head;
 
@@ -323,6 +324,7 @@ void cook_loop(Cook* ck) {
             case WAITING:
                 pthread_mutex_lock(&ck->arg->om->priority->lock);
                 if(ck->arg->om->priority->size > 0) {
+                //if(!is_empty(ck->arg->om->priority, ORDER_LIST)) {
                     atomic_store(&ck->future, SELECT_DISH);
                 }
                 else {
@@ -389,6 +391,7 @@ void cook_loop(Cook* ck) {
 
                     if(atomic_compare_exchange_strong(&o->completed, &expected, true)) {
                         // Check expiry — customer may have timed out while we were cooking
+                        
                         if(!atomic_load(&o->expired)) {
                             // Remove from priority list
                             pthread_mutex_lock(&ck->arg->om->priority->lock);
@@ -409,7 +412,7 @@ void cook_loop(Cook* ck) {
 
                             /* Move to completed and signal customer */
                             list_insert_order(ck->arg->om->completed_orders, o, 2);
-                        }  
+                        }
                     }
                     refill_priority(ck->arg->om);
                 }

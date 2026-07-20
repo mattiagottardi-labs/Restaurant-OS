@@ -2,10 +2,10 @@
 
 mode=$1
 
-file=correct.env
+file=.env
 required_index=0
 lower_bound=1
-upper_bound=10
+upper_bound=20
 max_customers_upper_bound=20
 total_customers_upper_bound=99
 missing_arg_flag=0

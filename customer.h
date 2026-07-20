@@ -12,10 +12,11 @@ typedef struct CustomerQueue CustomerQueue;
 typedef enum CustomerState {
     STANDING,
     SEATED,
+    ORDER_CHOSEN,
     WAITING_ORDER,
     EATING,
     FINISHED,
-    TIRED
+    LEFT_TIRED
 } CustomerState;
 
 typedef struct Order {

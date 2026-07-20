@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdio.h>
 
-const int DEFAULT_PATIENCE = 50;
+const int DEFAULT_PATIENCE = 60;
 
 /* --------------------------------------------------------------------------
  * Order creation
@@ -34,6 +34,7 @@ Order* make_order(Customer* c, Menu* menu, int num_dishes) {
     pthread_mutex_init(&o->lock, NULL);
     return o;
 }
+
 float atomic_float_add(_Atomic float *target, float amount) {
     float old_val = atomic_load(target);
     float new_val;
@@ -42,6 +43,7 @@ float atomic_float_add(_Atomic float *target, float amount) {
     } while (!atomic_compare_exchange_weak(target, &old_val, new_val));
     return new_val;
 }
+
 int get_prep_time(Order* o) {
     int tot = 0;
     for (int i = 0; o->dishes[i] != NULL; i++) {
@@ -93,7 +95,7 @@ bool is_empty(void* q, Casting cast) {
         case ORDER_LIST: {
             OrderList* ol = (OrderList*) q;
             pthread_mutex_lock(&ol->lock);
-            empty = (ol->size == 0);
+            empty = (ol->head == NULL);
             pthread_mutex_unlock(&ol->lock);
             return empty;
         }
@@ -101,7 +103,7 @@ bool is_empty(void* q, Casting cast) {
         case CUSTOMER_QUEUE: {
             CustomerQueue* cq = (CustomerQueue*) q;
             pthread_mutex_lock(&cq->lock);
-            empty = (cq->size == 0);
+            empty = (cq->head == NULL);
             pthread_mutex_unlock(&cq->lock);
             return empty;
         }
@@ -227,6 +229,10 @@ void print_cst(Customer* cst) {
             printf("seated");
             break;
 
+        case ORDER_CHOSEN:
+            printf("order chosen");
+            break;
+
         case WAITING_ORDER:
             printf(YELLOW "waiting for my food" RESET);
             break;
@@ -238,10 +244,10 @@ void print_cst(Customer* cst) {
         case FINISHED:
             break;
             
-        case TIRED:
+        case LEFT_TIRED:
             break;
     }
-    printf(", patience = %d \n", cst->patience);
+    printf(", p = %d\n", cst->patience);
     pthread_mutex_unlock(cst->arg->print);
 }
 
@@ -267,10 +273,13 @@ void customer_loop(Customer* cst) {
                 break;
 
             case SEATED:
-                if(cst->arg->sc->tick == cst->order_made) {
-                    cst->o = make_order(cst, cst->arg->menu, safe_rand_range(5));
-                    cst->patience += get_prep_time(cst->o) + safe_rand_range(10);
-                }
+                cst->o = make_order(cst, cst->arg->menu, safe_rand_range(5));
+                cst->patience += get_prep_time(cst->o) + safe_rand_range(10);
+                cst->order_made = cst->arg->sc->tick;
+                atomic_store(&cst->future, ORDER_CHOSEN);
+                break;
+
+            case ORDER_CHOSEN:
                 break;
 
             case WAITING_ORDER:
@@ -295,10 +304,9 @@ void customer_loop(Customer* cst) {
                 return;
                 break;
 
-            case TIRED:
+            case LEFT_TIRED:
                 if(cst->o) {
                     atomic_store(&cst->o->expired, true);
-                    printf("\t\t\tOrder discarded (1 true, 0 false): %d\n", cst->o->expired);
                 }
                 // cst->arg->score = ;
                 sem_post(cst->arg->rc);
@@ -317,7 +325,7 @@ void customer_loop(Customer* cst) {
             cst->patience--;
         }
         else {
-            atomic_store(&cst->future, TIRED);
+            atomic_store(&cst->future, LEFT_TIRED);
         }
         atomic_store(&cst->present, cst->future);
     }

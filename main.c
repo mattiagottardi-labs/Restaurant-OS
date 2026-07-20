@@ -1,16 +1,19 @@
-#include "customer.h"
-#include "waiter.h"
-#include "cook.h"
-#include "kitchen.h"
-#include "utils.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <stdatomic.h>
+#include <fcntl.h>
+#include <signal.h>
+
+#include "cook.h"
 
 #define INVALID_PARAMETER -1
 #define INVALID_FILE -2
+#define PID_PATH "/tmp/program.pid"
+
+struct sigaction act;
+volatile sig_atomic_t sigusr1_received = 0;
 
 typedef struct InfoArgs {
     SimClock*           sc;
@@ -39,7 +42,7 @@ char* RESOURCE_FILE;
 
 bool* running;
 int MAX_CUSTOMER_SPAWN_RATE; // caution, this time is in microseconds
-int CLK_PERIOD;
+int TICK_PERIOD;
 
 // customer_thread_manager implements this function
 void* thread_manager(void* args) {
@@ -155,11 +158,11 @@ void clock_destroy(SimClock* sc) {
 
 void* tick_advance(void* args) {
   SimClock* sc = (SimClock*) args;
-  while(running) {
-    usleep(CLK_PERIOD);
+  while(true) {
+    usleep(TICK_PERIOD);
     pthread_mutex_lock(&sc->lock);
     sc->tick++;
-    
+    printf("\n--------------------------------------------------------\n");
     pthread_cond_broadcast(&sc->tick_cv);
     pthread_mutex_unlock(&sc->lock);
   }
@@ -168,37 +171,72 @@ void* tick_advance(void* args) {
 
 // ────────────────────────────────────────────────────────
 
-
 void* info_thread(void* args) {
   InfoArgs* arg = (InfoArgs*) args;
-  while(running) {
-    pthread_mutex_lock(&arg->sc->lock);
-    pthread_cond_wait(&arg->sc->tick_cv, &arg->sc->lock);
-    pthread_mutex_unlock(&arg->sc->lock);
 
-    pthread_mutex_lock(arg->print);/*
-    printf(BOLD_U "\nTICK: %d\n" RESET, arg->sc->tick);
+  while(running) { 
+    if(sigusr1_received) {
+      pthread_mutex_lock(arg->print);
 
-    printf("Standing customer/s:\n");
-    print_queue(arg->standing);
+    /*
+      printf(BOLD_U "\nTICK: %d\n" RESET, arg->sc->tick);
 
-    printf("Seated customer/s:\n");
-    print_queue(arg->seated);
+      printf("Standing customer/s:\n");
+      print_queue(arg->standing);
 
-    printf("Waiting Order customer/s:\n");
-    print_queue(arg->waiting_order);
-*/
-    printf(BOLD_U "\nTICK: %d" RESET, arg->sc->tick);
-    printf(BOLD_U "\tSCORE: %f\n" RESET, score);
+      printf("Seated customer/s:\n");
+      print_queue(arg->seated);
 
-    pthread_mutex_unlock(arg->print);
+      printf("Waiting Order customer/s:\n");
+      print_queue(arg->waiting_order);
+    */
+      printf(BOLD_U "\nTICK: %d\n", arg->sc->tick);
+      printf("CURRENT SCORE: %f\n" RESET, score);
+
+      pthread_mutex_unlock(arg->print);
+
+      sigusr1_received = 0;
+    }
   }
 
   return NULL;
 }
 
+void handler(int signum) {
+    printf(YELLOW "Caught %d, printing infos on screen\n" RESET, signum);
+    sigusr1_received = 1;
+} 
+
+bool write_pid_file(const char* path) {
+  int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  if(fd == -1) {
+    perror("open pid file");
+    return false;
+  }
+
+  char buffer[16];
+  int len = snprintf(buffer, sizeof(buffer), "%d\n", getpid());
+
+  if(write(fd, buffer, len) == -1) {
+    perror("write pid file");
+    return false;
+  }
+
+  close(fd);
+  return true;
+}
+
 int main(int argc, char* argv[]){
   printf(BOLD_U "\nC MAIN BINARY STARTING!\n" RESET);
+
+  if(!write_pid_file(PID_PATH)) {
+    perror("Error while performing operations on the file!\n");
+    return 1;
+  }
+  printf(GREEN "PID File wrote successfully!\n" RESET);
+
+  act.sa_handler = handler;
+  sigaction(SIGUSR1, &act, NULL);
 
   // check if sufficient numer of argument is passed
   if(argc < 8) {
@@ -233,8 +271,10 @@ int main(int argc, char* argv[]){
   MENU_FILE = argv[7];
   RESOURCE_FILE = argv[8];
 
-  CLK_PERIOD = 1000000 / GAME_SPEED;
+  // period of time that a tick waits before ticking again
+  TICK_PERIOD = 2500000 / GAME_SPEED;
 
+  // mutex for printing on the screen
   pthread_mutex_t print = PTHREAD_MUTEX_INITIALIZER;
 
   sem_t restaurant_capacity, ea_bin;
@@ -251,6 +291,7 @@ int main(int argc, char* argv[]){
   CustomerQueue* seated = malloc(sizeof(CustomerQueue));
   CustomerQueue* waiting_order = malloc(sizeof(CustomerQueue));
   OrderManager* om = malloc(sizeof(OrderManager));
+
   //init structs
   make_tools(RESOURCE_FILE, km, 10);
   make_menu(MENU_FILE, menu, 20, 4);
@@ -259,7 +300,6 @@ int main(int argc, char* argv[]){
   queue_init(seated);
   clock_init(sc);
   srand(RANDOM_SEED);
-  //printf("Init Successful!\n");
 
   // if nothing (in the init steps) fails, running is true
   *running = true;
@@ -272,7 +312,6 @@ int main(int argc, char* argv[]){
   pthread_create(&clock, NULL, tick_advance, sc);
 
   InfoArgs* info_args = malloc(sizeof(InfoArgs));
-
   info_args->print = &print;
   info_args->sc = sc;
   info_args->seated = seated;
@@ -281,7 +320,6 @@ int main(int argc, char* argv[]){
   pthread_create(&info, NULL, info_thread, info_args);
 
   CookArgs* cook_args = malloc(NUM_COOKS * sizeof(CookArgs));
-
   for(int i = 0; i < NUM_COOKS; i++) {
     cook_args[i].id = i + 1;
     cook_args[i].km = km;
@@ -293,7 +331,6 @@ int main(int argc, char* argv[]){
   }
 
   WaiterArgs* waiter_args = malloc(NUM_WAITERS * sizeof(WaiterArgs));
-
   for(int i = 0; i < NUM_WAITERS; i++) {
     waiter_args[i].id = i + 1;
     waiter_args[i].ea_bin = &ea_bin;
@@ -317,11 +354,9 @@ int main(int argc, char* argv[]){
   customer_args->sc = sc;
   customer_args->score = &score;
   customer_args->standing = standing;
-
   // thread_manager manages all customer threads
   pthread_create(&customer_thread_manager, NULL, thread_manager, customer_args);
 
-  // Missing pthread_join for cooks and waiters
   for(int i = 0; i < NUM_COOKS; i++) {
     pthread_join(cooks_tid[i], NULL);
   }
@@ -329,6 +364,8 @@ int main(int argc, char* argv[]){
   for(int i = 0; i < NUM_WAITERS; i++) {
     pthread_join(waiters_tid[i], NULL);
   }
+
+  printf("All thread finished\n");
 
   // destroy the simulation clock
   clock_destroy(sc);

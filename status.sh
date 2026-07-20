@@ -1,6 +1,6 @@
 #!/bin/bash
 
-file=/tmp/restaurant.pid
+file=/tmp/program.pid
 
 # check if file exists and is redable
 if [[ -e $file && -r $file ]]; then
@@ -15,4 +15,4 @@ pid=$(< $file)
 echo "PID: $pid"
 
 # send signal to process with PID = $pid
-pkill -SIGUSR1 $pid
+kill -SIGUSR1 $pid
