@@ -463,6 +463,9 @@ void waiter_loop(Waiter* wtr) {
                 if(!is_empty(wtr->arg->om->completed_dishes, DISH_LIST)) {
                     wtr->future = wtr->present;
                 }
+                else if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE)) {
+                    wtr->future = ACCOMODATING_CUSTOMER;
+                }
                 else {
                     wtr->future = IDLE;
                 }

@@ -299,7 +299,7 @@ void print_ck(Cook* ck) {
             break;
 
         case ORDER_COMPLETED:
-            printf(GREEN_BOLD " ORDER COMPLETED" RESET);
+            printf(GREEN_BOLD "ORDER COMPLETED" RESET);
             break;
 
         case CLEANING:
@@ -372,6 +372,7 @@ void cook_loop(Cook* ck) {
                 int ticks = ck->target_dish->time;
                 while (ticks > 0) {
                     pthread_cond_wait(&ck->arg->sc->tick_cv, &ck->arg->sc->lock);
+                    print_ck(ck);
                     ticks--;
                 }
                 pthread_mutex_unlock(&ck->arg->sc->lock);
@@ -386,7 +387,7 @@ void cook_loop(Cook* ck) {
                 release_tools(ck->claimed_tools, ck->target_dish, ck->arg->km, ck->arg->sc);
 
                 // insert ready dish in dish list so then the waiter can pick it up
-                list_insert_dish(ck->arg->dl, ck->target_dish);
+                list_insert_dish(ck->arg->om->completed_dishes, ck->target_dish);
 
                 ck->future = DISH_COMPLETED;
                 break;
@@ -432,6 +433,7 @@ void cook_loop(Cook* ck) {
 
             case ORDER_COMPLETED:
                 list_remove_order(ck->arg->om->priority);
+                ck->future = WAITING;
                 break;
 
             case CLEANING:

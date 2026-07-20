@@ -165,7 +165,7 @@ Customer* dequeue(CustomerQueue* cq) {
         return NULL;
     }
     pthread_mutex_lock(&cq->lock);
-    
+
     QueueNode* old_head = cq->head;
     Customer* c = old_head->c;
 
@@ -256,6 +256,8 @@ void customer_loop(Customer* cst) {
     // time to serve
     float tts = cst->order_made - cst->order_received;
 
+    int num_dishes;
+
     while(cst->arg->running) {
         pthread_mutex_lock(&cst->arg->sc->lock);
         pthread_cond_wait(&cst->arg->sc->tick_cv, &cst->arg->sc->lock);
@@ -266,7 +268,9 @@ void customer_loop(Customer* cst) {
                 break;
 
             case SEATED:
-                cst->o = make_order(cst, cst->arg->menu, safe_rand_range(5));
+                num_dishes = safe_rand_range(5);
+                cst->o = make_order(cst, cst->arg->menu, num_dishes);
+                cst->o->num_dishes = num_dishes;
                 cst->patience += get_prep_time(cst->o) + safe_rand_range(10);
                 cst->order_made = cst->arg->sc->tick;
                 atomic_store(&cst->future, ORDER_CHOSEN);
@@ -275,16 +279,24 @@ void customer_loop(Customer* cst) {
             case ORDER_CHOSEN:
                 break;
 
-            case WAITING_DISH:
-                for(int i = 0; i < cst->o->num_dishes; i++) {
-                    if(cst->o->dishes[i]->delivered) {
-                        atomic_store(&cst->future, EATING);
-                    }
-                    else {
-                        atomic_store(&cst->future, cst->present);
+            case WAITING_DISH: {
+                for (int i = 0; i < cst->o->num_dishes; i++) {
+                    if (cst->o->dishes[i]->delivered) {
+                        pthread_mutex_lock(&cst->o->lock);
+
+                        for (int j = i; j < cst->o->num_dishes - 1; j++) {
+                            cst->o->dishes[j] = cst->o->dishes[j + 1];
+                        }
+                        cst->o->num_dishes--;
+
+                        pthread_mutex_unlock(&cst->o->lock);
+
+                        cst->future = EATING;
+                        break;
                     }
                 }
                 break;
+            }
 
             case EATING:
                 if(atomic_load(&cst->o->completed)) {
