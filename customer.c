@@ -32,7 +32,6 @@ Order* make_order(Customer* c, Menu* menu, int num_dishes) {
     atomic_store(&o->remaining_time, get_prep_time(o));
     atomic_store(&o->total_price, get_price(o));
     atomic_store(&o->expired, false);
-    o->c = c;
     pthread_mutex_init(&o->lock, NULL);
     return o;
 }

@@ -392,21 +392,18 @@ void waiter_loop(Waiter* wtr) {
 
         switch(wtr->present) {
             case IDLE:
-                // if customers are seated, take their order
                 cst = peek(wtr->arg->seated);
-                if(cst) {
-                    wtr->future = IDLE; // or whatever "queue is empty" should mean here
+
+                if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE) && (sem_trywait(wtr->arg->rc) == 0)) {
+                    wtr->future = ACCOMODATING_CUSTOMER;
                 }
-                else if(cst->present == ORDER_CHOSEN) {
-                    wtr->future = TAKING_ORDER;
+                else if(cst != NULL) {
+                    wtr->future = (cst->present == ORDER_CHOSEN) ? TAKING_ORDER : wtr->present;
                 }
                 else if(!is_empty(wtr->arg->om->completed_dishes, DISH_LIST)) {
                     wtr->future = DELIVERING_DISH;
                 }
-                else if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE) && (sem_trywait(wtr->arg->rc) == 0)) {
-                    wtr->future = ACCOMODATING_CUSTOMER;
-                }
-                else if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE) && (sem_trywait(wtr->arg->ea_bin) == 0)){
+                else if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE) && (sem_trywait(wtr->arg->ea_bin) == 0)) {
                     wtr->future = ENTERTAINING;
                 }
                 else {
@@ -416,15 +413,17 @@ void waiter_loop(Waiter* wtr) {
 
             case ACCOMODATING_CUSTOMER:
                 cst = dequeue(wtr->arg->standing);
-                if(cst) {
+
+                if(cst != NULL) {
                     atomic_store(&cst->order_made, (cst->arg->sc->tick + 1));
                     atomic_store(&cst->future, SEATED);
                     enqueue(cst, wtr->arg->seated);
                 }
-                // release the seating resource now that the customer is seated
-                sem_post(wtr->arg->rc);
-                
-                if(atomic_load(&cst->present) == ORDER_CHOSEN) {
+                else {
+                    sem_post(wtr->arg->rc);
+                }
+
+                if((cst != NULL) && (atomic_load(&cst->present) == ORDER_CHOSEN)) {
                     wtr->future = TAKING_ORDER;
                 }
                 else {
@@ -434,10 +433,11 @@ void waiter_loop(Waiter* wtr) {
             
             case TAKING_ORDER:
                 cst = dequeue(wtr->arg->seated);
-                if(cst) {
+
+                if(cst != NULL) {
                     list_insert_order(wtr->arg->om->waitlist, cst->o, 2);
                     refill_priority(wtr->arg->om);
-                    
+                        
                     atomic_store(&cst->future, WAITING_DISH);
                     enqueue(cst, wtr->arg->waiting_order);
                 }
@@ -494,7 +494,7 @@ void* waiter_thread(void* args){
     // creates waiter
     Waiter* wtr = malloc(sizeof(Waiter));
     wtr->present = IDLE;
-    wtr->arg = (WaiterArgs*) args;;
+    wtr->arg = (WaiterArgs*) args;
 
     // runs waiter loop
     waiter_loop(wtr);
