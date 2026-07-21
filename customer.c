@@ -164,7 +164,7 @@ Customer* dequeue(CustomerQueue* cq) {
         pthread_mutex_unlock(&cq->lock);
         return NULL;
     }
-    //pthread_mutex_lock(&cq->lock);
+    pthread_mutex_lock(&cq->lock);
 
     QueueNode* old_head = cq->head;
     Customer* c = old_head->c;
@@ -255,7 +255,6 @@ void print_cst(Customer* cst) {
 void customer_loop(Customer* cst) {
     // time to serve
     float tts = cst->order_made - cst->order_received;
-
     int num_dishes;
 
     while(cst->arg->running) {
@@ -280,6 +279,8 @@ void customer_loop(Customer* cst) {
                 break;
 
             case WAITING_DISH: {
+                if(cst != NULL) break;
+
                 for (int i = 0; i < cst->o->num_dishes; i++) {
                     if (cst->o->dishes[i]->delivered) {
                         pthread_mutex_lock(&cst->o->lock);

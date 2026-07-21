@@ -51,7 +51,6 @@ typedef struct Waiter {
 typedef struct EntertainmentActivity {
     char*           name;
     int             efficacy;
-    int             duration;   // in microseconds
 } EntertainmentActivity;
 
 extern EntertainmentActivity ea[5];
