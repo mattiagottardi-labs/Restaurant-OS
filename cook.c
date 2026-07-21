@@ -371,7 +371,7 @@ void cook_loop(Cook* ck) {
             // starts cooking the dish, also handles queues
             case COOKING:
                 // Wait for cooking time
-                if(ticks > 0) {
+                if(ticks >= 0) {
                     ticks--;
                     ck->future = ck->present;
                     break;

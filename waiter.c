@@ -419,7 +419,7 @@ void waiter_loop(Waiter* wtr) {
                 ticks = ea[activity].duration;
                 strcpy(name, ea[activity].name);
 
-                if(ticks > 0) {
+                if(ticks >= 0) {
                     ticks--;
                     wtr->future = wtr->present;
                     break;
