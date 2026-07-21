@@ -353,7 +353,7 @@ void waiter_loop(Waiter* wtr) {
                     wtr->future = DELIVERING_DISH;
                 }
                 else if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE) && (sem_trywait(wtr->arg->ea_bin) == 0)) {
-                    wtr->future = !is_empty(wtr->arg->standing, CUSTOMER_QUEUE) ? IDLE : ENTERTAINING;
+                    wtr->future = ENTERTAINING;
                 }
                 else {
                     wtr->future = wtr->present;
