@@ -372,7 +372,7 @@ void cook_loop(Cook* ck) {
                 int ticks = ck->target_dish->time;
                 while (ticks > 0) {
                     pthread_cond_wait(&ck->arg->sc->tick_cv, &ck->arg->sc->lock);
-                    print_ck(ck);
+                    //print_ck(ck);
                     ticks--;
                 }
                 pthread_mutex_unlock(&ck->arg->sc->lock);

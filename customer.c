@@ -10,7 +10,7 @@ const int DEFAULT_PATIENCE = 60;
 /* --------------------------------------------------------------------------
  * Order creation
  * -------------------------------------------------------------------------- */
-Order* make_order(Customer* c, Menu* menu, int num_dishes) {
+Order* make_order(Menu* menu, int num_dishes) {
     Order* o = malloc(sizeof(Order));
     if(!o) {
         perror("order creation - malloc");
@@ -269,7 +269,7 @@ void customer_loop(Customer* cst) {
 
             case SEATED:
                 num_dishes = safe_rand_range(5);
-                cst->o = make_order(cst, cst->arg->menu, num_dishes);
+                cst->o = make_order(cst->arg->menu, num_dishes);
                 cst->o->num_dishes = num_dishes;
                 cst->patience += get_prep_time(cst->o) + safe_rand_range(10);
                 cst->order_made = cst->arg->sc->tick;

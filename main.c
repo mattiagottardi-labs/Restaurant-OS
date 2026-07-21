@@ -280,7 +280,7 @@ int main(int argc, char* argv[]){
 
   sem_t restaurant_capacity, ea_bin;
   sem_init(&restaurant_capacity, 0, MAX_CUSTOMERS);
-  sem_init(&ea_bin, 0, 0);
+  sem_init(&ea_bin, 0, 1);
 
   //create structs
   running = malloc(sizeof(bool));

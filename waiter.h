@@ -69,6 +69,6 @@ void    om_init(OrderManager* om);
 void    list_init(OrderList* ol);
 void    customer_entertainment(Waiter* wtr, EntertainmentActivity* ea);
 //void   take_order(CustomerQueue* seated, CustomerQueue* ordered, OrderList* waiting);
-void    print_wtr(Waiter* wtr);
+void    print_wtr(Waiter* wtr, char* activity);
 #endif
 

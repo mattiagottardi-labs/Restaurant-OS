@@ -66,7 +66,7 @@ typedef struct CustomerQueue {
 } CustomerQueue;
 
 // Order creation
-Order*      make_order(Customer* c, Menu* menu, int num_dishes);
+Order*      make_order(Menu* menu, int num_dishes);
 Dish*       copy_dish(Dish* src);
 void        free_order(Order* o);
 
