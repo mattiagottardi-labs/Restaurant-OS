@@ -7,7 +7,7 @@
 #include "waiter.h"
 #include "utils.h"
 
-#define DIRTY_THRESHOLD 3
+#define DIRTY_THRESHOLD 1
 
 typedef enum CookState {
     WAITING,

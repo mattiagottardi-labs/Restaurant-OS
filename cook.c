@@ -6,7 +6,6 @@
 #include "cook.h"
 #include "customer.h"
 
-
 /* --------------------------------------------------------------------------
  * Tool helpers
  * -------------------------------------------------------------------------- */
@@ -62,13 +61,15 @@ Tool* acquire_pool(ToolPool* pool) {
 
 void release_pool(ToolPool* pool, Tool* t, SimClock* sc, KitchenManager* km) {
     //printf("\tRealeasing pool %s\n", pool->name);
+    int ticks;
+
     t->dirty_usages++;
     bool clean_condition = t->dirty_usages >= DIRTY_THRESHOLD;
     if (clean_condition) {
-        /* Wash at the shared sink — blocks other cooks from washing */
+        // Wash at the shared sink — blocks other cooks from washing
         pthread_mutex_lock(&km->sink);
         pthread_mutex_lock(&sc->lock);
-        int ticks = t->clean_time;
+        ticks = t->clean_time;
         while (ticks > 0) {
             pthread_cond_wait(&sc->tick_cv, &sc->lock);
             ticks--;
@@ -283,11 +284,11 @@ void print_ck(Cook* ck) {
             break;
 
         case SELECT_DISH:
-            printf(YELLOW "selecting a dish from the order" RESET);
+            printf( "selecting a dish from the order" RESET);
             break;
 
         case ACQUIRE_TOOL:
-            printf(ORANGE "trying to acquire the tools to cook" RESET);
+            printf( "trying to acquire the tools to cook" RESET);
             break;
 
         case COOKING:
@@ -295,15 +296,15 @@ void print_ck(Cook* ck) {
             break;
 
         case DISH_COMPLETED:
-            printf(GREEN "dish completed" RESET);
+            printf( "dish completed" RESET);
             break;
 
         case ORDER_COMPLETED:
-            printf(GREEN_BOLD "ORDER COMPLETED" RESET);
+            printf( "ORDER COMPLETED" RESET);
             break;
 
         case CLEANING:
-            printf(BLUE "cleaning the tools" RESET);
+            printf(YELLOW "cleaning the tools" RESET);
             break;
     }
     printf("\n");
@@ -320,7 +321,7 @@ void cook_loop(Cook* ck) {
     Order* o;
 
     while(ck->arg->running) {
-        int ticks;
+        int ticks, index;
 
         pthread_mutex_lock(&ck->arg->sc->lock);
         pthread_cond_wait(&ck->arg->sc->tick_cv, &ck->arg->sc->lock);
@@ -438,6 +439,14 @@ void cook_loop(Cook* ck) {
                 break;
 
             case CLEANING:
+                index = 0;
+                pthread_mutex_lock(&ck->arg->sc->lock);
+                
+                for(int i = 0; i < ck->arg->km->pools[i]->quantity; i++) {
+                    release_pool(ck->arg->km->pools[i], ck->arg->km->pools[i]->tools, ck->arg->sc, ck->arg->km);
+                }
+
+                ck->future = WAITING;
                 break;
 
             default:

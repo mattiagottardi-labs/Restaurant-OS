@@ -227,11 +227,11 @@ void print_cst(Customer* cst) {
             break;
 
         case WAITING_DISH:
-            printf(YELLOW "waiting for a dish" RESET);
+            printf("waiting for a dish");
             break;
 
         case EATING:
-            printf(ORANGE "eating" RESET);
+            printf( "eating" RESET);
             break;
 
         case FINISHED:
@@ -255,7 +255,6 @@ void print_cst(Customer* cst) {
 void customer_loop(Customer* cst) {
     // time to serve
     float tts = cst->order_made - cst->order_received;
-
     int num_dishes;
 
     while(cst->arg->running) {
@@ -280,6 +279,8 @@ void customer_loop(Customer* cst) {
                 break;
 
             case WAITING_DISH: {
+                if(cst == NULL) break;
+
                 for (int i = 0; i < cst->o->num_dishes; i++) {
                     if (cst->o->dishes[i]->delivered) {
                         pthread_mutex_lock(&cst->o->lock);
