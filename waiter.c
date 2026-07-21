@@ -340,7 +340,13 @@ void waiter_loop(Waiter* wtr) {
                     wtr->future = ACCOMODATING_CUSTOMER;
                 }
                 else if(cst != NULL) {
-                    wtr->future = (cst->present == ORDER_CHOSEN) ? TAKING_ORDER : wtr->present;
+                    if(cst->present == ORDER_CHOSEN) {
+                        cst = dequeue(wtr->arg->seated);
+                        wtr->future = TAKING_ORDER;
+                    }
+                    else {
+                        wtr->future = wtr->present;
+                    }
                 }
                 else if(!is_empty(wtr->arg->om->completed_dishes, DISH_LIST)) {
                     d = list_remove_dish(wtr->arg->om->completed_dishes);
@@ -364,17 +370,10 @@ void waiter_loop(Waiter* wtr) {
                     sem_post(wtr->arg->rc);
                 }
 
-                if((cst != NULL) && (atomic_load(&cst->present) == ORDER_CHOSEN)) {
-                    wtr->future = TAKING_ORDER;
-                }
-                else {
-                    wtr->future = IDLE;
-                }
+                wtr->future = IDLE;
                 break;
             
             case TAKING_ORDER:
-                cst = dequeue(wtr->arg->seated);
-
                 if(cst != NULL) {
                     list_insert_order(wtr->arg->om->waitlist, cst->o, 2);
                     refill_priority(wtr->arg->om);

@@ -227,11 +227,11 @@ void print_cst(Customer* cst) {
             break;
 
         case WAITING_DISH:
-            printf(YELLOW "waiting for a dish" RESET);
+            printf("waiting for a dish");
             break;
 
         case EATING:
-            printf(ORANGE "eating" RESET);
+            printf( "eating" RESET);
             break;
 
         case FINISHED:
@@ -279,7 +279,7 @@ void customer_loop(Customer* cst) {
                 break;
 
             case WAITING_DISH: {
-                if(cst != NULL) break;
+                if(cst == NULL) break;
 
                 for (int i = 0; i < cst->o->num_dishes; i++) {
                     if (cst->o->dishes[i]->delivered) {
