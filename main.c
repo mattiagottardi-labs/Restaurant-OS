@@ -29,8 +29,6 @@ void print_customer(Customer* C);
 void print_queue(CustomerQueue* q);
 void print_list(OrderList* ol);
 
-_Atomic float score = 0.0f;
-
 int NUM_COOKS;
 int NUM_WAITERS;
 int MAX_CUSTOMERS;
@@ -41,6 +39,8 @@ char* MENU_FILE;
 char* RESOURCE_FILE;
 
 bool* running;
+_Atomic float score = 0.0f;
+
 int MAX_CUSTOMER_SPAWN_RATE; // caution, this time is in microseconds
 int TICK_PERIOD;
 

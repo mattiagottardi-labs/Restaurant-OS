@@ -357,12 +357,6 @@ void cook_loop(Cook* ck) {
 
             // acquire tools in order to cook the dish
             case ACQUIRE_TOOL:
-                index = 0;
-                while(ck->arg->km->pools[index]->tools->dirty_usages > DIRTY_THRESHOLD) {
-                    ck->future = CLEANING;
-                    index++;
-                }
-
                 ck->claimed_tools = acquire_tools(ck->target_dish, ck->arg->km);
 
                 if(ck->claimed_tools) {
