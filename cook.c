@@ -291,7 +291,7 @@ void print_ck(Cook* ck) {
             break;
 
         case COOKING:
-            printf(RED "cooking the dish" RESET);
+            printf(RED "cooking dish: %s" RESET, ck->target_dish->name);
             break;
 
         case DISH_COMPLETED:
@@ -424,6 +424,7 @@ void cook_loop(Cook* ck) {
                             list_insert_order(ck->arg->om->completed_orders, o, 2);
                         }
                     }
+                    ck->future = SELECT_DISH;
                     refill_priority(ck->arg->om);
                 }
                 else {

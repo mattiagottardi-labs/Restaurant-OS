@@ -17,6 +17,7 @@ volatile sig_atomic_t sigusr1_received = 0;
 
 typedef struct InfoArgs {
     SimClock*           sc;
+    bool*               running;
     CustomerQueue*      standing;
     CustomerQueue*      seated;
     CustomerQueue*      waiting_order;
@@ -40,7 +41,6 @@ int RANDOM_SEED;
 char* MENU_FILE;
 char* RESOURCE_FILE;
 
-bool* running;
 int MAX_CUSTOMER_SPAWN_RATE; // caution, this time is in microseconds
 int TICK_PERIOD;
 
@@ -81,7 +81,7 @@ void* thread_manager(void* args) {
     pthread_join(customer_tid[i], NULL);
   }
 
-  running = false;
+  arguments->running = false;
   printf(BOLD_U "\nRUNNING SET TO FALSE!\n" RESET);
 
   return NULL;
@@ -175,7 +175,7 @@ void* tick_advance(void* args) {
 void* info_thread(void* args) {
   InfoArgs* arg = (InfoArgs*) args;
 
-  while(running) { 
+  while(arg->running) { 
     if(sigusr1_received) {
       pthread_mutex_lock(arg->print);
 
@@ -283,7 +283,7 @@ int main(int argc, char* argv[]){
   sem_init(&ea_bin, 0, 1);
 
   //create structs
-  running = malloc(sizeof(bool));
+  bool* running = malloc(sizeof(bool));
   *running = true;
   KitchenManager* km = malloc(sizeof(KitchenManager));
   Menu* menu = malloc(sizeof(Menu));
@@ -302,9 +302,6 @@ int main(int argc, char* argv[]){
   clock_init(sc);
   srand(RANDOM_SEED);
 
-  // if nothing (in the init steps) fails, running is true
-  *running = true;
-
   pthread_t clock, info;
   pthread_t cooks_tid[NUM_COOKS];
   pthread_t waiters_tid[NUM_WAITERS];
@@ -315,6 +312,7 @@ int main(int argc, char* argv[]){
   InfoArgs* info_args = malloc(sizeof(InfoArgs));
   info_args->print = &print;
   info_args->sc = sc;
+  info_args->running = running;
   info_args->seated = seated;
   info_args->standing = standing;
   info_args->waiting_order = waiting_order;

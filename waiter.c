@@ -247,7 +247,7 @@ void print_wtr(Waiter* wtr, char* activity) {
     printf(MAGENTA " WAITER %d" RESET ":\t", wtr->arg->id);
     switch(wtr->present) {
         case IDLE:
-            printf(GRAY "idle" RESET);
+            printf(GRAY "idle, standing empty? %b, seated? %b, order_made? %b" RESET, is_empty(wtr->arg->standing, CUSTOMER_QUEUE), is_empty(wtr->arg->seated, CUSTOMER_QUEUE), is_empty(wtr->arg->waiting_order, CUSTOMER_QUEUE));
             break;
 
         case ACCOMODATING_CUSTOMER:
@@ -263,7 +263,7 @@ void print_wtr(Waiter* wtr, char* activity) {
             break;
 
         case ENTERTAINING:
-            printf(MAGENTA "is %s, to entertain standing customers" RESET, activity);
+            printf(MAGENTA "is %s, to entertain standing customers, standing empty? %b " RESET, activity, is_empty(wtr->arg->standing, CUSTOMER_QUEUE));
             break;
     }
     printf("\n");
@@ -347,7 +347,7 @@ void waiter_loop(Waiter* wtr) {
                     wtr->future = DELIVERING_DISH;
                 }
                 else if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE) && (sem_trywait(wtr->arg->ea_bin) == 0)) {
-                    wtr->future = ENTERTAINING;
+                    wtr->future = !is_empty(wtr->arg->standing, CUSTOMER_QUEUE) ? IDLE : ENTERTAINING;
                 }
                 else {
                     wtr->future = wtr->present;

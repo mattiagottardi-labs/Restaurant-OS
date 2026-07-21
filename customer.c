@@ -96,7 +96,7 @@ bool is_empty(void* q, Casting cast) {
         case DISH_LIST: {
             DishList* dl = (DishList*) q;
             pthread_mutex_lock(&dl->lock);
-            empty = (dl->head == NULL);
+            empty = !dl->head;
             pthread_mutex_unlock(&dl->lock);
             return empty;
         }
@@ -104,7 +104,7 @@ bool is_empty(void* q, Casting cast) {
         case ORDER_LIST: {
             OrderList* ol = (OrderList*) q;
             pthread_mutex_lock(&ol->lock);
-            empty = (ol->head == NULL);
+            empty = !ol->head;
             pthread_mutex_unlock(&ol->lock);
             return empty;
         }
@@ -112,7 +112,7 @@ bool is_empty(void* q, Casting cast) {
         case CUSTOMER_QUEUE: {
             CustomerQueue* cq = (CustomerQueue*) q;
             pthread_mutex_lock(&cq->lock);
-            empty = (cq->head == NULL);
+            empty = !cq->head;
             pthread_mutex_unlock(&cq->lock);
             return empty;
         }
