@@ -2,6 +2,7 @@
 #define UTILS_H
 
 #include <pthread.h>
+#include <errno.h>
 
 #define RED     "\033[31m"
 #define ORANGE  "\033[38;5;208m"

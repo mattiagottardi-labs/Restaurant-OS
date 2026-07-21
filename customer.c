@@ -164,7 +164,7 @@ Customer* dequeue(CustomerQueue* cq) {
         pthread_mutex_unlock(&cq->lock);
         return NULL;
     }
-    pthread_mutex_lock(&cq->lock);
+    //pthread_mutex_lock(&cq->lock);
 
     QueueNode* old_head = cq->head;
     Customer* c = old_head->c;

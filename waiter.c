@@ -336,8 +336,9 @@ void waiter_loop(Waiter* wtr) {
         switch(wtr->present) {
             case IDLE:
                 cst = peek(wtr->arg->seated);
-
+                
                 if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE) && (sem_trywait(wtr->arg->rc) == 0)) {
+                    cst = dequeue(wtr->arg->standing);
                     wtr->future = ACCOMODATING_CUSTOMER;
                 }
                 else if(cst != NULL) {
@@ -346,8 +347,13 @@ void waiter_loop(Waiter* wtr) {
                 else if(!is_empty(wtr->arg->om->completed_dishes, DISH_LIST)) {
                     wtr->future = DELIVERING_DISH;
                 }
-                else if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE) && (sem_trywait(wtr->arg->ea_bin) == 0)) {
-                    wtr->future = ENTERTAINING;
+                else if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE)) {
+                    if(sem_trywait(wtr->arg->ea_bin) == 0) {
+                        wtr->future = ENTERTAINING;
+                    }
+                    else {
+                        fprintf(stderr, "Error %s\n", strerror(errno));
+                    }
                 }
                 else {
                     wtr->future = wtr->present;
@@ -355,8 +361,6 @@ void waiter_loop(Waiter* wtr) {
                 break;
 
             case ACCOMODATING_CUSTOMER:
-                cst = dequeue(wtr->arg->standing);
-
                 if(cst != NULL) {
                     atomic_store(&cst->order_made, (cst->arg->sc->tick + 1));
                     atomic_store(&cst->future, SEATED);
@@ -388,8 +392,13 @@ void waiter_loop(Waiter* wtr) {
                 if(!is_empty(wtr->arg->om->completed_dishes, DISH_LIST)) {
                     wtr->future = DELIVERING_DISH;
                 }
-                else if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE) && (sem_trywait(wtr->arg->ea_bin) == 0)) {
-                    wtr->future = ENTERTAINING;
+                else if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE)) {
+                    if(sem_trywait(wtr->arg->ea_bin) == 0) {
+                        wtr->future = ENTERTAINING;
+                    }
+                    else {
+                        fprintf(stderr, "Error %s\n", strerror(errno));
+                    }
                 }
                 else {
                     wtr->future = IDLE;
@@ -407,7 +416,12 @@ void waiter_loop(Waiter* wtr) {
                     wtr->future = wtr->present;
                 }
                 else if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE)) {
-                    wtr->future = ACCOMODATING_CUSTOMER;
+                    if(sem_trywait(wtr->arg->rc) == 0) {
+                        wtr->future = ACCOMODATING_CUSTOMER;
+                    }
+                    else {
+                        fprintf(stderr, "Error %s\n", strerror(errno));
+                    }
                 }
                 else {
                     wtr->future = IDLE;
@@ -418,13 +432,13 @@ void waiter_loop(Waiter* wtr) {
                 activity = safe_rand_range(5) - 1;
                 ticks = ea[activity].duration;
                 strcpy(name, ea[activity].name);
-
+/*
                 if(ticks >= 0) {
                     ticks--;
                     wtr->future = wtr->present;
                     break;
                 }
-
+*/
                 pthread_mutex_lock(&wtr->arg->standing->lock);
                 QueueNode* tmp = wtr->arg->standing->head;
 
