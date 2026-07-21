@@ -1,14 +1,16 @@
-#include "waiter.h"
-#include "customer.h"
 #include <stdlib.h>
 #include <stdio.h>
 
+#include "waiter.h"
+#include "customer.h"
+
+
 EntertainmentActivity ea[5] = {
-    {"chatting", 1, 1},
-    {"singing", 2, 2},
-    {"dancing", 3, 3},
-    {"performing magic tricks", 5, 2},
-    {"making puns", 2, 5}
+    {"chatting", 2, 1},
+    {"singing", 5, 2},
+    {"dancing", 8, 4},
+    {"performing magic tricks", 10, 3},
+    {"making puns", 7, 3}
 };
 
 /* --------------------------------------------------------------------------
@@ -261,39 +263,11 @@ void print_wtr(Waiter* wtr, char* activity) {
             break;
 
         case ENTERTAINING:
-            printf(MAGENTA "is entertaining standing customers" RESET, activity);
+            printf(MAGENTA "is %s, to entertain standing customers" RESET, activity);
             break;
     }
     printf("\n");
     pthread_mutex_unlock(wtr->arg->print);
-}
-
-// if waiting customers and no waiting orders -> call this function
-void customer_entertainment(Waiter* wtr, EntertainmentActivity *ea) {
-    int activity = safe_rand_range(5) - 1;
-    int ticks = ea[activity].duration;
-
-    pthread_mutex_lock(&wtr->arg->sc->lock);
-    while (ticks > 0) {
-        pthread_cond_wait(&wtr->arg->sc->tick_cv, &wtr->arg->sc->lock);
-        //print_wtr(wtr, ea[activity].name);
-        ticks--;
-    }
-    pthread_mutex_unlock(&wtr->arg->sc->lock);
-
-    pthread_mutex_lock(&wtr->arg->standing->lock);
-    QueueNode* tmp = wtr->arg->standing->head;
-
-    for(int i = 0; i < wtr->arg->standing->size; i++) {
-        tmp->c->patience += ea[activity].efficacy;
-        tmp = tmp->next;
-    }
-    pthread_mutex_unlock(&wtr->arg->standing->lock);
-
-    free(tmp);
-    tmp = NULL;
-    
-    sem_post(wtr->arg->ea_bin);
 }
 
 void clean_queue(CustomerQueue* q) {
@@ -348,6 +322,9 @@ void waiter_loop(Waiter* wtr) {
     // buffer customer/order used to perform operation on queues
     Customer* cst = NULL;
     Dish* d = NULL;
+
+    int activity, ticks;
+    char name[32] = {0};
 
     while(wtr->arg->running) {
         pthread_mutex_lock(&wtr->arg->sc->lock);
@@ -438,7 +415,29 @@ void waiter_loop(Waiter* wtr) {
                 break;
 
             case ENTERTAINING:
-                customer_entertainment(wtr, ea);
+                activity = safe_rand_range(5) - 1;
+                ticks = ea[activity].duration;
+                strcpy(name, ea[activity].name);
+
+                if(ticks > 0) {
+                    ticks--;
+                    wtr->future = wtr->present;
+                    break;
+                }
+
+                pthread_mutex_lock(&wtr->arg->standing->lock);
+                QueueNode* tmp = wtr->arg->standing->head;
+
+                for(int i = 0; i < wtr->arg->standing->size; i++) {
+                    tmp->c->patience += ea[activity].efficacy;
+                    tmp = tmp->next;
+                }
+                pthread_mutex_unlock(&wtr->arg->standing->lock);
+
+                free(tmp);
+                tmp = NULL;
+                
+                sem_post(wtr->arg->ea_bin);
 
                 if(is_empty(wtr->arg->om->completed_dishes, DISH_LIST)) {
                     wtr->future = IDLE;
@@ -451,7 +450,7 @@ void waiter_loop(Waiter* wtr) {
             default:
                 perror("Waiter - Unknown state!");          
         }
-        print_wtr(wtr, "");
+        print_wtr(wtr, name);
         // Update the state for next cycle
         wtr->present = wtr->future;
     }

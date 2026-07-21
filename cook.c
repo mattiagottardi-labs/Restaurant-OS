@@ -320,6 +320,8 @@ void cook_loop(Cook* ck) {
     Order* o;
 
     while(ck->arg->running) {
+        int ticks;
+
         pthread_mutex_lock(&ck->arg->sc->lock);
         pthread_cond_wait(&ck->arg->sc->tick_cv, &ck->arg->sc->lock);
         pthread_mutex_unlock(&ck->arg->sc->lock);
@@ -357,6 +359,7 @@ void cook_loop(Cook* ck) {
                 ck->claimed_tools = acquire_tools(ck->target_dish, ck->arg->km);
 
                 if(ck->claimed_tools) {
+                    ticks = ck->target_dish->time;
                     ck->future = COOKING;
                 }
                 else {
@@ -367,21 +370,18 @@ void cook_loop(Cook* ck) {
 
             // starts cooking the dish, also handles queues
             case COOKING:
-                /* Wait for cooking time */
-                pthread_mutex_lock(&ck->arg->sc->lock);
-                int ticks = ck->target_dish->time;
-                while (ticks > 0) {
-                    pthread_cond_wait(&ck->arg->sc->tick_cv, &ck->arg->sc->lock);
-                    //print_ck(ck);
+                // Wait for cooking time
+                if(ticks > 0) {
                     ticks--;
+                    ck->future = ck->present;
+                    break;
                 }
-                pthread_mutex_unlock(&ck->arg->sc->lock);
 
                 atomic_store(&ck->target_dish->ready, true);
                 //printf("Dish %s is completed", ck->target_dish->name);
                 atomic_store(&ck->target_dish->cooking, false);
 
-                /* Decrement Order remaining time */
+                // Decrement Order remaining time
                 atomic_fetch_sub(&o->remaining_time, ck->target_dish->time);
 
                 release_tools(ck->claimed_tools, ck->target_dish, ck->arg->km, ck->arg->sc);
@@ -419,7 +419,7 @@ void cook_loop(Cook* ck) {
                             }
                             pthread_mutex_unlock(&ck->arg->om->priority->lock);
 
-                            /* Move to completed and signal customer */
+                            // Move to completed and signal customer
                             ck->future = ORDER_COMPLETED;
                             list_insert_order(ck->arg->om->completed_orders, o, 2);
                         }

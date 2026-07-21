@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <pthread.h>
 #include <stdatomic.h>
+
 #include "utils.h"
 
 // forward declaration — customer defined in customer.h

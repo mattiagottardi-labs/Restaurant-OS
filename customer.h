@@ -3,9 +3,10 @@
 #include <stdbool.h>
 #include <pthread.h>
 #include <stdatomic.h>
-#include "kitchen.h"
 #include <semaphore.h>
 #include <unistd.h>
+
+#include "kitchen.h"
 
 typedef struct CustomerQueue CustomerQueue;
 
