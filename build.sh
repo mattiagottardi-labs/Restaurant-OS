@@ -34,7 +34,7 @@ build() {
 # function to clean and restore the system
 clean() {
     echo "Cleaning..."
-    output=$(rm *.out)
+    output=$(rm program  *.o)
 
     if [ $? -ne 0 ]; then
         echo "Cleaning failed!"
