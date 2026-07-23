@@ -160,7 +160,6 @@ Order* get_next_order(OrderManager* om) {
 
             // Move to discarded — unlock first to avoid lock ordering issues
             pthread_mutex_unlock(&om->priority->lock);
-            printf("order discarded\n");
             list_insert_order(om->discarded_orders, o, 2);
             pthread_mutex_lock(&om->priority->lock);
             continue;
@@ -333,7 +332,7 @@ void cook_cooking(Cook* ck) {
     //printf("Dish %s is completed", ck->target_dish->name);
     atomic_store(&ck->target_dish->cooking, false);
     float penalty = get_penalty(ck);
-    if(penalty > 0) printf(RED "APPLYING PENALTY BECAUSE DISHES WERE DIRTY, PENALTY = %f" RESET , penalty);
+    if(penalty > 0) printf(RED "Applying dirty_usages penalty = %f\n" RESET , penalty);
     atomic_fetch_sub(&ck->arg->score, &penalty);
     // Decrement Order remaining time
     atomic_fetch_sub(&ck->current_order->remaining_time, ck->target_dish->time);
@@ -409,13 +408,6 @@ void cook_cleaning(Cook* ck) {
     ck->future = WAITING;
 }
 
-
-/* --------------------------------------------------------------------------
- * cook_loop — continuously looks for orders to cook.
- *             Spins on get_next_order when nothing is available.
- *             Yields on pick_dish failure to avoid hammering a fully
- *             claimed Order.
- * -------------------------------------------------------------------------- */
 void cook_loop(Cook* ck) {
     while(atomic_load(ck->arg->running)) {
         pthread_mutex_lock(&ck->arg->sc->lock);

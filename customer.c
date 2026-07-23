@@ -5,7 +5,7 @@
 
 #include "customer.h"
 
-const int DEFAULT_PATIENCE = 60;
+const int DEFAULT_PATIENCE = 100;
 
 /* --------------------------------------------------------------------------
  * Order creation

@@ -177,12 +177,6 @@ void list_insert_order(OrderList* ol, Order* o, int algorithm) {
             cur->next = new_node;
         }
     }
-    /*
-    printf("inserted order: ");
-    for(int i = 0; o->dishes[i] != NULL; i++){
-      printf("%s, ", o->dishes[i]->name);
-    }
-    */
     ol->size++;
     pthread_mutex_unlock(&ol->lock);
 }
@@ -249,7 +243,7 @@ void print_wtr(Waiter* wtr, char* activity) {
     printf(MAGENTA " WAITER %d" RESET ":\t", wtr->arg->id);
     switch(wtr->present) {
         case IDLE:
-           printf(GRAY "idle, standing empty? %b, seated? %b, order_made? %b dish queue? %b" RESET, is_empty(wtr->arg->standing, CUSTOMER_QUEUE), is_empty(wtr->arg->seated, CUSTOMER_QUEUE), is_empty(wtr->arg->waiting_order, CUSTOMER_QUEUE), is_empty(wtr->arg->om->completed_dishes, DISH_LIST));
+           printf(GRAY "idle" RESET);
             break;
 
         case ACCOMODATING_CUSTOMER:
@@ -265,7 +259,7 @@ void print_wtr(Waiter* wtr, char* activity) {
             break;
 
         case ENTERTAINING:
-            printf(MAGENTA "is %s, to entertain standing customers, standing empty? %b " RESET, activity, is_empty(wtr->arg->standing, CUSTOMER_QUEUE));
+            printf(MAGENTA "%s to entertain standing customers" RESET, activity, );
 
             break;
     }
