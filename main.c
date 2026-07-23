@@ -90,13 +90,6 @@ void* thread_manager(void* args) {
   return NULL;
 }
 
-void print_tool_status(KitchenManager* km){
-   printf("TOOLS: \n");
-  for(int i = 0; i < km->num_pools; i++){
-    printf("%s, %d items, %d in use\n", km->pools[i]->name, km->pools[i]->quantity, km->pools[i]->in_use);
-  }
-}
-
 void print_customer(Customer* C){
   printf("Customer's stats:");
   printf("\n\tPatience: %d\n", C->patience);
@@ -187,7 +180,7 @@ void* info_thread(void* args) {
 
     if(sigusr1_received) {
       pthread_mutex_lock(arg->print);
-      sem_getvalue(&restaurant_capacity, sval);
+      sem_getvalue(&restaurant_capacity, &sval);
 
       printf(BOLD_U "\nTICK: %d\n" RESET, arg->sc->tick);
       printf("CURRENT SCORE: %f\n", score);

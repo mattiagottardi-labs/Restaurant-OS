@@ -348,7 +348,7 @@ void customer_loop(Customer* cst) {
                 sem_post(cst->arg->rc);
                 printf(CYAN " CUSTOMER %d" RESET ":\t", cst->arg->id);
                 printf(RED "tired of waiting, deducting %f points\n" RESET, score_deducted);
-                left_unserved++;
+                cst->arg->left_unserved++;
                 return;
                 break;
 
