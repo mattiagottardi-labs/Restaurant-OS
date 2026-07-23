@@ -177,7 +177,10 @@ void list_insert_order(OrderList* ol, Order* o, int algorithm) {
             cur->next = new_node;
         }
     }
-
+    printf("inserted order: ");
+    for(int i = 0; o->dishes[i] != NULL; i++){
+      printf("%s, ", o->dishes[i]->name);
+    }
     ol->size++;
     pthread_mutex_unlock(&ol->lock);
 }

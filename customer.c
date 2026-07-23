@@ -141,7 +141,7 @@ void enqueue(Customer* c, CustomerQueue* cq) {
         perror("null pointers passed!");
         return;
     }
-
+    printf("Inserted customer %d\n", c->arg->id);
     QueueNode* node = malloc(sizeof(QueueNode));
     if(node == NULL) {
         return;
