@@ -187,6 +187,10 @@ Order* get_next_order(OrderManager* om) {
     return NULL;
 }
 
+void add_usage(Tool** used){
+  for(int i = 0; used[i] != NULL; i++) atomic_fetch_add(&used[i]->dirty_usages, 1);
+}
+
 /* --------------------------------------------------------------------------
  * pick_dish — claim the unclaimed Dish with fewest required tools
  *             using CAS on d->cooking to avoid races between cooks.
@@ -269,6 +273,7 @@ void cook_waiting(Cook* ck) {
     pthread_mutex_unlock(&ck->arg->om->priority->lock);
 }
 
+
 void cook_select_dish(Cook* ck) {
     ck->current_order = get_next_order(ck->arg->om);
     if(ck->current_order) {
@@ -277,12 +282,10 @@ void cook_select_dish(Cook* ck) {
             ck->future = ACQUIRE_TOOL;
         }
         else {
-            printf("unable to pick a dish \n");
             ck->future = WAITING;   // or SELECT_DISH to retry immediately
         }
     }
     else {
-        printf("unable to select dish\n");
         ck->future = WAITING;
     }
 }
@@ -316,7 +319,7 @@ void cook_cooking(Cook* ck) {
 
     // Decrement Order remaining time
     atomic_fetch_sub(&ck->current_order->remaining_time, ck->target_dish->time);
-
+    add_usage(ck->claimed_tools);
     release_tools(ck->claimed_tools, ck->target_dish, ck->arg->km, ck->arg->sc);
 
     if(!ck->current_order->expired) {
@@ -374,11 +377,11 @@ void cook_cleaning(Cook* ck) {
         ToolPool* pool = km->pools[p];
         pthread_mutex_lock(&pool->lock);
         for (int i = 0; i < pool->quantity; i++) {
-            Tool* tool = &pool->tools[i];   // fixed: address-of, matching acquire_pool
+            Tool* tool = &pool->tools[i];
             pthread_mutex_lock(&tool->lock);
             if (tool->dirty_usages >= DIRTY_THRESHOLD) {
                 printf("cleaning tool %d from pool %s\n", i, pool->name);
-                clean_tool(tool, sc);   // fixed: pass sc
+                clean_tool(tool, sc);
             }
             pthread_mutex_unlock(&tool->lock);
         }
