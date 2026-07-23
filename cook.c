@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <limits.h>
-
+#include <math.h>
 #include "cook.h"
 #include "customer.h"
 
@@ -303,6 +303,22 @@ void cook_acquire_tool(Cook* ck) {
     }
 }
 
+float get_penalty(Cook* ck){
+    if(!ck || !ck->claimed_tools) return 0.0f;
+    
+    float res = 0.0f; 
+    
+    for(int i = 0; ck->claimed_tools[i] != NULL; i++){
+        int du = atomic_load(&ck->claimed_tools[i]->dirty_usages);
+        
+        float penalty = (float)(1 << du); 
+        penalty *= log2f(1.0f + ck->claimed_tools[i]->clean_time);
+        
+        res += penalty;
+    }
+    return res;
+}
+
 void cook_cooking(Cook* ck) {
     //printf("Cook %d selected dish: %s, time to wait: %d\n",ck->arg->id, ck->target_dish->name, ck->target_dish->time);
     // wait for cooking time
@@ -316,12 +332,14 @@ void cook_cooking(Cook* ck) {
     atomic_store(&ck->target_dish->ready, true);
     //printf("Dish %s is completed", ck->target_dish->name);
     atomic_store(&ck->target_dish->cooking, false);
-
+    float penalty = get_penalty(ck);
+    if(penalty > 0) printf(RED "APPLYING PENALTY BECAUSE DISHES WERE DIRTY, PENALTY = %f" RESET , penalty);
+    atomic_fetch_sub(&ck->arg->score, &penalty);
     // Decrement Order remaining time
     atomic_fetch_sub(&ck->current_order->remaining_time, ck->target_dish->time);
     add_usage(ck->claimed_tools);
     release_tools(ck->claimed_tools, ck->target_dish, ck->arg->km, ck->arg->sc);
-
+    
     if(!ck->current_order->expired) {
         list_insert_dish(ck->arg->om->completed_dishes, ck->target_dish);
         ck->future = DISH_COMPLETED;

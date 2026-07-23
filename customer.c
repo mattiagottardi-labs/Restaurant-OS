@@ -277,9 +277,6 @@ void customer_loop(Customer* cst) {
             case SEATED:
                 num_dishes = safe_rand_range(5);
                 cst->o = make_order(cst->arg->menu, num_dishes);
-                printf("order made and contains: ");
-                for(int i = 0; cst->o->dishes[i] != NULL; i++) printf(",%s ", cst->o->dishes[i]->name);
-                printf("\n");
                 cst->o->num_dishes = num_dishes;
                 cst->patience += get_prep_time(cst->o) + safe_rand_range(10);
                 initial_patience = cst->patience;

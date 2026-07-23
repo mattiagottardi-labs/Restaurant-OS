@@ -22,8 +22,9 @@ typedef enum CookState {
 typedef struct CookArgs {
     int                 id;
     OrderManager*       om;
-    SimClock*           sc;
+SimClock*           sc;
     KitchenManager*     km;
+    _Atomic float*      score;
     _Atomic bool*       running;
     pthread_mutex_t*    print;
 } CookArgs;
