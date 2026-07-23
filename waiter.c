@@ -274,7 +274,8 @@ void clean_queue(CustomerQueue* q, bool check_patience) {
 
     while (tmp &&
            ((check_patience && tmp->c->patience <= 0) ||
-            (tmp->c->o != NULL && tmp->c->o->expired))) {
+            (tmp->c->o != NULL && tmp->c->o->expired) ||
+            (tmp->c->finish_eating))) {
         q->head = tmp->next;
         free(tmp);
         tmp = q->head;
@@ -291,7 +292,8 @@ void clean_queue(CustomerQueue* q, bool check_patience) {
 
     while (tmp) {
         if ((check_patience && tmp->c->patience <= 0) ||
-            (tmp->c->o != NULL && tmp->c->o->expired)) {
+            (tmp->c->o != NULL && tmp->c->o->expired) ||
+            (tmp->c->finish_eating)) {
             prev->next = tmp->next;
             free(tmp);
             tmp = prev->next;

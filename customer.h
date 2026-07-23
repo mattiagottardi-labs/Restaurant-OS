@@ -45,6 +45,7 @@ typedef struct CustomerArgs {
 typedef struct Customer {
     Order*                  o;
     int                     patience;
+    _Atomic bool            finish_eating;
     _Atomic bool            served;
     _Atomic int             order_made;
     _Atomic int             order_received;

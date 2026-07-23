@@ -317,6 +317,7 @@ void customer_loop(Customer* cst) {
                 sem_post(cst->arg->rc);
                 printf(CYAN " CUSTOMER %d" RESET ":\t", cst->arg->id);
                 printf(GREEN "done, bye: scsore added: %f\n" RESET, score_added);
+                atomic_store(&cst->finish_eating, true);
                 return;
                 break;
 
