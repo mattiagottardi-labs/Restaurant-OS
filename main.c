@@ -338,10 +338,11 @@ int main(int argc, char* argv[]){
   InfoArgs* info_args = malloc(sizeof(InfoArgs));
   info_args->print = &print;
   info_args->sc = sc;
-  atomic_store(info_args->running, running);
+  info_args->running = &running;
   info_args->seated = seated;
   info_args->standing = standing;
   info_args->waiting_order = waiting_order;
+  info_args->km = km;
   pthread_create(&info, NULL, info_thread, info_args);
 
   CookArgs* cook_args = malloc(NUM_COOKS * sizeof(CookArgs));
