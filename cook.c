@@ -357,44 +357,34 @@ void cook_completed(Cook* ck) {
 }
 
 void cook_cleaning(Cook* ck) {
-    KitchenManager* km = ck->arg->km;
-    ToolPool* found_pool = NULL;
-    Tool* dirty = NULL;
-
-    // Scan every pool for a dirty tool that's not currently in use
-    for(int p = 0; p < km->num_pools && !dirty; p++) {
-        ToolPool* pool = km->pools[p];
-
-        pthread_mutex_lock(&pool->lock);
-        for(int i = 0; i < pool->quantity; i++) {
-            Tool* t = &pool->tools[i];
-
-            // if not used and above threshold -> clean
-            if (!atomic_load(&t->in_use) && (t->dirty_usages >= DIRTY_THRESHOLD)) {
-                atomic_store(&t->in_use, true);   // claim it so nobody else grabs it mid-wash
-                pool->in_use++;
-                dirty = t;
-                found_pool = pool;
-                break;
-            }
-        }
-        pthread_mutex_unlock(&pool->lock);
+  KitchenManager* km = ck->arg->km;
+  SimClock* sc = ck->arg->sc;
+  pthread_mutex_lock(&km->sink);
+  for(int p = 0; p < km->num_pools; p++) {
+    ToolPool* pool = km->pools[p];
+    pthread_mutex_lock(&pool->lock);
+    for(int i = 0; i < pool->quantity; i++){
+      Tool* tool = pool->tools[i];
+      pthread_mutex_lock(&tool->lock);
+      if(tool->dirty_usages >= DIRTY_THRESHOLD){
+        printf("cleaning tool %d from pool %s\n", i, pool->name);
+        clean(tool, sc);
+      }
+      pthread_mutex_unlock(&tool->lock);
     }
+    pthread_mutex_unlock(&pool->lock);
+  }
+  pthread_mutex_unlock(&km->sink);
+  ck->future = WAITING;
+}
 
-    if(dirty) {
-        wash_tool(dirty, km, ck->arg->sc);
-
-        printf(RED "\nTool cleaned: %s taking %d\n" RESET, dirty->name, dirty->clean_time);
-
-        // release the tool back to its pool, cleanly
-        pthread_mutex_lock(&found_pool->lock);
-        atomic_store(&dirty->in_use, false);
-        found_pool->in_use--;
-        pthread_cond_signal(&found_pool->cv);
-        pthread_mutex_unlock(&found_pool->lock);
-    }
-
-    ck->future = WAITING;
+void clean(Tool* t, SimClock* sc){
+  pthread_mutex_lock(&sc->lock);
+  for(int i = 0; i < t->clean_time; i++){
+    pthread_cond_wait(&sc->tick_cv, &sc->lock);
+  }
+  pthread_mutex_unlock(&sc->lock);
+  atomic_store(&dirty_usages, 0);
 }
 
 /* --------------------------------------------------------------------------

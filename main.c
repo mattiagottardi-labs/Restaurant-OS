@@ -76,6 +76,7 @@ void* thread_manager(void* args) {
     customer_args[spawned_customers].sc = arguments->sc;
     customer_args[spawned_customers].score = arguments->score;
     customer_args[spawned_customers].standing = arguments->standing;
+    customer_args[spawned_customers].left_unserved = arguments->left_unserved;
     pthread_create(&customer_tid[spawned_customers], NULL, customer_thread, (void*) &customer_args[spawned_customers]);
   }
 
