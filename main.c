@@ -375,6 +375,6 @@ int main(int argc, char* argv[]){
   sem_destroy(&restaurant_capacity);
   sem_destroy(&ea_bin);
 
-  printf("Semaphores destroyed");
+  printf("Semaphores destroyed\n");
   return 0;
 }

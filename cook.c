@@ -135,6 +135,7 @@ Order* get_next_order(OrderManager* om) {
 
             // Move to discarded — unlock first to avoid lock ordering issues
             pthread_mutex_unlock(&om->priority->lock);
+            printf("order discarded\n");
             list_insert_order(om->discarded_orders, o, 2);
             pthread_mutex_lock(&om->priority->lock);
             continue;
@@ -234,10 +235,10 @@ void print_ck(Cook* ck) {
 void cook_waiting(Cook* ck) {
     pthread_mutex_lock(&ck->arg->om->priority->lock);
     if(ck->arg->om->priority->size > 0) {
-    //if(!is_empty(ck->arg->om->priority, ORDER_LIST)) {
         ck->future = SELECT_DISH;
     }
     else {
+        printf("priority is currently empty: refilling\n");
         refill_priority(ck->arg->om);
         ck->future = ck->present;
     }
@@ -246,12 +247,18 @@ void cook_waiting(Cook* ck) {
 
 void cook_select_dish(Cook* ck) {
     ck->current_order = get_next_order(ck->arg->om);
-
     if(ck->current_order) {
         ck->target_dish = pick_dish(ck->current_order);
-        ck->future = ACQUIRE_TOOL;
+        if(ck->target_dish) {
+            ck->future = ACQUIRE_TOOL;
+        }
+        else {
+            printf("unable to pick a dish \n");
+            ck->future = WAITING;   // or SELECT_DISH to retry immediately
+        }
     }
     else {
+        printf("unable to select dish\n");
         ck->future = WAITING;
     }
 }
@@ -263,7 +270,8 @@ void cook_acquire_tool(Cook* ck) {
         ck->future = COOKING;
     }
     else {
-        //release_tools(ck->claimed_tools, ck->target_dish, ck->arg->km, ck->arg->sc);
+        printf("unable to acquire all tools\n");
+        release_tools(ck->claimed_tools, ck->target_dish, ck->arg->km, ck->arg->sc);
         ck->future = WAITING;
     }
 }

@@ -11,7 +11,6 @@ EntertainmentActivity ea[5] = {
     {"performing magic tricks", 10},
     {"making puns", 8}
 };
-
 /* --------------------------------------------------------------------------
  * get_prio — slack time: lower value = less slack = higher urgency
  * -------------------------------------------------------------------------- */
@@ -133,7 +132,12 @@ Order* list_peek_order(OrderList* ol) {
 void refill_priority(OrderManager* om) {
     while (om->priority->size < 10) {
         Order* o = list_remove_order(om->waitlist);
-        if (!o) break;
+        if (!o) {
+          printf("unable to refill priority, waitlist empty");
+          if(!is_empty(om->discarded_orders, ORDER_LIST)) printf("it may be in the discarded_orders"); else printf(", discarded are empty too");
+          printf("\n");
+          break;
+        }
         list_insert_order(om->priority, o, 1);
     }
 }
