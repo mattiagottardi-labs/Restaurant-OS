@@ -59,26 +59,22 @@ Tool* acquire_pool(ToolPool* pool) {
     return picked;
 }
 
-void release_pool(ToolPool* pool, Tool* t, SimClock* sc, KitchenManager* km) {
-    //printf("\tRealeasing pool %s\n", pool->name);
-    int ticks;
-/*
-    t->dirty_usages++;
-    bool clean_condition = t->dirty_usages >= DIRTY_THRESHOLD;
-    if (clean_condition) {
-        // Wash at the shared sink — blocks other cooks from washing
-        pthread_mutex_lock(&km->sink);
-        pthread_mutex_lock(&sc->lock);
-        ticks = t->clean_time;
-        while (ticks > 0) {
-            pthread_cond_wait(&sc->tick_cv, &sc->lock);
-            ticks--;
-        }
-        t->dirty_usages = 0;
-        pthread_mutex_unlock(&sc->lock);
-        pthread_mutex_unlock(&km->sink);
+void wash_tool(Tool* t, KitchenManager* km, SimClock* sc) {
+    pthread_mutex_lock(&km->sink);
+    pthread_mutex_lock(&sc->lock);
+
+    int ticks = t->clean_time;
+    while(ticks > 0) {
+        pthread_cond_wait(&sc->tick_cv, &sc->lock);
+        ticks--;
     }
-*/
+    t->dirty_usages = 0;
+
+    pthread_mutex_unlock(&sc->lock);
+    pthread_mutex_unlock(&km->sink);
+}
+
+void release_pool(ToolPool* pool, Tool* t, SimClock* sc, KitchenManager* km) {
     pthread_mutex_lock(&pool->lock);
     atomic_store(&t->in_use, false);
     pool->in_use--;
@@ -335,6 +331,7 @@ void cook_completed(Cook* ck) {
                 ck->future = CLEANING;
                 list_remove_order(ck->arg->om->priority);
                 refill_priority(ck->arg->om);
+                
             }
             else {
                 ck->future = SELECT_DISH;
@@ -350,7 +347,44 @@ void cook_completed(Cook* ck) {
 }
 
 void cook_cleaning(Cook* ck) {
-    
+    KitchenManager* km = ck->arg->km;
+    ToolPool* found_pool = NULL;
+    Tool* dirty = NULL;
+
+    // Scan every pool for a dirty tool that's not currently in use
+    for(int p = 0; p < km->num_pools && !dirty; p++) {
+        ToolPool* pool = km->pools[p];
+
+        pthread_mutex_lock(&pool->lock);
+        for(int i = 0; i < pool->quantity; i++) {
+            Tool* t = &pool->tools[i];
+
+            // if not used and above threshold -> clean
+            if (!atomic_load(&t->in_use) && (t->dirty_usages >= DIRTY_THRESHOLD)) {
+                atomic_store(&t->in_use, true);   // claim it so nobody else grabs it mid-wash
+                pool->in_use++;
+                dirty = t;
+                found_pool = pool;
+                break;
+            }
+        }
+        pthread_mutex_unlock(&pool->lock);
+    }
+
+    if(dirty) {
+        wash_tool(dirty, km, ck->arg->sc);
+
+        printf(RED "\nTool cleaned: %s taking %d\n" RESET, dirty->name, dirty->clean_time);
+
+        // release the tool back to its pool, cleanly
+        pthread_mutex_lock(&found_pool->lock);
+        atomic_store(&dirty->in_use, false);
+        found_pool->in_use--;
+        pthread_cond_signal(&found_pool->cv);
+        pthread_mutex_unlock(&found_pool->lock);
+    }
+
+    ck->future = WAITING;
 }
 
 /* --------------------------------------------------------------------------
@@ -392,16 +426,7 @@ void cook_loop(Cook* ck) {
                 break;
 
             case CLEANING:
-                //index = 0;
-                /*
-                pthread_mutex_lock(&ck->arg->sc->lock);
-                
-                for(int i = 0; i < ck->arg->km->pools[i]->quantity; i++) {
-                    release_pool(ck->arg->km->pools[i], ck->arg->km->pools[i]->tools, ck->arg->sc, ck->arg->km);
-                }
-                */
-                ck->future = WAITING;
-                
+                cook_cleaning(ck);
                 break;
 
             default:
