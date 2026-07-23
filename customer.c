@@ -326,22 +326,25 @@ void customer_loop(Customer* cst) {
 
                 sem_post(cst->arg->rc);
                 printf(CYAN " CUSTOMER %d" RESET ":\t", cst->arg->id);
-                printf(GREEN "done, bye: scsore added: %f\n" RESET, score_added);
+                printf(GREEN "done, bye: addeding %f points\n" RESET, score_added);
                 atomic_store(&cst->finish_eating, true);
                 return;
                 break;
 
             case LEFT_TIRED:
+                float score_deducted = 0;
+
                 if(cst->o) {
                     atomic_store(&cst->o->expired, true);
+                
+                    float bias = initial_patience / (1 + count_dishes_served(cst));
+                    float k2 = log2f(1+bias);
+                    score_deducted = cst->o->total_price * k2;
+                    atomic_float_sub(cst->arg->score, score_deducted);
                 }
-                float bias = initial_patience / (1 + count_dishes_served(cst));
-                float k2 = log2f(1+bias);
-                float points_deducted = cst->o->total_price * k2;
-                atomic_float_sub(cst->arg->score, points_deducted);
                 sem_post(cst->arg->rc);
                 printf(CYAN " CUSTOMER %d" RESET ":\t", cst->arg->id);
-                printf(RED "tired of waiting, deducting %f points\n" RESET, points_deducted);
+                printf(RED "tired of waiting, deducting %f points\n" RESET, score_deducted);
                 return;
                 break;
 
