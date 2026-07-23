@@ -198,7 +198,7 @@ void* info_thread(void* args) {
 }
 
 void handler(int signum) {
-    //printf(YELLOW_BOLD "Caught %d, printing infos on screen\n" RESET, signum);
+    printf(YELLOW_BOLD "Caught %d, printing infos on screen\n" RESET, signum);
     sigusr1_received = 1;
 } 
 

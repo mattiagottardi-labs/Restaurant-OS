@@ -103,7 +103,7 @@ void wash_tool(Tool* t, KitchenManager* km, SimClock* sc) {
     pthread_mutex_unlock(&km->sink);
 }
 
-void release_pool(ToolPool* pool, Tool* t, SimClock* sc, KitchenManager* km) {
+void release_pool(ToolPool* pool, Tool* t) {
     pthread_mutex_lock(&pool->lock);
     atomic_store(&t->in_use, false);
     pool->in_use--;
@@ -124,13 +124,13 @@ Tool** acquire_tools(Dish* d, KitchenManager* km) {
     return used;
 }
 
-void release_tools(Tool** used, Dish* d, KitchenManager* km, SimClock* sc) {
+void release_tools(Tool** used, Dish* d, KitchenManager* km) {
     if (!used) return;
     //printf("\tReleasing tools\n");
     for (int i = 0; d->tools[i] != NULL; i++) {
         if (!used[i]) continue;
         ToolPool* pool = find_pool(d->tools[i], km);
-        if (pool) release_pool(pool, used[i], sc, km);
+        if (pool) release_pool(pool, used[i]);
     }
     free(used);
 }
@@ -298,7 +298,7 @@ void cook_acquire_tool(Cook* ck) {
     }
     else {
         printf(RED_BOLD "Unable to acquire all tools\n");
-        release_tools(ck->claimed_tools, ck->target_dish, ck->arg->km, ck->arg->sc);
+        release_tools(ck->claimed_tools, ck->target_dish, ck->arg->km);
         ck->future = WAITING;
     }
 }
@@ -338,7 +338,7 @@ void cook_cooking(Cook* ck) {
     // Decrement Order remaining time
     atomic_fetch_sub(&ck->current_order->remaining_time, ck->target_dish->time);
     add_usage(ck->claimed_tools);
-    release_tools(ck->claimed_tools, ck->target_dish, ck->arg->km, ck->arg->sc);
+    release_tools(ck->claimed_tools, ck->target_dish, ck->arg->km);
     
     if(!ck->current_order->expired) {
         list_insert_dish(ck->arg->om->completed_dishes, ck->target_dish);
