@@ -403,7 +403,7 @@ void cook_loop(Cook* ck) {
                 perror("Cook - Unknown State");
             
         }
-        //print_ck(ck);
+        print_ck(ck);
         ck->present = ck->future;
     }
 }

@@ -15,6 +15,14 @@ int safe_rand(void) {
     return r;
 }
 
+void atomic_float_sub(_Atomic float* target, float value) {
+    float old_val = atomic_load(target);
+    float new_val;
+    do {
+        new_val = old_val - value;
+    } while (!atomic_compare_exchange_weak(target, &old_val, new_val));
+}
+
 int safe_rand_range(int max){
     pthread_mutex_lock(&rand_mutex);
     int r = rand() % (max-1);

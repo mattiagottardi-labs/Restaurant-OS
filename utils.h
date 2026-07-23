@@ -3,7 +3,7 @@
 
 #include <pthread.h>
 #include <errno.h>
-
+#include <stdatomic.h>
 #define RED     "\033[31m"
 #define ORANGE  "\033[38;5;208m"
 #define YELLOW  "\033[33m"
@@ -72,7 +72,7 @@ void* tick_advance(void* args);
 // ─── random ──────────────────────────────────────────────────────────────────
 
 extern pthread_mutex_t rand_mutex;
-
+void atomic_float_sub(_Atomic float* target, float value);
 void     seed_init(int seed);
 int      safe_rand(void);
 int      safe_rand_range(int max);

@@ -36,6 +36,16 @@ Order* make_order(Menu* menu, int num_dishes) {
     return o;
 }
 
+int count_dishes_served(Customer* c){
+  if(!c->o) return 0;
+  Order* o = c->o;
+  int res = 0;
+  for(int i = 0; o->dishes[i] != NULL; i++){
+    if(o->dishes[i]->ready) res++;
+  }
+  return res;
+}
+
 float atomic_float_add(_Atomic float *target, float amount) {
     float old_val = atomic_load(target);
     float new_val;
@@ -325,10 +335,13 @@ void customer_loop(Customer* cst) {
                 if(cst->o) {
                     atomic_store(&cst->o->expired, true);
                 }
-                //atomic_float_sub(cst->arg->score, cst->o->total_price * log2f(1));
+                float bias = initial_patience / (1 + count_dishes_served(cst));
+                float k2 = log2f(1+bias);
+                float points_deducted = cst->o->total_price * k2;
+                atomic_float_sub(cst->arg->score, points_deducted);
                 sem_post(cst->arg->rc);
                 printf(CYAN " CUSTOMER %d" RESET ":\t", cst->arg->id);
-                printf(RED "tired of waiting\n" RESET);
+                printf(RED "tired of waiting, deducting %f points\n" RESET, points_deducted);
                 return;
                 break;
 
