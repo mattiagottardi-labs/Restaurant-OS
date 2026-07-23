@@ -297,7 +297,7 @@ void cook_acquire_tool(Cook* ck) {
         ck->future = COOKING;
     }
     else {
-        printf("unable to acquire all tools\n");
+        printf(RED_BOLD "Unable to acquire all tools\n");
         release_tools(ck->claimed_tools, ck->target_dish, ck->arg->km, ck->arg->sc);
         ck->future = WAITING;
     }
@@ -398,7 +398,7 @@ void cook_cleaning(Cook* ck) {
             Tool* tool = &pool->tools[i];
             pthread_mutex_lock(&tool->lock);
             if (tool->dirty_usages >= DIRTY_THRESHOLD) {
-                printf("cleaning tool %d from pool %s\n", i, pool->name);
+                printf("Cleaning tool %d from pool %s\n", i, pool->name);
                 clean_tool(tool, sc);
             }
             pthread_mutex_unlock(&tool->lock);

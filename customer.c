@@ -141,7 +141,7 @@ void enqueue(Customer* c, CustomerQueue* cq) {
         perror("null pointers passed!");
         return;
     }
-    printf("Inserted customer %d\n", c->arg->id);
+    //printf("Inserted customer %d\n", c->arg->id);
     QueueNode* node = malloc(sizeof(QueueNode));
     if(node == NULL) {
         return;
@@ -282,6 +282,8 @@ void customer_loop(Customer* cst) {
                 initial_patience = cst->patience;
                 cst->order_made = cst->arg->sc->tick;
                 atomic_store(&cst->future, ORDER_CHOSEN);
+
+                atomic_fetch_add(cst->arg->customers_in_restaurant, 1);
                 break;
 
             case ORDER_CHOSEN:
@@ -324,6 +326,7 @@ void customer_loop(Customer* cst) {
                 float score_added = cst->o->total_price * k;
                 atomic_float_add(cst->arg->score, score_added);
 
+                atomic_fetch_add(cst->arg->customers_in_restaurant, -1);
                 sem_post(cst->arg->rc);
                 printf(CYAN " CUSTOMER %d" RESET ":\t", cst->arg->id);
                 printf(GREEN "done, bye: addeding %f points\n" RESET, score_added);
@@ -342,6 +345,7 @@ void customer_loop(Customer* cst) {
                     score_deducted = cst->o->total_price * k2;
                     atomic_float_sub(cst->arg->score, score_deducted);
                 }
+                atomic_fetch_add(cst->arg->customers_in_restaurant, -1);
                 sem_post(cst->arg->rc);
                 printf(CYAN " CUSTOMER %d" RESET ":\t", cst->arg->id);
                 printf(RED "tired of waiting, deducting %f points\n" RESET, score_deducted);

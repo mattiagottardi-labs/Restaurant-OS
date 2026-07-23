@@ -42,9 +42,9 @@ char* RESOURCE_FILE;
 
 _Atomic bool running;
 _Atomic float score = 0.0f;
-int spawned_customers = 0;
-int left_unserved = 0;
-sem_t restaurant_capacity;
+_Atomic int spawned_customers = 0;
+_Atomic int customers_in_restaurant = 0;
+_Atomic int left_unserved = 0;
 
 int MAX_CUSTOMER_SPAWN_RATE; // caution, this time is in microseconds
 int TICK_PERIOD;
@@ -64,7 +64,7 @@ void* thread_manager(void* args) {
   int random_delay;
 
   // cycle that keeps running to manage customer threads
-  for(int spawned_customers = 0; spawned_customers < TOTAL_CUSTOMERS; spawned_customers++) {
+  for(spawned_customers = 0; spawned_customers < TOTAL_CUSTOMERS; spawned_customers++) {
     random_delay = ((rand() % MAX_CUSTOMER_SPAWN_RATE) + 50000) / GAME_SPEED;
     usleep(random_delay);
 
@@ -77,6 +77,7 @@ void* thread_manager(void* args) {
     customer_args[spawned_customers].score = arguments->score;
     customer_args[spawned_customers].standing = arguments->standing;
     customer_args[spawned_customers].left_unserved = arguments->left_unserved;
+    customer_args[spawned_customers].customers_in_restaurant = arguments->customers_in_restaurant;
     pthread_create(&customer_tid[spawned_customers], NULL, customer_thread, (void*) &customer_args[spawned_customers]);
   }
 
@@ -178,36 +179,26 @@ void* info_thread(void* args) {
 
     if(sigusr1_received) {
       pthread_mutex_lock(arg->print);
-      sem_getvalue(&restaurant_capacity, &sval);
 
-      printf(BOLD_U "\nTICK: %d\n" RESET, arg->sc->tick);
-      printf("CURRENT SCORE: %f\n", score);
-      printf("Customers in the restaurant: %d\n", TOTAL_CUSTOMERS - sval);
-      printf("Customers that left unserved: %d\n", left_unserved);
-      printf("Spawned/Total: %d/%d\n", spawned_customers, TOTAL_CUSTOMERS);
-      printf("Kitchen resources availability: \n");
+      printf(YELLOW_BOLD_U "\n TICK: %d                                                   \n" RESET, arg->sc->tick);
+      printf(YELLOW_BOLD " Current Score" RESET ": %.3f\n", score);
+      printf(YELLOW_BOLD " Customers in the restaurant" RESET ": %d\n", customers_in_restaurant);
+      printf(YELLOW_BOLD " Customers that left unserved" RESET ": %d\n", left_unserved);
+      printf(YELLOW_BOLD " Spawned/Total" RESET ": %d/%d\n", spawned_customers, TOTAL_CUSTOMERS);
+      printf(YELLOW_BOLD " Length fixed" RESET ": 10\n");
       print_tool_status(arg->km);
-/*
-      printf("Standing customer/s:\n");
-      print_queue(arg->standing);
+      printf("\n");
 
-      printf("Seated customer/s:\n");
-      print_queue(arg->seated);
-
-      printf("Waiting Order customer/s:\n");
-      print_queue(arg->waiting_order);
-*/  
       pthread_mutex_unlock(arg->print);
 
       sigusr1_received = 0;
     }
   }
-
   return NULL;
 }
 
 void handler(int signum) {
-    printf(YELLOW "Caught %d, printing infos on screen\n" RESET, signum);
+    //printf(YELLOW_BOLD "Caught %d, printing infos on screen\n" RESET, signum);
     sigusr1_received = 1;
 } 
 
@@ -243,10 +234,10 @@ int count_available_tools(ToolPool* pool) {
 }
 
 void print_tool_status(KitchenManager* km) {
-    printf("TOOLS: \n");
+    printf(YELLOW_BOLD " Tools: \n" RESET);
     for(int i = 0; i < km->num_pools; i++) {
         int available = count_available_tools(km->pools[i]);
-        printf("%s, %d items, %d in use, %d available\n", km->pools[i]->name, km->pools[i]->quantity, km->pools[i]->in_use, available);
+        printf(YELLOW "  %s" RESET ": %d items, %d in use, %d available\n" RESET, km->pools[i]->name, km->pools[i]->quantity, km->pools[i]->in_use, available);
     }
 }
 
@@ -301,7 +292,7 @@ int main(int argc, char* argv[]){
   // mutex for printing on the screen
   pthread_mutex_t print = PTHREAD_MUTEX_INITIALIZER;
 
-  sem_t ea_bin;
+  sem_t restaurant_capacity, ea_bin;
   sem_init(&restaurant_capacity, 0, MAX_CUSTOMERS);
   sem_init(&ea_bin, 0, 1);
 
@@ -378,6 +369,7 @@ int main(int argc, char* argv[]){
   customer_args->score = &score;
   customer_args->standing = standing;
   customer_args->left_unserved = &left_unserved;
+  customer_args->customers_in_restaurant = &customers_in_restaurant;
   // thread_manager manages all customer threads
   pthread_create(&customer_thread_manager, NULL, thread_manager, customer_args);
 
