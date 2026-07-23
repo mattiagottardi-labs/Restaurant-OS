@@ -330,7 +330,7 @@ void waiter_loop(Waiter* wtr) {
     Dish* d = NULL;
 
     int activity;
-    char name[16] = {0};
+    char name[32] = {0};
 
     while(atomic_load(wtr->arg->running)) {
         pthread_mutex_lock(&wtr->arg->sc->lock);
