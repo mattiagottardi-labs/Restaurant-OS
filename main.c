@@ -17,7 +17,7 @@ volatile sig_atomic_t sigusr1_received = 0;
 
 typedef struct InfoArgs {
     SimClock*           sc;
-    _Atomic bool*               running;
+    _Atomic bool*       running;
     CustomerQueue*      standing;
     CustomerQueue*      seated;
     CustomerQueue*      waiting_order;
@@ -39,7 +39,7 @@ int RANDOM_SEED;
 char* MENU_FILE;
 char* RESOURCE_FILE;
 
-_Atomic bool* running;
+_Atomic bool running;
 _Atomic float score = 0.0f;
 
 int MAX_CUSTOMER_SPAWN_RATE; // caution, this time is in microseconds
@@ -49,41 +49,38 @@ int TICK_PERIOD;
 void* thread_manager(void* args) {
   if(!args) return NULL;
 
-  pthread_t* customer_tid = malloc(TOTAL_CUSTOMERS * sizeof(pthread_t));
-
   CustomerArgs* arguments = (CustomerArgs*) args;
-  CustomerArgs* customer_args = malloc(TOTAL_CUSTOMERS * sizeof(CustomerArgs));
+
+  pthread_t customer_tid[TOTAL_CUSTOMERS];
+  CustomerArgs customer_args[TOTAL_CUSTOMERS];
 
   MAX_CUSTOMER_SPAWN_RATE = 100000000 / GAME_SPEED;
 
   // customer threads has to be spawned at random time
-  int random_delay; 
-  
-  // customer counter index
-  int cc;
+  int random_delay;
 
   // cycle that keeps running to manage customer threads
-  for(cc = 0; cc < TOTAL_CUSTOMERS; cc++) {
+  for(int i = 0; i < TOTAL_CUSTOMERS; i++) {
     random_delay = ((rand() % MAX_CUSTOMER_SPAWN_RATE) + 50000) / GAME_SPEED;
     usleep(random_delay);
 
-    customer_args[cc].id = cc + 1;
-    customer_args[cc].menu = arguments->menu;
-    customer_args[cc].rc = arguments->rc;
-    customer_args[cc].running = arguments->running;
-    customer_args[cc].print = arguments->print;
-    customer_args[cc].sc = arguments->sc;
-    customer_args[cc].score = arguments->score;
-    customer_args[cc].standing = arguments->standing;
-    pthread_create(&customer_tid[cc], NULL, customer_thread, (void*) &customer_args[cc]);
+    customer_args[i].id = i + 1;
+    customer_args[i].menu = arguments->menu;
+    customer_args[i].rc = arguments->rc;
+    customer_args[i].running = arguments->running;
+    customer_args[i].print = arguments->print;
+    customer_args[i].sc = arguments->sc;
+    customer_args[i].score = arguments->score;
+    customer_args[i].standing = arguments->standing;
+    pthread_create(&customer_tid[i], NULL, customer_thread, (void*) &customer_args[i]);
   }
 
-  for(int i = 0; i < cc; i++) {
+  for(int i = 0; i < TOTAL_CUSTOMERS; i++) {
     pthread_join(customer_tid[i], NULL);
   }
 
   atomic_store(arguments->running, false); 
-  printf(BOLD_U "\nRUNNING SET TO FALSE!\n" RESET);
+  printf(BOLD_U "\nLAST CUSTOMER LEFT SO RUNNING SET TO FALSE!\n" RESET);
 
   return NULL;
 }
@@ -164,7 +161,7 @@ void* tick_advance(void* args) {
     usleep(TICK_PERIOD);
     pthread_mutex_lock(&sc->lock);
     sc->tick++;
-    printf("\n--------------------------------------------------------\nTICKS: %d\n", sc->tick);
+    printf(BOLD_U "\n TICK: %d                                                   \n", sc->tick);
     pthread_cond_broadcast(&sc->tick_cv);
     pthread_mutex_unlock(&sc->lock);
   }
@@ -176,7 +173,7 @@ void* tick_advance(void* args) {
 void* info_thread(void* args) {
   InfoArgs* arg = (InfoArgs*) args;
 
-while(atomic_load(arg->running)) {
+  while(arg->running) { 
     if(sigusr1_received) {
       pthread_mutex_lock(arg->print);
 
@@ -284,8 +281,6 @@ int main(int argc, char* argv[]){
   sem_init(&ea_bin, 0, 1);
 
   //create structs
-  _Atomic bool* running = malloc(sizeof(bool));
-  atomic_store(running, true);
   KitchenManager* km = malloc(sizeof(KitchenManager));
   Menu* menu = malloc(sizeof(Menu));
   SimClock* sc = malloc(sizeof(SimClock));
@@ -293,6 +288,8 @@ int main(int argc, char* argv[]){
   CustomerQueue* seated = malloc(sizeof(CustomerQueue));
   CustomerQueue* waiting_order = malloc(sizeof(CustomerQueue));
   OrderManager* om = malloc(sizeof(OrderManager));
+
+  atomic_store(&running, true);
 
   //init structs
   make_tools(RESOURCE_FILE, km, 10);
@@ -313,7 +310,7 @@ int main(int argc, char* argv[]){
   InfoArgs* info_args = malloc(sizeof(InfoArgs));
   info_args->print = &print;
   info_args->sc = sc;
-  info_args->running = running;
+  atomic_store(info_args->running, running);
   info_args->seated = seated;
   info_args->standing = standing;
   info_args->waiting_order = waiting_order;
@@ -324,7 +321,7 @@ int main(int argc, char* argv[]){
     cook_args[i].id = i + 1;
     cook_args[i].km = km;
     cook_args[i].om = om;
-    cook_args[i].running = running;
+    cook_args[i].running = &running;
     cook_args[i].sc = sc;
     cook_args[i].print = &print;
     pthread_create(&cooks_tid[i], NULL, cook_thread, &cook_args[i]);
@@ -335,8 +332,7 @@ int main(int argc, char* argv[]){
     waiter_args[i].id = i + 1;
     waiter_args[i].ea_bin = &ea_bin;
     waiter_args[i].om = om;
-    waiter_args[i].running = running;
-
+    waiter_args[i].running = &running;
     waiter_args[i].sc = sc;
     waiter_args[i].seated = seated;
     waiter_args[i].standing = standing;
@@ -351,7 +347,7 @@ int main(int argc, char* argv[]){
   customer_args->menu = menu;
   customer_args->print = &print;
   customer_args->rc = &restaurant_capacity;
-  customer_args->running = running;
+  customer_args->running = &running;
   customer_args->sc = sc;
   customer_args->score = &score;
   customer_args->standing = standing;
