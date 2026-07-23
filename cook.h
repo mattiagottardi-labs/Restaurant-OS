@@ -42,9 +42,9 @@ typedef struct Cook {
 // Tool helpers
 int        count_tools(Dish* d);
 ToolPool*  find_pool(const char* name, KitchenManager* km);
-Tool*      acquire_pool(ToolPool* pool);
+Tool*      acquire_pool(ToolPool* pool, bool running);
 void       release_pool(ToolPool* pool, Tool* t);
-Tool**     acquire_tools(Dish* d, KitchenManager* km);
+Tool**     acquire_tools(Dish* d, KitchenManager* km, bool running);
 void       release_tools(Tool** used, Dish* d, KitchenManager* km);
 
 // Order/Dish selection

@@ -56,15 +56,15 @@ void customer_queue_destroy(CustomerQueue* queue) {
 }
 
 void kitchen_manager_destroy(KitchenManager* km) {
-    if (!km) return;
+    if(!km) return;
 
-    if (km->pools) {
-        for (int i = 0; i < km->num_pools; i++) {
+    if(km->pools) {
+        for(int i = 0; i < km->num_pools; i++) {
             ToolPool* pool = km->pools[i];
-            if (pool != NULL) {
-                if (pool->tools) {
-                    for (int j = 0; j < pool->quantity; j++) {
-                        if (pool->tools[j].name) {
+            if(pool != NULL) {
+                if(pool->tools) {
+                    for(int j = 0; j < pool->quantity; j++) {
+                        if(pool->tools[j].name) {
                             free(pool->tools[j].name);
                         }
                         pthread_mutex_destroy(&pool->tools[j].lock);
@@ -72,7 +72,7 @@ void kitchen_manager_destroy(KitchenManager* km) {
                     free(pool->tools);
                 }
 
-                if (pool->name) {
+                if(pool->name) {
                     free(pool->name);
                 }
 
@@ -90,16 +90,16 @@ void kitchen_manager_destroy(KitchenManager* km) {
 }
 
 void destroy_customer(Customer* customer) {
-    if (!customer) return;
-    if (customer->o) {
+    if(!customer) return;
+    if(customer->o) {
         Order* order = customer->o;          
-        if (order->dishes) {
-            for (int j = 0; j < order->num_dishes; j++) {
+        if(order->dishes) {
+            for(int j = 0; j < order->num_dishes; j++) {
                 Dish* dish = order->dishes[j];
-                if (dish != NULL) {
+                if(dish != NULL) {
                     free(dish->name);
-                    if (dish->tools) {
-                        for (int k = 0; dish->tools[k] != NULL; k++) {
+                    if(dish->tools) {
+                        for(int k = 0; dish->tools[k] != NULL; k++) {
                             free(dish->tools[k]);
                         }
                         free(dish->tools);
@@ -122,16 +122,17 @@ void cook_destroy(Cook* cook) {
 
     if (cook->claimed_tools) {
         free(cook->claimed_tools);
+        cook->claimed_tools = NULL; // Defend against future calls
     }
 
     free(cook);
 }
 
 void dish_list_destroy(DishList* list) {
-    if (!list) return;
+    if(!list) return;
 
     DishListNode* current = list->head;
-    while (current != NULL) {
+    while(current != NULL) {
         DishListNode* next_node = current->next;
         free(current);
         current = next_node;
@@ -142,10 +143,10 @@ void dish_list_destroy(DishList* list) {
 }
 
 void order_list_destroy(OrderList* list) {
-    if (!list) return;
+    if(!list) return;
 
     OrderListNode* current = list->head;
-    while (current != NULL) {
+    while(current != NULL) {
         OrderListNode* next_node = current->next;
         free(current);
         current = next_node;
@@ -156,7 +157,7 @@ void order_list_destroy(OrderList* list) {
 }
 
 void order_manager_destroy(OrderManager* om) {
-    if (!om) return;
+    if(!om) return;
 
     dish_list_destroy(om->completed_dishes);
     order_list_destroy(om->waitlist);
@@ -169,10 +170,10 @@ void order_manager_destroy(OrderManager* om) {
 
 void clean_memory(CleaningArgs* args) {
     if (!args) return;
-
     customer_queue_destroy(args->standing);
     customer_queue_destroy(args->seated);
     customer_queue_destroy(args->waiting_order);
+    customer_queue_destroy(args->finished);
 
     order_manager_destroy(args->om);
     kitchen_manager_destroy(args->km);
@@ -184,4 +185,57 @@ void clean_memory(CleaningArgs* args) {
     if (args->print) {
         pthread_mutex_destroy(args->print);
     }
+}
+
+void customer_queue_destroy_extended(CustomerQueue* queue) {
+    if(!queue) return;
+
+    QueueNode* current = queue->head;
+
+    while(current != NULL) {
+
+        QueueNode* next_node = current->next;
+        if(current->c) {
+
+            Customer* customer = current->c;
+
+            if(customer->o) {
+                Order* order = customer->o;
+
+                if(order->dishes) {
+
+                    for(int j = 0; j < order->num_dishes; j++) {
+
+                        Dish* dish = order->dishes[j];
+
+                        if(dish != NULL) {
+                            free(dish->name);
+/*
+                            if(dish->tools) {
+                                for(int k = 0; dish->tools[k] != NULL; k++) {
+                                    free(dish->tools[k]);
+                                }
+                                free(dish->tools);
+                            }*/
+                            pthread_mutex_destroy(&dish->lock);
+                            free(dish);
+                        }
+                    }
+                    free(order->dishes);
+                }
+                pthread_mutex_destroy(&order->lock);
+                free(order);
+            }
+            pthread_mutex_destroy(&customer->lock);
+            free(customer);
+        }
+        free(current);
+
+        current = next_node;
+    }
+    queue->head = NULL;
+    queue->tail = NULL;
+    queue->size = 0;
+
+    pthread_mutex_destroy(&queue->lock);
 }

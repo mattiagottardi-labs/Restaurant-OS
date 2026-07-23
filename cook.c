@@ -43,7 +43,6 @@ void remove_order(OrderList* ol, Order* target){
     pthread_mutex_unlock(&ol->lock);
 }
 
-
 float get_pressure(OrderList* ol){
   int tot_prio;
   int tot_orders;
@@ -69,10 +68,10 @@ ToolPool* find_pool(const char* tool_name, KitchenManager* km) {
     return NULL;
 }
 
-Tool* acquire_pool(ToolPool* pool) {
+Tool* acquire_pool(ToolPool* pool, bool running) {
     //printf("\tAcquiring pool %s\n", pool->name);
     pthread_mutex_lock(&pool->lock);
-    while (pool->in_use >= pool->quantity)
+    while ((pool->in_use >= pool->quantity) && running)
         pthread_cond_wait(&pool->cv, &pool->lock);
 
     Tool* picked = NULL;
@@ -88,12 +87,12 @@ Tool* acquire_pool(ToolPool* pool) {
     return picked;
 }
 
-void wash_tool(Tool* t, KitchenManager* km, SimClock* sc) {
+void wash_tool(Tool* t, KitchenManager* km, SimClock* sc, bool running) {
     pthread_mutex_lock(&km->sink);
     pthread_mutex_lock(&sc->lock);
 
     int ticks = t->clean_time;
-    while(ticks > 0) {
+    while(ticks > 0 && running) {
         pthread_cond_wait(&sc->tick_cv, &sc->lock);
         ticks--;
     }
@@ -111,14 +110,14 @@ void release_pool(ToolPool* pool, Tool* t) {
     pthread_mutex_unlock(&pool->lock);
 }
 
-Tool** acquire_tools(Dish* d, KitchenManager* km) {
+Tool** acquire_tools(Dish* d, KitchenManager* km, bool running) {
     int n = count_tools(d);
     Tool** used = calloc(n + 1, sizeof(Tool*));
     if (!used) return NULL;
     for (int i = 0; d->tools[i] != NULL; i++) {
         ToolPool* pool = find_pool(d->tools[i], km);
         if (!pool) continue;
-        used[i] = acquire_pool(pool);
+        used[i] = acquire_pool(pool, running);
     }
     used[n] = NULL;
     return used;
@@ -260,6 +259,26 @@ void print_ck(Cook* ck) {
     pthread_mutex_unlock(ck->arg->print);
 }
 
+float get_penalty(Cook* ck){
+    if(!ck || !ck->claimed_tools) return 0.0f;
+    
+    float res = 0.0f; 
+    
+    for(int i = 0; ck->claimed_tools[i] != NULL; i++){
+        int du = atomic_load(&ck->claimed_tools[i]->dirty_usages);
+        
+        float penalty = (float)(1 << du); 
+        penalty *= log2f(1.0f + ck->claimed_tools[i]->clean_time);
+        
+        res += penalty;
+    }
+    return res;
+}
+
+/* --------------------------------------------------------------------------
+ * FSM STATES FUNCTIONS
+ * -------------------------------------------------------------------------- */
+
 void cook_waiting(Cook* ck) {
     pthread_mutex_lock(&ck->arg->om->priority->lock);
     if(ck->arg->om->priority->size > 0) {
@@ -271,7 +290,6 @@ void cook_waiting(Cook* ck) {
     }
     pthread_mutex_unlock(&ck->arg->om->priority->lock);
 }
-
 
 void cook_select_dish(Cook* ck) {
     ck->current_order = get_next_order(ck->arg->om);
@@ -290,7 +308,7 @@ void cook_select_dish(Cook* ck) {
 }
 
 void cook_acquire_tool(Cook* ck) {
-    ck->claimed_tools = acquire_tools(ck->target_dish, ck->arg->km);
+    ck->claimed_tools = acquire_tools(ck->target_dish, ck->arg->km, atomic_load(ck->arg->running));
 
     if(ck->claimed_tools) {
         ck->future = COOKING;
@@ -300,22 +318,6 @@ void cook_acquire_tool(Cook* ck) {
         release_tools(ck->claimed_tools, ck->target_dish, ck->arg->km);
         ck->future = WAITING;
     }
-}
-
-float get_penalty(Cook* ck){
-    if(!ck || !ck->claimed_tools) return 0.0f;
-    
-    float res = 0.0f; 
-    
-    for(int i = 0; ck->claimed_tools[i] != NULL; i++){
-        int du = atomic_load(&ck->claimed_tools[i]->dirty_usages);
-        
-        float penalty = (float)(1 << du); 
-        penalty *= log2f(1.0f + ck->claimed_tools[i]->clean_time);
-        
-        res += penalty;
-    }
-    return res;
 }
 
 void cook_cooking(Cook* ck) {
@@ -340,6 +342,7 @@ void cook_cooking(Cook* ck) {
     atomic_fetch_sub(&ck->current_order->remaining_time, ck->target_dish->time);
     add_usage(ck->claimed_tools);
     release_tools(ck->claimed_tools, ck->target_dish, ck->arg->km);
+    ck->claimed_tools = NULL;
     
     if(!ck->current_order->expired) {
         list_insert_dish(ck->arg->om->completed_dishes, ck->target_dish);
@@ -354,8 +357,7 @@ void cook_cooking(Cook* ck) {
 void cook_completed(Cook* ck) {
     if(atomic_load(&ck->current_order->remaining_time) == 0) {
                     
-    bool expected = false;
-
+        bool expected = false;
         // if order is completed remove it from priority and go into order completed
         if(atomic_compare_exchange_strong(&ck->current_order->completed, &expected, true)) {
 
@@ -379,9 +381,10 @@ void cook_completed(Cook* ck) {
     }
 }
 
-void clean_tool(Tool* t, SimClock* sc) {
+void clean_tool(Tool* t, SimClock* sc, bool running) {
     pthread_mutex_lock(&sc->lock);
     for (int i = 0; i < t->clean_time; i++) {
+        if(!running) break;
         pthread_cond_wait(&sc->tick_cv, &sc->lock);
     }
     pthread_mutex_unlock(&sc->lock);
@@ -400,7 +403,7 @@ void cook_cleaning(Cook* ck) {
             Tool* tool = &pool->tools[i];
             pthread_mutex_lock(&tool->lock);
             if (tool->dirty_usages >= DIRTY_THRESHOLD) {
-                clean_tool(tool, sc);
+                clean_tool(tool, sc, atomic_load(ck->arg->running));
             }
             pthread_mutex_unlock(&tool->lock);
         }

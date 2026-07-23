@@ -41,6 +41,7 @@ typedef struct CustomerArgs {
     _Atomic int*        left_unserved;
     sem_t*              rc;
     CustomerQueue*      standing;
+    CustomerQueue*      finished;
     pthread_mutex_t*    print;
 } CustomerArgs;
 

@@ -311,21 +311,111 @@ void clean_queues(Waiter* wtr) {
     clean_queue(wtr->arg->seated,        true,  false); // patience matters
     clean_queue(wtr->arg->waiting_order, false, true);  // expiry + served matter
 }
+
+/* --------------------------------------------------------------------------
+ * FSM STATES FUNCTIONS
+ * -------------------------------------------------------------------------- */
+
+Customer* waiter_idle(Waiter* wtr, Dish** d) {
+    Customer* cst = peek(wtr->arg->seated);
+
+    if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE) && (sem_trywait(wtr->arg->rc) == 0)) {
+        wtr->future = ACCOMODATING_CUSTOMER;
+        return dequeue(wtr->arg->standing);
+    }
+    else if(cst != NULL) {
+        if(cst->present == ORDER_CHOSEN) {
+            wtr->future = TAKING_ORDER;
+            return dequeue(wtr->arg->seated);
+        }
+        else {
+            wtr->future = wtr->present;
+            return NULL;
+        }
+    }
+    else if(!is_empty(wtr->arg->om->completed_dishes, DISH_LIST)) {
+        *d = list_remove_dish(wtr->arg->om->completed_dishes);
+        wtr->future = DELIVERING_DISH;
+        return NULL;
+    }
+    else if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE) && (sem_trywait(wtr->arg->ea_bin) == 0)) {
+        wtr->future = ENTERTAINING;
+        return NULL;
+    }
+    else {
+        wtr->future = wtr->present;
+        return NULL;
+    }
+}
+
+void waiter_accomodating_customer(Waiter* wtr, Customer* cst) {
+    if(cst != NULL) {
+        atomic_store(&cst->order_made, (cst->arg->sc->tick + 1));
+        atomic_store(&cst->future, SEATED);
+        enqueue(cst, wtr->arg->seated);
+    }
+    else {
+        sem_post(wtr->arg->rc);
+    }
+
+    wtr->future = IDLE;
+}
+
+void waiter_taking_order(Waiter* wtr, Customer* cst) {
+    if(cst != NULL) {
+        list_insert_order(wtr->arg->om->waitlist, cst->o, 2);
+        refill_priority(wtr->arg->om);
+
+        atomic_store(&cst->future, WAITING_DISH);
+        enqueue(cst, wtr->arg->waiting_order);
+    }
+
+    wtr->future = IDLE;
+}
+
+Dish* waiter_delivering_dish(Waiter* wtr, Dish* d) {
+    // take the dish and deliver it to the customer
+    if(d) {
+        d->delivered = true;
+    }
+
+    if(!is_empty(wtr->arg->om->completed_dishes, DISH_LIST)) {
+        wtr->future = wtr->present;
+        return list_remove_dish(wtr->arg->om->completed_dishes);
+    }
+    else {
+        wtr->future = IDLE;
+        return NULL;
+    }
+}
+
+void waiter_entertaining(Waiter* wtr, char* name) {
+    int activity = safe_rand_range(5) - 1;
+    strcpy(name, ea[activity].name);
+
+    pthread_mutex_lock(&wtr->arg->standing->lock);
+    QueueNode* tmp = wtr->arg->standing->head;
+
+    while(tmp != NULL) {
+        tmp->c->patience += ea[activity].efficacy;
+        tmp = tmp->next;
+    }
+    pthread_mutex_unlock(&wtr->arg->standing->lock);
+    sem_post(wtr->arg->ea_bin);
+
+    wtr->future = IDLE;
+}
+
 /* --------------------------------------------------------------------------
  * waiter_loop — pops customers from the queue, unpacks their orders
  *               and inserts them into the waitlist sorted by prio.
  *               Defers refill_priority and cook interaction to later.
- * 
- * Davide:  additionaly the waiter has to check 2 different lists (or queues)
- *          for the standing customers outside the restaurant (they have to
- *          be entertained by the waiter ![only one so mutex needed]), 
  * -------------------------------------------------------------------------- */
 void waiter_loop(Waiter* wtr) {
     // buffer customer/order used to perform operation on queues
     Customer* cst = NULL;
     Dish* d = NULL;
 
-    int activity;
     char name[32] = {0};
 
     while(atomic_load(wtr->arg->running)) {
@@ -333,95 +423,30 @@ void waiter_loop(Waiter* wtr) {
         pthread_cond_wait(&wtr->arg->sc->tick_cv, &wtr->arg->sc->lock);
         pthread_mutex_unlock(&wtr->arg->sc->lock);
         clean_queues(wtr);
-        
+
         switch(wtr->present) {
             case IDLE:
-                cst = peek(wtr->arg->seated);
-                
-                if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE) && (sem_trywait(wtr->arg->rc) == 0)) {
-                    cst = dequeue(wtr->arg->standing);
-                    wtr->future = ACCOMODATING_CUSTOMER;
-                }
-                else if(cst != NULL) {
-                    if(cst->present == ORDER_CHOSEN) {
-                        cst = dequeue(wtr->arg->seated);
-                        wtr->future = TAKING_ORDER;
-                    }
-                    else {
-                        wtr->future = wtr->present;
-                    }
-                }
-                else if(!is_empty(wtr->arg->om->completed_dishes, DISH_LIST)) {
-                    d = list_remove_dish(wtr->arg->om->completed_dishes);
-                    wtr->future = DELIVERING_DISH;
-                }
-                else if(!is_empty(wtr->arg->standing, CUSTOMER_QUEUE) && (sem_trywait(wtr->arg->ea_bin) == 0)) {
-                    wtr->future = ENTERTAINING;
-                }
-                else {
-                    wtr->future = wtr->present;
-                }
+                cst = waiter_idle(wtr, &d);
                 break;
 
             case ACCOMODATING_CUSTOMER:
-                if(cst != NULL) {
-                    atomic_store(&cst->order_made, (cst->arg->sc->tick + 1));
-                    atomic_store(&cst->future, SEATED);
-                    enqueue(cst, wtr->arg->seated);
-                }
-                else {
-                    sem_post(wtr->arg->rc);
-                }
-
-                wtr->future = IDLE;
+                waiter_accomodating_customer(wtr, cst);
                 break;
-            
-            case TAKING_ORDER:
-                if(cst != NULL) {
-                    list_insert_order(wtr->arg->om->waitlist, cst->o, 2);
-                    refill_priority(wtr->arg->om);
-                        
-                    atomic_store(&cst->future, WAITING_DISH);
-                    enqueue(cst, wtr->arg->waiting_order);
-                }
 
-                wtr->future = IDLE;
+            case TAKING_ORDER:
+                waiter_taking_order(wtr, cst);
                 break;
 
             case DELIVERING_DISH:
-                // take the dish and deliver it to the customer
-                if(d) {
-                    d->delivered = true;
-                }
-                
-                if(!is_empty(wtr->arg->om->completed_dishes, DISH_LIST)) {
-                    d = list_remove_dish(wtr->arg->om->completed_dishes);
-                    wtr->future = wtr->present;
-                }
-                else {
-                    wtr->future = IDLE;
-                }
+                d = waiter_delivering_dish(wtr, d);
                 break;
 
             case ENTERTAINING:
-                activity = safe_rand_range(5) - 1;
-                strcpy(name, ea[activity].name);
-
-                pthread_mutex_lock(&wtr->arg->standing->lock);
-                QueueNode* tmp = wtr->arg->standing->head;
-
-                while(tmp != NULL) {
-                    tmp->c->patience += ea[activity].efficacy;
-                    tmp = tmp->next;
-                }
-                pthread_mutex_unlock(&wtr->arg->standing->lock);
-                sem_post(wtr->arg->ea_bin);
-
-                wtr->future = IDLE;
+                waiter_entertaining(wtr, name);
                 break;
 
             default:
-                perror("Waiter - Unknown state!");       
+                perror("Waiter - Unknown state!");
         }
         print_wtr(wtr, name);
         // Update the state for next cycle

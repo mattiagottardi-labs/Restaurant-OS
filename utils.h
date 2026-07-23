@@ -100,6 +100,7 @@ typedef struct CleaningArgs {
     WaiterArgs*      waita;
     CustomerArgs*    custa;
     CookArgs*        cooka;
+    CustomerQueue*   finished;
 } CleaningArgs;
 
 // ─── Simulation Clock Prototypes ─────────────────────────────────────────────
@@ -128,5 +129,6 @@ void  dish_list_destroy(DishList* list);
 void  order_list_destroy(OrderList* list);
 void  order_manager_destroy(OrderManager* om);
 void  clean_memory(CleaningArgs* args);
+void customer_queue_destroy_extended(CustomerQueue* queue);
 
 #endif // UTILS_H

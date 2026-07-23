@@ -220,6 +220,83 @@ void clean(CustomerQueue* q) {
     pthread_mutex_unlock(&q->lock);
 }
 
+/* --------------------------------------------------------------------------
+ * FSM STATES FUNCTIONS
+ * -------------------------------------------------------------------------- */
+
+int customer_seated(Customer* cst) {
+    int num_dishes = safe_rand_range(5);
+    cst->o = make_order(cst->arg->menu, num_dishes);
+    cst->o->num_dishes = num_dishes;
+    cst->patience += get_prep_time(cst->o) + safe_rand_range(10);
+    cst->order_made = cst->arg->sc->tick;
+    atomic_store(&cst->future, ORDER_CHOSEN);
+    atomic_fetch_add(cst->arg->customers_in_restaurant, 1);
+
+    return cst->patience;
+}
+
+void customer_waiting_dish(Customer* cst) {
+    if(cst == NULL) return;
+
+    for(int i = 0; i < cst->o->num_dishes; i++) {
+        if(cst->o->dishes[i]->delivered) {
+            pthread_mutex_lock(&cst->o->lock);
+
+            for(int j = i; j < cst->o->num_dishes - 1; j++) {
+                cst->o->dishes[j] = cst->o->dishes[j + 1];
+            }
+            cst->o->num_dishes--;
+
+            pthread_mutex_unlock(&cst->o->lock);
+
+            cst->future = EATING;
+            break;
+        }
+    }
+}
+
+void customer_eating(Customer* cst) {
+    if(atomic_load(&cst->o->completed)) {
+        atomic_store(&cst->future, FINISHED);
+    }
+    else {
+        atomic_store(&cst->future, WAITING_DISH);
+    }
+}
+
+void customer_finished(Customer* cst, int initial_patience) {
+    cst->order_received = cst->arg->sc->tick;
+    float tts = cst->order_received - cst->order_made;
+    float k = (1.0f - (tts / initial_patience));
+    float score_added = cst->o->total_price * k;
+    atomic_float_add(cst->arg->score, score_added);
+
+    atomic_fetch_add(cst->arg->customers_in_restaurant, -1);
+    sem_post(cst->arg->rc);
+    printf(CYAN " CUSTOMER %d" RESET ":\t", cst->arg->id);
+    printf(GREEN "done, bye: addeding %f points\n" RESET, score_added);
+    atomic_store(&cst->finish_eating, true);
+}
+
+void customer_left_tired(Customer* cst, int initial_patience) {
+    float score_deducted = 0;
+
+    if(cst->o) {
+        atomic_store(&cst->o->expired, true);
+
+        float bias = initial_patience / (1 + count_dishes_served(cst));
+        float k2 = log2f(1+bias);
+        score_deducted = cst->o->total_price * k2;
+        atomic_float_sub(cst->arg->score, score_deducted);
+    }
+    atomic_fetch_add(cst->arg->customers_in_restaurant, -1);
+    sem_post(cst->arg->rc);
+    printf(CYAN " CUSTOMER %d" RESET ":\t", cst->arg->id);
+    printf(RED "tired of waiting, deducting %f points\n" RESET, score_deducted);
+    atomic_fetch_add(cst->arg->left_unserved, 1);
+}
+
 void print_cst(Customer* cst) {
     pthread_mutex_lock(cst->arg->print);
     printf(CYAN " CUSTOMER %d" RESET ":\t", cst->arg->id);
@@ -263,7 +340,7 @@ void print_cst(Customer* cst) {
  * 4. Update score automically
  * -------------------------------------------------------------------------- */
 void customer_loop(Customer* cst) {
-    int num_dishes, initial_patience;
+    int initial_patience = 0;
 
     while(atomic_load(cst->arg->running)) {
         pthread_mutex_lock(&cst->arg->sc->lock);
@@ -275,87 +352,32 @@ void customer_loop(Customer* cst) {
                 break;
 
             case SEATED:
-                num_dishes = safe_rand_range(5);
-                cst->o = make_order(cst->arg->menu, num_dishes);
-                cst->o->num_dishes = num_dishes;
-                cst->patience += get_prep_time(cst->o) + safe_rand_range(10);
-                initial_patience = cst->patience;
-                cst->order_made = cst->arg->sc->tick;
-                atomic_store(&cst->future, ORDER_CHOSEN);
-
-                atomic_fetch_add(cst->arg->customers_in_restaurant, 1);
+                initial_patience = customer_seated(cst);
                 break;
 
             case ORDER_CHOSEN:
                 break;
 
-            case WAITING_DISH: {
-                if(cst == NULL) break;
-
-                for(int i = 0; i < cst->o->num_dishes; i++) {
-                    if(cst->o->dishes[i]->delivered) {
-                        pthread_mutex_lock(&cst->o->lock);
-
-                        for(int j = i; j < cst->o->num_dishes - 1; j++) {
-                            cst->o->dishes[j] = cst->o->dishes[j + 1];
-                        }
-                        cst->o->num_dishes--;
-
-                        pthread_mutex_unlock(&cst->o->lock);
-
-                        cst->future = EATING;
-                        break;
-                    }
-                }
+            case WAITING_DISH:
+                customer_waiting_dish(cst);
                 break;
-            }
 
             case EATING:
-                if(atomic_load(&cst->o->completed)) {
-                    atomic_store(&cst->future, FINISHED);
-                }
-                else {
-                    atomic_store(&cst->future, WAITING_DISH);
-                }
+                customer_eating(cst);
                 break;
 
             case FINISHED:
-                cst->order_received = cst->arg->sc->tick;
-                float tts = cst->order_received - cst->order_made;
-                float k = (1.0f - (tts / initial_patience));
-                float score_added = cst->o->total_price * k;
-                atomic_float_add(cst->arg->score, score_added);
-
-                atomic_fetch_add(cst->arg->customers_in_restaurant, -1);
-                sem_post(cst->arg->rc);
-                printf(CYAN " CUSTOMER %d" RESET ":\t", cst->arg->id);
-                printf(GREEN "done, bye: addeding %f points\n" RESET, score_added);
-                atomic_store(&cst->finish_eating, true);
+                customer_finished(cst, initial_patience);
                 return;
                 break;
 
             case LEFT_TIRED:
-                float score_deducted = 0;
-
-                if(cst->o) {
-                    atomic_store(&cst->o->expired, true);
-                
-                    float bias = initial_patience / (1 + count_dishes_served(cst));
-                    float k2 = log2f(1+bias);
-                    score_deducted = cst->o->total_price * k2;
-                    atomic_float_sub(cst->arg->score, score_deducted);
-                }
-                atomic_fetch_add(cst->arg->customers_in_restaurant, -1);
-                sem_post(cst->arg->rc);
-                printf(CYAN " CUSTOMER %d" RESET ":\t", cst->arg->id);
-                printf(RED "tired of waiting, deducting %f points\n" RESET, score_deducted);
-                cst->arg->left_unserved++;
+                customer_left_tired(cst, initial_patience);
                 return;
                 break;
 
             default:
                 perror("Customer - Unknown State");
-            
         }
         print_cst(cst);
 
@@ -367,8 +389,6 @@ void customer_loop(Customer* cst) {
         }
         atomic_store(&cst->present, cst->future);
     }
-
-    // clean memory    
 }
 
 void* customer_thread(void* args) {
@@ -382,6 +402,6 @@ void* customer_thread(void* args) {
 
   customer_loop(cst);
   
-  destroy_customer(cst);
+  enqueue(cst, cst->arg->finished);
   return NULL;
 }

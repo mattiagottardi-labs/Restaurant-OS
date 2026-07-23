@@ -77,6 +77,7 @@ void* thread_manager(void* args) {
     customer_args[spawned_customers].sc = arguments->sc;
     customer_args[spawned_customers].score = arguments->score;
     customer_args[spawned_customers].standing = arguments->standing;
+    customer_args[spawned_customers].finished = arguments->finished;
     customer_args[spawned_customers].left_unserved = arguments->left_unserved;
     customer_args[spawned_customers].customers_in_restaurant = arguments->customers_in_restaurant;
     pthread_create(&customer_tid[spawned_customers], NULL, customer_thread, (void*) &customer_args[spawned_customers]);
@@ -165,6 +166,11 @@ void* tick_advance(void* args) {
     pthread_cond_broadcast(&sc->tick_cv);
     pthread_mutex_unlock(&sc->lock);
   }
+
+  pthread_mutex_lock(&sc->lock);
+  pthread_cond_broadcast(&sc->tick_cv);
+  pthread_mutex_unlock(&sc->lock);
+
   return NULL;
 }
 
@@ -199,7 +205,7 @@ void* info_thread(void* args) {
 }
 
 void handler(int signum) {
-    printf(YELLOW_BOLD "Caught %d, printing infos on screen\n" RESET, signum);
+    //printf(YELLOW_BOLD "Caught %d, printing infos on screen\n" RESET, signum);
     sigusr1_received = 1;
 } 
 
@@ -305,6 +311,7 @@ int main(int argc, char* argv[]){
   CustomerQueue* seated = malloc(sizeof(CustomerQueue));
   CustomerQueue* waiting_order = malloc(sizeof(CustomerQueue));
   OrderManager* om = malloc(sizeof(OrderManager));
+  CustomerQueue* finished = malloc(sizeof(CustomerQueue));
 
   atomic_store(&running, true);
 
@@ -314,6 +321,8 @@ int main(int argc, char* argv[]){
   om_init(om);
   queue_init(standing);
   queue_init(seated);
+  queue_init(waiting_order);
+  queue_init(finished);
   clock_init(sc);
   srand(RANDOM_SEED);
 
@@ -369,6 +378,7 @@ int main(int argc, char* argv[]){
   customer_args->sc = sc;
   customer_args->score = &score;
   customer_args->standing = standing;
+  customer_args->finished = finished;
   customer_args->left_unserved = &left_unserved;
   customer_args->customers_in_restaurant = &customers_in_restaurant;
   // thread_manager manages all customer threads
@@ -385,6 +395,7 @@ int main(int argc, char* argv[]){
   CleaningArgs cargs = {
         .standing = standing,
         .seated = seated,
+        .finished = finished,
         .waiting_order = waiting_order,
         .om = om,
         .km = km,
