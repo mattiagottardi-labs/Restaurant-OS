@@ -301,7 +301,6 @@ void customer_loop(Customer* cst) {
                             cst->o->dishes[j] = cst->o->dishes[j + 1];
                         }
                         cst->o->num_dishes--;
-                        cst->o->dishes[cst->o->num_dishes] == NULL;
 
                         pthread_mutex_unlock(&cst->o->lock);
 

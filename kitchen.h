@@ -13,7 +13,7 @@ typedef struct Order order;
 typedef struct Tool {
     char*           name;
     int             clean_time;
-    int             dirty_usages;
+    _Atomic int     dirty_usages;
     _Atomic bool    in_use;
     pthread_mutex_t lock;
 } Tool;
