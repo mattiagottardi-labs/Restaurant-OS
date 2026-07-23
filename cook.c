@@ -362,8 +362,6 @@ void cook_cleaning(Cook* ck) {
  * -------------------------------------------------------------------------- */
 void cook_loop(Cook* ck) {
     while(atomic_load(ck->arg->running)) {
-        int ticks;
-
         pthread_mutex_lock(&ck->arg->sc->lock);
         pthread_cond_wait(&ck->arg->sc->tick_cv, &ck->arg->sc->lock);
         pthread_mutex_unlock(&ck->arg->sc->lock);
