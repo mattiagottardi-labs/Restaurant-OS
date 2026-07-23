@@ -384,13 +384,24 @@ int main(int argc, char* argv[]){
   // thread_manager manages all customer threads
   pthread_create(&customer_thread_manager, NULL, thread_manager, customer_args);
 
+  printf("\nCustomer Thread Manager joined\n");
+  pthread_join(customer_thread_manager, NULL);
+  
+  pthread_join(clock, NULL);
+  printf("Clock joined\n");
+
+  pthread_join(info, NULL);
+  printf("Info joined\n");
+
   for(int i = 0; i < NUM_COOKS; i++) {
     pthread_join(cooks_tid[i], NULL);
   }
+  printf(PURPLE "Cooks joined\n" RESET);
 
   for(int i = 0; i < NUM_WAITERS; i++) {
     pthread_join(waiters_tid[i], NULL);
   }
+  printf(MAGENTA "Waiter joined\n" RESET);
 
   CleaningArgs cargs = {
         .standing = standing,
@@ -413,6 +424,7 @@ int main(int argc, char* argv[]){
   sem_destroy(&restaurant_capacity);
   sem_destroy(&ea_bin);
   clean_memory(&cargs);
+
   printf("Semaphores destroyed\n");
   return 0;
 }
