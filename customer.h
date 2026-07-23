@@ -37,7 +37,8 @@ typedef struct CustomerArgs {
     Menu*               menu;
     _Atomic float*      score;
     _Atomic bool*       running;
-    int*                left_unserved;
+    _Atomic int*        customers_in_restaurant;
+    _Atomic int*        left_unserved;
     sem_t*              rc;
     CustomerQueue*      standing;
     pthread_mutex_t*    print;

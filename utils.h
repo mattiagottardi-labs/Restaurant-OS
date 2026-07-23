@@ -5,8 +5,11 @@
 #include <errno.h>
 #include <stdatomic.h>
 #define RED     "\033[31m"
+#define RED_BOLD    "\033[1;31m"
 #define ORANGE  "\033[38;5;208m"
 #define YELLOW  "\033[33m"
+#define YELLOW_BOLD  "\033[1;33m"
+#define YELLOW_BOLD_U  "\033[1;4;33m"
 #define GREEN   "\033[32m"
 #define GREEN_BOLD "\033[1;32m"
 #define BLUE    "\033[34m"
@@ -16,6 +19,8 @@
 #define WHITE   "\033[37m"
 #define GRAY    "\033[38;5;244m"
 #define RESET   "\033[0m"
+#define BOLD    "\033[1;37m"
+#define UND     "\033[4;37m"
 #define BOLD_U  "\033[1;4m"
 
 typedef struct Order Order;
