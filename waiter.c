@@ -395,10 +395,12 @@ void waiter_loop(Waiter* wtr) {
             case DELIVERING_DISH:
                 // take the dish and deliver it to the customer
                 if(d) {
-                    d->delivered = true;                  
+                    d->delivered = true;
+                    
                 }
                 
                 if(!is_empty(wtr->arg->om->completed_dishes, DISH_LIST)) {
+                    d = list_remove_dish(wtr->arg->om->completed_dishes);
                     wtr->future = wtr->present;
                 }
                 else {
