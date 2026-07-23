@@ -332,7 +332,9 @@ void cook_cooking(Cook* ck) {
     //printf("Dish %s is completed", ck->target_dish->name);
     atomic_store(&ck->target_dish->cooking, false);
     float penalty = get_penalty(ck);
-    if(penalty > 0) printf(RED "Applying dirty_usages penalty = %f\n" RESET , penalty);
+    pthread_mutex_lock(ck->arg->print);
+    if(penalty > 0) printf(RED " Applying dirty_usages penalty = %f\n" RESET , penalty);
+    pthread_mutex_unlock(ck->arg->print);
     atomic_fetch_sub(&ck->arg->score, &penalty);
     // Decrement Order remaining time
     atomic_fetch_sub(&ck->current_order->remaining_time, ck->target_dish->time);
