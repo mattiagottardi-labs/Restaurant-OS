@@ -39,7 +39,7 @@ int RANDOM_SEED;
 char* MENU_FILE;
 char* RESOURCE_FILE;
 
-bool* running;
+_Atomic bool* running;
 _Atomic float score = 0.0f;
 
 int MAX_CUSTOMER_SPAWN_RATE; // caution, this time is in microseconds

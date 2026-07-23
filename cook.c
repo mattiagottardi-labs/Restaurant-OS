@@ -198,82 +198,6 @@ Dish* pick_dish(Order* o) {
  * cook_dish — acquire tools, wait clock ticks, mark ready,
  *             check if Order is complete and signal customer if so.
  * -------------------------------------------------------------------------- */
-/*
-void cook_dish(Dish* d, Order* o, OrderManager* om, SimClock* sc, KitchenManager* km, bool* running) {
-    if(!running) return;
-    Tool** used = acquire_tools(d, km);
-    if (!used) {
-        atomic_store(&d->cooking, false);
-        return;
-    }
-
-    // Wait for cooking time
-    pthread_mutex_lock(&sc->lock);
-    int ticks = d->time;
-    while (ticks > 0) {
-        if(!running) break;
-        pthread_cond_wait(&sc->tick_cv, &sc->lock);
-        ticks--;
-    }
-    pthread_mutex_unlock(&sc->lock);
-
-    if(!running) {
-        release_tools(used, d, km, sc);
-        return;
-    }
-
-    atomic_store(&d->ready, true);
-    printf("Dish %s is completed", d->name);
-    atomic_store(&d->cooking, false);
-
-    // Decrement Order remaining time
-    atomic_fetch_sub(&o->remaining_time, d->time);
-
-    // Check if all dishes are ready
-    bool all_ready = true;
-    for (int i = 0; o->dishes[i] != NULL; i++) {
-        if (!atomic_load(&o->dishes[i]->ready)) {
-            all_ready = false;
-            break;
-        }
-    }
-
-    if (all_ready) {
-        printf("Order completed\n");
-        // CAS on completed — only one cook proceeds even if two finish simultaneously
-        bool expected = false;
-        if (atomic_compare_exchange_strong(&o->completed, &expected, true)) {
-
-            // Check expiry — customer may have timed out while we were cooking
-            if (atomic_load(&o->expired)) {
-                list_insert_order(om->discarded_orders, o, 2);
-            } else {
-                // Remove from priority list
-                pthread_mutex_lock(&om->priority->lock);
-                OrderListNode* prev = NULL;
-                OrderListNode* node = om->priority->head;
-                while (node) {
-                    if (node->o == o) {
-                        if (prev) prev->next = node->next;
-                        else      om->priority->head = node->next;
-                        om->priority->size--;
-                        free(node);
-                        break;
-                    }
-                    prev = node;
-                    node = node->next;
-                }
-                pthread_mutex_unlock(&om->priority->lock);
-
-                // Move to completed and signal customer
-                list_insert_order(om->completed_orders, o, 2);
-                atomic_store(&o->c->served, true);
-            }
-        }
-    }
-    release_tools(used, d, km, sc);
-}
-*/
 
 void print_ck(Cook* ck) {
     pthread_mutex_lock(ck->arg->print);
@@ -311,6 +235,112 @@ void print_ck(Cook* ck) {
     pthread_mutex_unlock(ck->arg->print);
 }
 
+void cook_waiting(Cook* ck) {
+    pthread_mutex_lock(&ck->arg->om->priority->lock);
+    if(ck->arg->om->priority->size > 0) {
+    //if(!is_empty(ck->arg->om->priority, ORDER_LIST)) {
+        ck->future = SELECT_DISH;
+    }
+    else {
+        refill_priority(ck->arg->om);
+        ck->future = ck->present;
+    }
+    pthread_mutex_unlock(&ck->arg->om->priority->lock);
+}
+
+void cook_select_dish(Cook* ck) {
+    ck->current_order = get_next_order(ck->arg->om);
+    if(ck->current_order) {
+        ck->target_dish = pick_dish(ck->current_order);
+        ck->future = ACQUIRE_TOOL;
+    }
+    else {
+        ck->future = WAITING;
+    }
+}
+
+void cook_acquire_tool(Cook* ck) {
+    ck->claimed_tools = acquire_tools(ck->target_dish, ck->arg->km);
+
+    if(ck->claimed_tools) {
+        ticks = ck->target_dish->time;
+        ck->future = COOKING;
+    }
+    else {
+        release_tools(ck->claimed_tools, ck->target_dish, ck->arg->km, ck->arg->sc);
+        ck->future = WAITING;
+    }
+}
+
+void cook_cooking(Cook* ck) {
+    // Wait for cooking time
+    if(ticks >= 0) {
+        ticks--;
+        ck->future = ck->present;
+    }
+
+    atomic_store(&ck->target_dish->ready, true);
+    //printf("Dish %s is completed", ck->target_dish->name);
+    atomic_store(&ck->target_dish->cooking, false);
+
+    // Decrement Order remaining time
+    atomic_fetch_sub(&o->remaining_time, ck->target_dish->time);
+
+    release_tools(ck->claimed_tools, ck->target_dish, ck->arg->km, ck->arg->sc);
+
+    if(!o->expired) {
+        list_insert_dish(ck->arg->om->completed_dishes, ck->target_dish);
+        ck->future = DISH_COMPLETED;
+    }
+    else {
+        ck->future = WAITING;
+    }
+}
+
+void cook_completed(Cook* ck) {
+    if(atomic_load(&ck->current_order->remaining_time) == 0) {
+                    
+    bool expected = false;
+
+    // if order is completed remove it from priority and go into order completed
+    if(atomic_compare_exchange_strong(&ck->current_order->completed, &expected, true)) {
+        if(!atomic_load(&ck->current_order->expired)) {
+            // Check expiry — customer may have timed out while we were cooking then remove from priority list
+            pthread_mutex_lock(&ck->arg->om->priority->lock);
+            OrderListNode* prev = NULL;
+            OrderListNode* node = ck->arg->om->priority->head;
+
+            while(node) {
+                if (node->o == ck->current_order) {
+                    if (prev) prev->next = node->next;
+                    else      ck->arg->om->priority->head = node->next;
+                    ck->arg->om->priority->size--;
+                    free(node);
+                    break;
+                }
+                prev = node;
+                node = node->next;
+            }
+            pthread_mutex_unlock(&ck->arg->om->priority->lock);
+
+            // Move to completed and signal customer
+            ck->future = ORDER_COMPLETED;
+        }
+        else {
+            ck->future = SELECT_DISH;
+        }
+    }
+    else {
+        ck->future = SELECT_DISH;
+    }
+}
+refill_priority(ck->arg->om);
+}
+
+void cook_cleaning(Cook* ck) {
+    
+}
+
 /* --------------------------------------------------------------------------
  * cook_loop — continuously looks for orders to cook.
  *             Spins on get_next_order when nothing is available.
@@ -318,10 +348,8 @@ void print_ck(Cook* ck) {
  *             claimed Order.
  * -------------------------------------------------------------------------- */
 void cook_loop(Cook* ck) {
-    Order* o;
-
-    while(ck->arg->running) {
-        int ticks, index;
+    while(atomic_load(ck->arg->running)) {
+        int ticks;
 
         pthread_mutex_lock(&ck->arg->sc->lock);
         pthread_cond_wait(&ck->arg->sc->tick_cv, &ck->arg->sc->lock);
@@ -331,108 +359,26 @@ void cook_loop(Cook* ck) {
 
             // check into the priority list for an order
             case WAITING:
-                pthread_mutex_lock(&ck->arg->om->priority->lock);
-                if(ck->arg->om->priority->size > 0) {
-                //if(!is_empty(ck->arg->om->priority, ORDER_LIST)) {
-                    ck->future = SELECT_DISH;
-                }
-                else {
-                    refill_priority(ck->arg->om);
-                    ck->future = ck->present;
-                }
-                pthread_mutex_unlock(&ck->arg->om->priority->lock);
+                cook_waiting(ck);
                 break;
 
             // pick a dish from the selected order and then try to acquire tools
             case SELECT_DISH:
-                o = get_next_order(ck->arg->om);
-                if(o) {
-                    ck->target_dish = pick_dish(o);
-                    ck->future = ACQUIRE_TOOL;
-                }
-                else {
-                    ck->future = WAITING;
-                }
+                cook_select_dish(ck);
                 break;
 
             // acquire tools in order to cook the dish
             case ACQUIRE_TOOL:
-                ck->claimed_tools = acquire_tools(ck->target_dish, ck->arg->km);
-
-                if(ck->claimed_tools) {
-                    ticks = ck->target_dish->time;
-                    ck->future = COOKING;
-                }
-                else {
-                    release_tools(ck->claimed_tools, ck->target_dish, ck->arg->km, ck->arg->sc);
-                    ck->future = WAITING;
-                }
+                cook_acquire_tool(ck);
                 break;
 
             // starts cooking the dish, also handles queues
             case COOKING:
-                // Wait for cooking time
-                if(ticks >= 0) {
-                    ticks--;
-                    ck->future = ck->present;
-                    break;
-                }
-
-                atomic_store(&ck->target_dish->ready, true);
-                //printf("Dish %s is completed", ck->target_dish->name);
-                atomic_store(&ck->target_dish->cooking, false);
-
-                // Decrement Order remaining time
-                atomic_fetch_sub(&o->remaining_time, ck->target_dish->time);
-
-                release_tools(ck->claimed_tools, ck->target_dish, ck->arg->km, ck->arg->sc);
-
-                if(!o->expired) {
-                    list_insert_dish(ck->arg->om->completed_dishes, ck->target_dish);
-                    ck->future = DISH_COMPLETED;
-                }
-                else {
-                    ck->future = WAITING;
-                }
+                cook_cooking(ck);
                 break;
 
             case DISH_COMPLETED:
-                // Check if all dishes are ready
-                if(atomic_load(&o->remaining_time) == 0) {
-                    
-                    bool expected = false;
-
-                    if(atomic_compare_exchange_strong(&o->completed, &expected, true)) {
-                        // Check expiry — customer may have timed out while we were cooking
-                        
-                        if(!atomic_load(&o->expired)) {
-                            // Remove from priority list
-                            pthread_mutex_lock(&ck->arg->om->priority->lock);
-                            OrderListNode* prev = NULL;
-                            OrderListNode* node = ck->arg->om->priority->head;
-                            while(node) {
-                                if (node->o == o) {
-                                    if (prev) prev->next = node->next;
-                                    else      ck->arg->om->priority->head = node->next;
-                                    ck->arg->om->priority->size--;
-                                    free(node);
-                                    break;
-                                }
-                                prev = node;
-                                node = node->next;
-                            }
-                            pthread_mutex_unlock(&ck->arg->om->priority->lock);
-
-                            // Move to completed and signal customer
-                            ck->future = ORDER_COMPLETED;
-                        }
-                    }
-                    ck->future = SELECT_DISH;
-                    refill_priority(ck->arg->om);
-                }
-                else {
-                    ck->future = SELECT_DISH;
-                }
+                cook_completed(ck);
                 break;
 
             case ORDER_COMPLETED:
@@ -441,7 +387,7 @@ void cook_loop(Cook* ck) {
                 break;
 
             case CLEANING:
-                index = 0;
+                //index = 0;
                 pthread_mutex_lock(&ck->arg->sc->lock);
                 
                 for(int i = 0; i < ck->arg->km->pools[i]->quantity; i++) {

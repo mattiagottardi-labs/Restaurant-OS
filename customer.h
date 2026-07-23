@@ -36,7 +36,7 @@ typedef struct CustomerArgs {
     SimClock*           sc;
     Menu*               menu;
     _Atomic float*      score;
-    bool*               running;
+    _Atomic bool*       running;
     sem_t*              rc;
     CustomerQueue*      standing;
     pthread_mutex_t*    print;

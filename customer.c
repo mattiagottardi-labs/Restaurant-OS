@@ -257,7 +257,7 @@ void customer_loop(Customer* cst) {
     float tts = cst->order_made - cst->order_received;
     int num_dishes;
 
-    while(cst->arg->running) {
+    while(atomic_load(cst->arg->running)) {
         pthread_mutex_lock(&cst->arg->sc->lock);
         pthread_cond_wait(&cst->arg->sc->tick_cv, &cst->arg->sc->lock);
         pthread_mutex_unlock(&cst->arg->sc->lock);   
@@ -334,7 +334,7 @@ void customer_loop(Customer* cst) {
                 perror("Customer - Unknown State");
             
         }
-        print_cst(cst);
+        //print_cst(cst);
 
         if(cst->patience > 0) {
             cst->patience--;

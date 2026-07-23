@@ -323,7 +323,7 @@ void waiter_loop(Waiter* wtr) {
     int activity;
     char name[16] = {0};
 
-    while(wtr->arg->running) {
+    while(atomic_load(wtr->arg->running)) {
         pthread_mutex_lock(&wtr->arg->sc->lock);
         pthread_cond_wait(&wtr->arg->sc->tick_cv, &wtr->arg->sc->lock);
         pthread_mutex_unlock(&wtr->arg->sc->lock);
@@ -421,7 +421,7 @@ void waiter_loop(Waiter* wtr) {
             default:
                 perror("Waiter - Unknown state!");       
         }
-        print_wtr(wtr, name);
+        //print_wtr(wtr, name);
         // Update the state for next cycle
         wtr->present = wtr->future;
     }

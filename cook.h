@@ -25,12 +25,13 @@ typedef struct CookArgs {
     OrderManager*       om;
     SimClock*           sc;
     KitchenManager*     km;
-    bool*               running;
+    _Atomic bool*       running;
     pthread_mutex_t*    print;
 } CookArgs;
 
 typedef struct Cook {
     CookArgs*   arg;
+    Order*      current_order;
     Dish*       target_dish;
     Tool**      claimed_tools;
     CookState   present;

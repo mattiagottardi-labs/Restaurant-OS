@@ -35,7 +35,7 @@ typedef struct WaiterArgs {
     CustomerQueue*      seated;
     CustomerQueue*      waiting_order;
     SimClock*           sc;
-    bool*               running;
+    _Atomic bool*       running;
     sem_t*              rc;
     sem_t*              ea_bin;
     pthread_mutex_t*    print;
