@@ -22,6 +22,7 @@ typedef struct InfoArgs {
     CustomerQueue*      seated;
     CustomerQueue*      waiting_order;
     pthread_mutex_t*    print;
+    KitchenManager*     km;
 } InfoArgs;
 
 void print_tool_status(KitchenManager* km);
@@ -193,7 +194,8 @@ void* info_thread(void* args) {
       printf("Customers that left unserved: %d\n", left_unserved);
       printf("Spawned/Total: %d/%d\n", spawned_customers, TOTAL_CUSTOMERS);
       printf("Length fixed to 10\n");
-      printf("Kitchen resources availability: \n",);
+      printf("Kitchen resources availability: \n");
+      print_tool_status(arg->km);
 /*
       printf("Standing customer/s:\n");
       print_queue(arg->standing);
@@ -235,6 +237,26 @@ bool write_pid_file(const char* path) {
 
   close(fd);
   return true;
+}
+
+int count_available_tools(ToolPool* pool) {
+    pthread_mutex_lock(&pool->lock);
+    int available = 0;
+    for(int i = 0; i < pool->quantity; i++){
+        if(!pool->tools[i].in_use) {
+            available++;
+        }
+    }
+    pthread_mutex_unlock(&pool->lock);
+    return available;
+}
+
+void print_tool_status(KitchenManager* km) {
+    printf("TOOLS: \n");
+    for(int i = 0; i < km->num_pools; i++) {
+        int available = count_available_tools(km->pools[i]);
+        printf("%s, %d items, %d in use, %d available\n", km->pools[i]->name, km->pools[i]->quantity, km->pools[i]->in_use, available);
+    }
 }
 
 int main(int argc, char* argv[]){
@@ -363,6 +385,7 @@ int main(int argc, char* argv[]){
   customer_args->sc = sc;
   customer_args->score = &score;
   customer_args->standing = standing;
+  customer_args->left_unserved = &left_unserved;
   // thread_manager manages all customer threads
   pthread_create(&customer_thread_manager, NULL, thread_manager, customer_args);
 
