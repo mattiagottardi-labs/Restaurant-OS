@@ -356,36 +356,38 @@ void cook_completed(Cook* ck) {
     }
 }
 
-void cook_cleaning(Cook* ck) {
-  KitchenManager* km = ck->arg->km;
-  SimClock* sc = ck->arg->sc;
-  pthread_mutex_lock(&km->sink);
-  for(int p = 0; p < km->num_pools; p++) {
-    ToolPool* pool = km->pools[p];
-    pthread_mutex_lock(&pool->lock);
-    for(int i = 0; i < pool->quantity; i++){
-      Tool* tool = pool->tools[i];
-      pthread_mutex_lock(&tool->lock);
-      if(tool->dirty_usages >= DIRTY_THRESHOLD){
-        printf("cleaning tool %d from pool %s\n", i, pool->name);
-        clean(tool, sc);
-      }
-      pthread_mutex_unlock(&tool->lock);
+void clean_tool(Tool* t, SimClock* sc) {
+    pthread_mutex_lock(&sc->lock);
+    for (int i = 0; i < t->clean_time; i++) {
+        pthread_cond_wait(&sc->tick_cv, &sc->lock);
     }
-    pthread_mutex_unlock(&pool->lock);
-  }
-  pthread_mutex_unlock(&km->sink);
-  ck->future = WAITING;
+    pthread_mutex_unlock(&sc->lock);
+    t->dirty_usages = 0;
 }
 
-void clean(Tool* t, SimClock* sc){
-  pthread_mutex_lock(&sc->lock);
-  for(int i = 0; i < t->clean_time; i++){
-    pthread_cond_wait(&sc->tick_cv, &sc->lock);
-  }
-  pthread_mutex_unlock(&sc->lock);
-  atomic_store(&dirty_usages, 0);
+void cook_cleaning(Cook* ck) {
+    KitchenManager* km = ck->arg->km;
+    SimClock* sc = ck->arg->sc;
+
+    pthread_mutex_lock(&km->sink);
+    for (int p = 0; p < km->num_pools; p++) {
+        ToolPool* pool = km->pools[p];
+        pthread_mutex_lock(&pool->lock);
+        for (int i = 0; i < pool->quantity; i++) {
+            Tool* tool = &pool->tools[i];   // fixed: address-of, matching acquire_pool
+            pthread_mutex_lock(&tool->lock);
+            if (tool->dirty_usages >= DIRTY_THRESHOLD) {
+                printf("cleaning tool %d from pool %s\n", i, pool->name);
+                clean_tool(tool, sc);   // fixed: pass sc
+            }
+            pthread_mutex_unlock(&tool->lock);
+        }
+        pthread_mutex_unlock(&pool->lock);
+    }
+    pthread_mutex_unlock(&km->sink);
+    ck->future = WAITING;
 }
+
 
 /* --------------------------------------------------------------------------
  * cook_loop — continuously looks for orders to cook.
