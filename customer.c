@@ -253,14 +253,12 @@ void print_cst(Customer* cst) {
  * 4. Update score automically
  * -------------------------------------------------------------------------- */
 void customer_loop(Customer* cst) {
-    // time to serve
-    float tts = cst->order_made - cst->order_received;
-    int num_dishes;
+    int num_dishes, initial_patience;
 
     while(atomic_load(cst->arg->running)) {
         pthread_mutex_lock(&cst->arg->sc->lock);
         pthread_cond_wait(&cst->arg->sc->tick_cv, &cst->arg->sc->lock);
-        pthread_mutex_unlock(&cst->arg->sc->lock);   
+        pthread_mutex_unlock(&cst->arg->sc->lock);
 
         switch(cst->present) {
             case STANDING:
@@ -271,6 +269,7 @@ void customer_loop(Customer* cst) {
                 cst->o = make_order(cst->arg->menu, num_dishes);
                 cst->o->num_dishes = num_dishes;
                 cst->patience += get_prep_time(cst->o) + safe_rand_range(10);
+                initial_patience = cst->patience;
                 cst->order_made = cst->arg->sc->tick;
                 atomic_store(&cst->future, ORDER_CHOSEN);
                 break;
@@ -309,13 +308,17 @@ void customer_loop(Customer* cst) {
                 break;
 
             case FINISHED:
+                pthread_mutex_lock(&cst->arg->sc);
                 cst->order_received = cst->arg->sc->tick;
-                tts = cst->order_received - cst->order_made;
-                atomic_float_add(cst->arg->score, cst->o->total_price * (1.0f - (tts / cst->patience)));
+                pthread_mutex_unlock(&cst->arg->sc);
+                float tts = cst->order_received - cst->order_made;
+                float k = (1.0f - (tts / initial_patience));
+                float score_added = cst->o->total_price * k;
+                atomic_float_add(cst->arg->score, score_added);
 
                 sem_post(cst->arg->rc);
                 printf(CYAN " CUSTOMER %d" RESET ":\t", cst->arg->id);
-                printf(GREEN "done, bye\n" RESET);
+                printf(GREEN "done, bye: scsore added: %f\n" RESET, score_added);
                 return;
                 break;
 
@@ -334,7 +337,7 @@ void customer_loop(Customer* cst) {
                 perror("Customer - Unknown State");
             
         }
-        //print_cst(cst);
+        print_cst(cst);
 
         if(cst->patience > 0) {
             cst->patience--;

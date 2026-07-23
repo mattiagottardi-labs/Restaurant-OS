@@ -62,7 +62,7 @@ Tool* acquire_pool(ToolPool* pool) {
 void release_pool(ToolPool* pool, Tool* t, SimClock* sc, KitchenManager* km) {
     //printf("\tRealeasing pool %s\n", pool->name);
     int ticks;
-
+/*
     t->dirty_usages++;
     bool clean_condition = t->dirty_usages >= DIRTY_THRESHOLD;
     if (clean_condition) {
@@ -78,7 +78,7 @@ void release_pool(ToolPool* pool, Tool* t, SimClock* sc, KitchenManager* km) {
         pthread_mutex_unlock(&sc->lock);
         pthread_mutex_unlock(&km->sink);
     }
-
+*/
     pthread_mutex_lock(&pool->lock);
     atomic_store(&t->in_use, false);
     pool->in_use--;
@@ -216,15 +216,11 @@ void print_ck(Cook* ck) {
             break;
 
         case COOKING:
-            printf(RED "cooking dish: %s" RESET, ck->target_dish->name);
+            printf(RED "i was cooking: %s" RESET, ck->target_dish->name);
             break;
 
         case DISH_COMPLETED:
-            printf( "dish completed" RESET);
-            break;
-
-        case ORDER_COMPLETED:
-            printf( "ORDER COMPLETED" RESET);
+            printf(GREEN "dish completed" RESET);
             break;
 
         case CLEANING:
@@ -250,6 +246,7 @@ void cook_waiting(Cook* ck) {
 
 void cook_select_dish(Cook* ck) {
     ck->current_order = get_next_order(ck->arg->om);
+
     if(ck->current_order) {
         ck->target_dish = pick_dish(ck->current_order);
         ck->future = ACQUIRE_TOOL;
@@ -263,32 +260,34 @@ void cook_acquire_tool(Cook* ck) {
     ck->claimed_tools = acquire_tools(ck->target_dish, ck->arg->km);
 
     if(ck->claimed_tools) {
-        ticks = ck->target_dish->time;
         ck->future = COOKING;
     }
     else {
-        release_tools(ck->claimed_tools, ck->target_dish, ck->arg->km, ck->arg->sc);
+        //release_tools(ck->claimed_tools, ck->target_dish, ck->arg->km, ck->arg->sc);
         ck->future = WAITING;
     }
 }
 
 void cook_cooking(Cook* ck) {
-    // Wait for cooking time
-    if(ticks >= 0) {
-        ticks--;
-        ck->future = ck->present;
+    //printf("Cook %d selected dish: %s, time to wait: %d\n",ck->arg->id, ck->target_dish->name, ck->target_dish->time);
+    // wait for cooking time
+    pthread_mutex_lock(&ck->arg->sc->lock);
+    for(int i = 0; i < ck->target_dish->time; i++){
+        //printf("Time waited: %d\n", i);
+        pthread_cond_wait(&ck->arg->sc->tick_cv, &ck->arg->sc->lock);
     }
+    pthread_mutex_unlock(&ck->arg->sc->lock);
 
     atomic_store(&ck->target_dish->ready, true);
     //printf("Dish %s is completed", ck->target_dish->name);
     atomic_store(&ck->target_dish->cooking, false);
 
     // Decrement Order remaining time
-    atomic_fetch_sub(&o->remaining_time, ck->target_dish->time);
+    atomic_fetch_sub(&ck->current_order->remaining_time, ck->target_dish->time);
 
     release_tools(ck->claimed_tools, ck->target_dish, ck->arg->km, ck->arg->sc);
 
-    if(!o->expired) {
+    if(!ck->current_order->expired) {
         list_insert_dish(ck->arg->om->completed_dishes, ck->target_dish);
         ck->future = DISH_COMPLETED;
     }
@@ -302,29 +301,37 @@ void cook_completed(Cook* ck) {
                     
     bool expected = false;
 
-    // if order is completed remove it from priority and go into order completed
-    if(atomic_compare_exchange_strong(&ck->current_order->completed, &expected, true)) {
-        if(!atomic_load(&ck->current_order->expired)) {
-            // Check expiry — customer may have timed out while we were cooking then remove from priority list
-            pthread_mutex_lock(&ck->arg->om->priority->lock);
-            OrderListNode* prev = NULL;
-            OrderListNode* node = ck->arg->om->priority->head;
+        // if order is completed remove it from priority and go into order completed
+        if(atomic_compare_exchange_strong(&ck->current_order->completed, &expected, true)) {
 
-            while(node) {
-                if (node->o == ck->current_order) {
-                    if (prev) prev->next = node->next;
-                    else      ck->arg->om->priority->head = node->next;
-                    ck->arg->om->priority->size--;
-                    free(node);
-                    break;
+            // if order is not expired remove it from the priority list
+            if(!atomic_load(&ck->current_order->expired)) {
+                // Check expiry — customer may have timed out while we were cooking then remove from priority list
+                pthread_mutex_lock(&ck->arg->om->priority->lock);
+                OrderListNode* prev = NULL;
+                OrderListNode* node = ck->arg->om->priority->head;
+
+                while(node) {
+                    if (node->o == ck->current_order) {
+                        if (prev) prev->next = node->next;
+                        else      ck->arg->om->priority->head = node->next;
+                        ck->arg->om->priority->size--;
+                        free(node);
+                        break;
+                    }
+                    prev = node;
+                    node = node->next;
                 }
-                prev = node;
-                node = node->next;
-            }
-            pthread_mutex_unlock(&ck->arg->om->priority->lock);
+                pthread_mutex_unlock(&ck->arg->om->priority->lock);
 
-            // Move to completed and signal customer
-            ck->future = ORDER_COMPLETED;
+                // Move to completed and signal customer
+                ck->future = CLEANING;
+                list_remove_order(ck->arg->om->priority);
+                refill_priority(ck->arg->om);
+            }
+            else {
+                ck->future = SELECT_DISH;
+            }
         }
         else {
             ck->future = SELECT_DISH;
@@ -333,8 +340,6 @@ void cook_completed(Cook* ck) {
     else {
         ck->future = SELECT_DISH;
     }
-}
-refill_priority(ck->arg->om);
 }
 
 void cook_cleaning(Cook* ck) {
@@ -381,27 +386,24 @@ void cook_loop(Cook* ck) {
                 cook_completed(ck);
                 break;
 
-            case ORDER_COMPLETED:
-                list_remove_order(ck->arg->om->priority);
-                ck->future = WAITING;
-                break;
-
             case CLEANING:
                 //index = 0;
+                /*
                 pthread_mutex_lock(&ck->arg->sc->lock);
                 
                 for(int i = 0; i < ck->arg->km->pools[i]->quantity; i++) {
                     release_pool(ck->arg->km->pools[i], ck->arg->km->pools[i]->tools, ck->arg->sc, ck->arg->km);
                 }
-
+                */
                 ck->future = WAITING;
+                
                 break;
 
             default:
                 perror("Cook - Unknown State");
             
         }
-        print_ck(ck);
+        //print_ck(ck);
         ck->present = ck->future;
     }
 }

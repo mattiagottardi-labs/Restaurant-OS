@@ -267,45 +267,48 @@ void print_wtr(Waiter* wtr, char* activity) {
     pthread_mutex_unlock(wtr->arg->print);
 }
 
-void clean_queue(CustomerQueue* q) {
+void clean_queue(CustomerQueue* q, bool check_patience) {
     pthread_mutex_lock(&q->lock);
-    QueueNode* tmp = q->head;
-    QueueNode* prev = NULL;
 
-    // Strip leading nodes with patience == 0
-    while (tmp && tmp->c->patience == 0) {
+    QueueNode* tmp = q->head;
+
+    while (tmp &&
+           ((check_patience && tmp->c->patience <= 0) ||
+            (tmp->c->o != NULL && tmp->c->o->expired))) {
         q->head = tmp->next;
-        free(tmp);              // + free tmp->c if the queue owns it
+        free(tmp);
         tmp = q->head;
     }
 
     if (!tmp) {
+        q->tail = NULL;
         pthread_mutex_unlock(&q->lock);
-        return;           // whole queue emptied out
+        return;
     }
 
-    prev = tmp;
+    QueueNode* prev = tmp;
     tmp = tmp->next;
 
     while (tmp) {
-        if (tmp->c->patience == 0) {
+        if ((check_patience && tmp->c->patience <= 0) ||
+            (tmp->c->o != NULL && tmp->c->o->expired)) {
             prev->next = tmp->next;
             free(tmp);
-            tmp = prev->next;   // prev stays put, only tmp advances
+            tmp = prev->next;
         } else {
             prev = tmp;
             tmp = tmp->next;
         }
     }
+
+    q->tail = prev;
     pthread_mutex_unlock(&q->lock);
 }
-
 void clean_queues(Waiter* wtr) {
-    clean_queue(wtr->arg->seated);
-    clean_queue(wtr->arg->standing);
-    clean_queue(wtr->arg->waiting_order);
+    clean_queue(wtr->arg->standing, true);       // patience matters
+    clean_queue(wtr->arg->seated, true);         // patience matters
+    clean_queue(wtr->arg->waiting_order, false); // only expiry matters
 }
-
 /* --------------------------------------------------------------------------
  * waiter_loop — pops customers from the queue, unpacks their orders
  *               and inserts them into the waitlist sorted by prio.
@@ -421,7 +424,7 @@ void waiter_loop(Waiter* wtr) {
             default:
                 perror("Waiter - Unknown state!");       
         }
-        //print_wtr(wtr, name);
+        print_wtr(wtr, name);
         // Update the state for next cycle
         wtr->present = wtr->future;
     }

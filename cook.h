@@ -15,7 +15,6 @@ typedef enum CookState {
     ACQUIRE_TOOL,
     COOKING,
     DISH_COMPLETED,
-    ORDER_COMPLETED,
     CLEANING
 } CookState;
 
