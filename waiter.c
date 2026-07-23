@@ -247,7 +247,7 @@ void print_wtr(Waiter* wtr, char* activity) {
     printf(MAGENTA " WAITER %d" RESET ":\t", wtr->arg->id);
     switch(wtr->present) {
         case IDLE:
-            printf(GRAY "idle, standing empty? %b, seated? %b, order_made? %b" RESET, is_empty(wtr->arg->standing, CUSTOMER_QUEUE), is_empty(wtr->arg->seated, CUSTOMER_QUEUE), is_empty(wtr->arg->waiting_order, CUSTOMER_QUEUE));
+           printf(GRAY "idle, standing empty? %b, seated? %b, order_made? %b dish queue? %b" RESET, is_empty(wtr->arg->standing, CUSTOMER_QUEUE), is_empty(wtr->arg->seated, CUSTOMER_QUEUE), is_empty(wtr->arg->waiting_order, CUSTOMER_QUEUE), is_empty(wtr->arg->om->completed_dishes, DISH_LIST));
             break;
 
         case ACCOMODATING_CUSTOMER:
