@@ -5,11 +5,11 @@
 #include "customer.h"
 
 EntertainmentActivity ea[5] = {
-    {"chatting", 2},
-    {"singing", 6},
-    {"dancing", 5},
-    {"performing magic tricks", 10},
-    {"making puns", 8}
+    {"chatting", 1},
+    {"singing", 2},
+    {"dancing", 3},
+    {"performing magic tricks", 5},
+    {"making puns", 4}
 };
 /* --------------------------------------------------------------------------
  * get_prio — slack time: lower value = less slack = higher urgency
@@ -396,7 +396,6 @@ void waiter_loop(Waiter* wtr) {
                 // take the dish and deliver it to the customer
                 if(d) {
                     d->delivered = true;
-                    
                 }
                 
                 if(!is_empty(wtr->arg->om->completed_dishes, DISH_LIST)) {
@@ -420,10 +419,6 @@ void waiter_loop(Waiter* wtr) {
                     tmp = tmp->next;
                 }
                 pthread_mutex_unlock(&wtr->arg->standing->lock);
-
-                free(tmp);
-                tmp = NULL;
-                
                 sem_post(wtr->arg->ea_bin);
 
                 wtr->future = IDLE;

@@ -293,14 +293,15 @@ void customer_loop(Customer* cst) {
             case WAITING_DISH: {
                 if(cst == NULL) break;
 
-                for (int i = 0; i < cst->o->num_dishes; i++) {
-                    if (cst->o->dishes[i]->delivered) {
+                for(int i = 0; i < cst->o->num_dishes; i++) {
+                    if(cst->o->dishes[i]->delivered) {
                         pthread_mutex_lock(&cst->o->lock);
 
-                        for (int j = i; j < cst->o->num_dishes - 1; j++) {
+                        for(int j = i; j < cst->o->num_dishes - 1; j++) {
                             cst->o->dishes[j] = cst->o->dishes[j + 1];
                         }
                         cst->o->num_dishes--;
+                        cst->o->dishes[cst->o->num_dishes] == NULL;
 
                         pthread_mutex_unlock(&cst->o->lock);
 

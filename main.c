@@ -157,7 +157,7 @@ void clock_destroy(SimClock* sc) {
 
 void* tick_advance(void* args) {
   SimClock* sc = (SimClock*) args;
-  while(true) {
+  while(atomic_load(&running)) {
     usleep(TICK_PERIOD);
     pthread_mutex_lock(&sc->lock);
     sc->tick++;
@@ -173,7 +173,11 @@ void* tick_advance(void* args) {
 void* info_thread(void* args) {
   InfoArgs* arg = (InfoArgs*) args;
 
-  while(arg->running) { 
+  while(atomic_load(arg->running)) {
+    pthread_mutex_lock(&arg->sc->lock);
+    pthread_cond_wait(&arg->sc->tick_cv, &arg->sc->lock);
+    pthread_mutex_unlock(&arg->sc->lock);
+
     if(sigusr1_received) {
       pthread_mutex_lock(arg->print);
 
