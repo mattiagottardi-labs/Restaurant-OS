@@ -15,6 +15,35 @@ int count_tools(Dish* d) {
     return i;
 }
 
+void remove_order(OrderList* ol, Order* target){
+    pthread_mutex_lock(&ol->lock);
+
+    OrderListNode* temp = ol->head;
+    OrderListNode* prev = NULL;
+
+    while(temp && temp->o != target){
+        prev = temp;
+        temp = temp->next;
+    }
+
+    if(!temp){
+        pthread_mutex_unlock(&ol->lock);
+        return;
+    }
+
+    if(prev){
+        prev->next = temp->next;
+    } else {
+        ol->head = temp->next;
+    }
+
+    ol->size--;
+    free(temp);
+
+    pthread_mutex_unlock(&ol->lock);
+}
+
+
 float get_pressure(OrderList* ol){
   int tot_prio;
   int tot_orders;
@@ -309,27 +338,8 @@ void cook_completed(Cook* ck) {
 
             // if order is not expired remove it from the priority list
             if(!atomic_load(&ck->current_order->expired)) {
-                // Check expiry — customer may have timed out while we were cooking then remove from priority list
-                pthread_mutex_lock(&ck->arg->om->priority->lock);
-                OrderListNode* prev = NULL;
-                OrderListNode* node = ck->arg->om->priority->head;
-
-                while(node) {
-                    if (node->o == ck->current_order) {
-                        if (prev) prev->next = node->next;
-                        else      ck->arg->om->priority->head = node->next;
-                        ck->arg->om->priority->size--;
-                        free(node);
-                        break;
-                    }
-                    prev = node;
-                    node = node->next;
-                }
-                pthread_mutex_unlock(&ck->arg->om->priority->lock);
-
-                // Move to completed and signal customer
+                remove_order(ck->arg->om->priority, ck->current_order);
                 ck->future = CLEANING;
-                list_remove_order(ck->arg->om->priority);
                 refill_priority(ck->arg->om);
                 
             }
