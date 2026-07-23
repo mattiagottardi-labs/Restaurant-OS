@@ -171,8 +171,6 @@ void* tick_advance(void* args) {
 void* info_thread(void* args) {
   InfoArgs* arg = (InfoArgs*) args;
 
-  int sval;
-
   while(atomic_load(arg->running)) {
     pthread_mutex_lock(&arg->sc->lock);
     pthread_cond_wait(&arg->sc->tick_cv, &arg->sc->lock);
@@ -184,10 +182,9 @@ void* info_thread(void* args) {
 
       printf(BOLD_U "\nTICK: %d\n" RESET, arg->sc->tick);
       printf("CURRENT SCORE: %f\n", score);
-      printf("Customers in the restaurant: %d\n", sval);
+      printf("Customers in the restaurant: %d\n", TOTAL_CUSTOMERS - sval);
       printf("Customers that left unserved: %d\n", left_unserved);
       printf("Spawned/Total: %d/%d\n", spawned_customers, TOTAL_CUSTOMERS);
-      printf("Length fixed to 10\n");
       printf("Kitchen resources availability: \n");
       print_tool_status(arg->km);
 /*
