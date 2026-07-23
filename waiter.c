@@ -226,18 +226,15 @@ void om_init(OrderManager* om){
   OrderList* waitlist = malloc(sizeof(OrderList));
   OrderList* priority = malloc(sizeof(OrderList));
   OrderList* discarded = malloc(sizeof(OrderList));
-  OrderList* completed = malloc(sizeof(OrderList));
 
   om->completed_dishes = completed_dish;
   om->waitlist = waitlist;
   om->priority = priority;
   om->discarded_orders = discarded;
-  om->completed_orders = completed;
 
   dishlist_init(om->completed_dishes);
   orderlist_init(om->waitlist);
   orderlist_init(om->priority);
-  orderlist_init(om->completed_orders);
   orderlist_init(om->discarded_orders);
 }
 
@@ -422,7 +419,7 @@ void waiter_loop(Waiter* wtr) {
                 break;
 
             default:
-                perror("Waiter - Unknown state!");          
+                perror("Waiter - Unknown state!");       
         }
         print_wtr(wtr, name);
         // Update the state for next cycle

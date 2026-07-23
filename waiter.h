@@ -24,7 +24,6 @@ typedef struct OrderManager {
     DishList*       completed_dishes;
     OrderList*      waitlist;
     OrderList*      priority;
-    OrderList*      completed_orders;
     OrderList*      discarded_orders;
     pthread_mutex_t lock;
 } OrderManager;

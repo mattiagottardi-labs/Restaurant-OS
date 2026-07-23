@@ -164,7 +164,7 @@ void* tick_advance(void* args) {
     usleep(TICK_PERIOD);
     pthread_mutex_lock(&sc->lock);
     sc->tick++;
-    printf("\n--------------------------------------------------------\n");
+    printf("\n--------------------------------------------------------\nTICKS: %d\n", sc->tick);
     pthread_cond_broadcast(&sc->tick_cv);
     pthread_mutex_unlock(&sc->lock);
   }

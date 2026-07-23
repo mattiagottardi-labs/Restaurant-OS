@@ -288,7 +288,7 @@ void print_ck(Cook* ck) {
             break;
 
         case ACQUIRE_TOOL:
-            printf( "trying to acquire the tools to cook" RESET);
+            printf(ORANGE "trying to acquire the tools to cook" RESET);
             break;
 
         case COOKING:
@@ -387,10 +387,13 @@ void cook_loop(Cook* ck) {
 
                 release_tools(ck->claimed_tools, ck->target_dish, ck->arg->km, ck->arg->sc);
 
-                // insert ready dish in dish list so then the waiter can pick it up
-                list_insert_dish(ck->arg->om->completed_dishes, ck->target_dish);
-
-                ck->future = DISH_COMPLETED;
+                if(!o->expired) {
+                    list_insert_dish(ck->arg->om->completed_dishes, ck->target_dish);
+                    ck->future = DISH_COMPLETED;
+                }
+                else {
+                    ck->future = WAITING;
+                }
                 break;
 
             case DISH_COMPLETED:
@@ -422,7 +425,6 @@ void cook_loop(Cook* ck) {
 
                             // Move to completed and signal customer
                             ck->future = ORDER_COMPLETED;
-                            list_insert_order(ck->arg->om->completed_orders, o, 2);
                         }
                     }
                     ck->future = SELECT_DISH;
