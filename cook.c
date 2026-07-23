@@ -238,7 +238,6 @@ void cook_waiting(Cook* ck) {
         ck->future = SELECT_DISH;
     }
     else {
-        printf("priority is currently empty: refilling\n");
         refill_priority(ck->arg->om);
         ck->future = ck->present;
     }

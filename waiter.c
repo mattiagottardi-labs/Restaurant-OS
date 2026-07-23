@@ -133,9 +133,6 @@ void refill_priority(OrderManager* om) {
     while (om->priority->size < 10) {
         Order* o = list_remove_order(om->waitlist);
         if (!o) {
-          printf("unable to refill priority, waitlist empty");
-          if(!is_empty(om->discarded_orders, ORDER_LIST)) printf("it may be in the discarded_orders"); else printf(", discarded are empty too");
-          printf("\n");
           break;
         }
         list_insert_order(om->priority, o, 1);
