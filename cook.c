@@ -348,6 +348,7 @@ void cook_cooking(Cook* ck) {
     else {
         ck->future = WAITING;
     }
+  
 }
 
 void cook_completed(Cook* ck) {
@@ -452,6 +453,7 @@ void cook_loop(Cook* ck) {
         print_ck(ck);
         ck->present = ck->future;
     }
+  cook_destroy(ck);
 }
 
 void* cook_thread(void* args) {

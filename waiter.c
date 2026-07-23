@@ -439,5 +439,6 @@ void* waiter_thread(void* args){
     // runs waiter loop
     waiter_loop(wtr);
 
+    free(wtr);
     return NULL;
 }

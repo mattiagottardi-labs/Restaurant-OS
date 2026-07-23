@@ -381,6 +381,7 @@ void* customer_thread(void* args) {
   enqueue(cst, cst->arg->standing);
 
   customer_loop(cst);
-
+  
+  destroy_customer(cst);
   return NULL;
 }

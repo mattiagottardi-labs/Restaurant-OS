@@ -7,6 +7,7 @@
 #include <signal.h>
 
 #include "cook.h"
+#include "utils.h"
 
 #define INVALID_PARAMETER -1
 #define INVALID_FILE -2
@@ -381,6 +382,17 @@ int main(int argc, char* argv[]){
     pthread_join(waiters_tid[i], NULL);
   }
 
+  CleaningArgs cargs = {
+        .standing = standing,
+        .seated = seated,
+        .waiting_order = waiting_order,
+        .om = om,
+        .km = km,
+        .cooka = cook_args,    
+        .waita = waiter_args,  
+        .custa = customer_args, 
+        .print = &print
+  };
   printf("All thread finished\n");
 
   // destroy the simulation clock
@@ -389,7 +401,7 @@ int main(int argc, char* argv[]){
   // destroy the semaphore
   sem_destroy(&restaurant_capacity);
   sem_destroy(&ea_bin);
-
+  clean_memory(&cargs);
   printf("Semaphores destroyed\n");
   return 0;
 }
