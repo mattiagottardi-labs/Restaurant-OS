@@ -1,4 +1,4 @@
-#include <stdio.h>
+i#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
@@ -41,6 +41,9 @@ char* RESOURCE_FILE;
 
 _Atomic bool running;
 _Atomic float score = 0.0f;
+int spawned_customers = 0;
+int left_unserved = 0;
+sem_t restaurant_capacity;
 
 int MAX_CUSTOMER_SPAWN_RATE; // caution, this time is in microseconds
 int TICK_PERIOD;
@@ -60,19 +63,19 @@ void* thread_manager(void* args) {
   int random_delay;
 
   // cycle that keeps running to manage customer threads
-  for(int i = 0; i < TOTAL_CUSTOMERS; i++) {
+  for(int spawned_customers = 0; spawned_customers < TOTAL_CUSTOMERS; spawned_customers++) {
     random_delay = ((rand() % MAX_CUSTOMER_SPAWN_RATE) + 50000) / GAME_SPEED;
     usleep(random_delay);
 
-    customer_args[i].id = i + 1;
-    customer_args[i].menu = arguments->menu;
-    customer_args[i].rc = arguments->rc;
-    customer_args[i].running = arguments->running;
-    customer_args[i].print = arguments->print;
-    customer_args[i].sc = arguments->sc;
-    customer_args[i].score = arguments->score;
-    customer_args[i].standing = arguments->standing;
-    pthread_create(&customer_tid[i], NULL, customer_thread, (void*) &customer_args[i]);
+    customer_args[spawned_customers].id = spawned_customers + 1;
+    customer_args[spawned_customers].menu = arguments->menu;
+    customer_args[spawned_customers].rc = arguments->rc;
+    customer_args[spawned_customers].running = arguments->running;
+    customer_args[spawned_customers].print = arguments->print;
+    customer_args[spawned_customers].sc = arguments->sc;
+    customer_args[spawned_customers].score = arguments->score;
+    customer_args[spawned_customers].standing = arguments->standing;
+    pthread_create(&customer_tid[spawned_customers], NULL, customer_thread, (void*) &customer_args[spawned_customers]);
   }
 
   for(int i = 0; i < TOTAL_CUSTOMERS; i++) {
@@ -173,6 +176,8 @@ void* tick_advance(void* args) {
 void* info_thread(void* args) {
   InfoArgs* arg = (InfoArgs*) args;
 
+  int sval;
+
   while(atomic_load(arg->running)) {
     pthread_mutex_lock(&arg->sc->lock);
     pthread_cond_wait(&arg->sc->tick_cv, &arg->sc->lock);
@@ -180,10 +185,16 @@ void* info_thread(void* args) {
 
     if(sigusr1_received) {
       pthread_mutex_lock(arg->print);
+      sem_getvalue(&restaurant_capacity, sval);
 
-    /*
       printf(BOLD_U "\nTICK: %d\n" RESET, arg->sc->tick);
-
+      printf("CURRENT SCORE: %f\n", score);
+      printf("Customers in the restaurant: %d\n", sval);
+      printf("Customers that left unserved: %d\n", left_unserved);
+      printf("Spawned/Total: %d/%d\n", spawned_customers, TOTAL_CUSTOMERS);
+      printf("Length fixed to 10\n");
+      printf("Kitchen resources availability: \n",);
+/*
       printf("Standing customer/s:\n");
       print_queue(arg->standing);
 
@@ -192,10 +203,7 @@ void* info_thread(void* args) {
 
       printf("Waiting Order customer/s:\n");
       print_queue(arg->waiting_order);
-    */
-      printf(BOLD_U "\nTICK: %d\n", arg->sc->tick);
-      printf("CURRENT SCORE: %f\n" RESET, score);
-
+*/  
       pthread_mutex_unlock(arg->print);
 
       sigusr1_received = 0;
@@ -280,7 +288,7 @@ int main(int argc, char* argv[]){
   // mutex for printing on the screen
   pthread_mutex_t print = PTHREAD_MUTEX_INITIALIZER;
 
-  sem_t restaurant_capacity, ea_bin;
+  sem_t ea_bin;
   sem_init(&restaurant_capacity, 0, MAX_CUSTOMERS);
   sem_init(&ea_bin, 0, 1);
 
