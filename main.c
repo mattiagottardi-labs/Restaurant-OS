@@ -17,7 +17,7 @@ volatile sig_atomic_t sigusr1_received = 0;
 
 typedef struct InfoArgs {
     SimClock*           sc;
-    bool*               running;
+    _Atomic bool*               running;
     CustomerQueue*      standing;
     CustomerQueue*      seated;
     CustomerQueue*      waiting_order;
@@ -284,8 +284,8 @@ int main(int argc, char* argv[]){
   sem_init(&ea_bin, 0, 1);
 
   //create structs
-  bool* running = malloc(sizeof(bool));
-  *running = true;
+  _Atomic bool* running = malloc(sizeof(bool));
+  atomic_store(running, true);
   KitchenManager* km = malloc(sizeof(KitchenManager));
   Menu* menu = malloc(sizeof(Menu));
   SimClock* sc = malloc(sizeof(SimClock));
@@ -313,7 +313,7 @@ int main(int argc, char* argv[]){
   InfoArgs* info_args = malloc(sizeof(InfoArgs));
   info_args->print = &print;
   info_args->sc = sc;
-  info_args->running = running;
+  atomic_store(&info_args->running, running);
   info_args->seated = seated;
   info_args->standing = standing;
   info_args->waiting_order = waiting_order;
@@ -324,7 +324,7 @@ int main(int argc, char* argv[]){
     cook_args[i].id = i + 1;
     cook_args[i].km = km;
     cook_args[i].om = om;
-    cook_args[i].running = running;
+    atomic_store(&cook_args[i].running, running);
     cook_args[i].sc = sc;
     cook_args[i].print = &print;
     pthread_create(&cooks_tid[i], NULL, cook_thread, &cook_args[i]);
@@ -335,7 +335,7 @@ int main(int argc, char* argv[]){
     waiter_args[i].id = i + 1;
     waiter_args[i].ea_bin = &ea_bin;
     waiter_args[i].om = om;
-    waiter_args[i].running = running;
+    atomic_store(&waiter_args[i].running, running);
     waiter_args[i].sc = sc;
     waiter_args[i].seated = seated;
     waiter_args[i].standing = standing;
@@ -350,7 +350,7 @@ int main(int argc, char* argv[]){
   customer_args->menu = menu;
   customer_args->print = &print;
   customer_args->rc = &restaurant_capacity;
-  customer_args->running = running;
+  atomic_store(&customer_args->running, running);
   customer_args->sc = sc;
   customer_args->score = &score;
   customer_args->standing = standing;

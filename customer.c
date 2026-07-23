@@ -308,9 +308,7 @@ void customer_loop(Customer* cst) {
                 break;
 
             case FINISHED:
-                pthread_mutex_lock(&cst->arg->sc);
                 cst->order_received = cst->arg->sc->tick;
-                pthread_mutex_unlock(&cst->arg->sc);
                 float tts = cst->order_received - cst->order_made;
                 float k = (1.0f - (tts / initial_patience));
                 float score_added = cst->o->total_price * k;
