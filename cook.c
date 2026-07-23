@@ -399,7 +399,6 @@ void cook_cleaning(Cook* ck) {
             Tool* tool = &pool->tools[i];
             pthread_mutex_lock(&tool->lock);
             if (tool->dirty_usages >= DIRTY_THRESHOLD) {
-                printf("Cleaning tool %d from pool %s\n", i, pool->name);
                 clean_tool(tool, sc);
             }
             pthread_mutex_unlock(&tool->lock);
