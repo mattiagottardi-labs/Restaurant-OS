@@ -267,20 +267,19 @@ void print_wtr(Waiter* wtr, char* activity) {
     pthread_mutex_unlock(wtr->arg->print);
 }
 
-void clean_queue(CustomerQueue* q, bool check_patience) {
+void clean_queue(CustomerQueue* q, bool check_patience, bool check_served) {
     pthread_mutex_lock(&q->lock);
 
     QueueNode* tmp = q->head;
-
-    while (tmp &&
+    while (tmp && tmp->c &&
            ((check_patience && tmp->c->patience <= 0) ||
             (tmp->c->o != NULL && tmp->c->o->expired) ||
+            (check_served && tmp->c->o != NULL && tmp->c->served) ||
             (tmp->c->finish_eating))) {
         q->head = tmp->next;
         free(tmp);
         tmp = q->head;
     }
-
     if (!tmp) {
         q->tail = NULL;
         pthread_mutex_unlock(&q->lock);
@@ -289,11 +288,12 @@ void clean_queue(CustomerQueue* q, bool check_patience) {
 
     QueueNode* prev = tmp;
     tmp = tmp->next;
-
     while (tmp) {
-        if ((check_patience && tmp->c->patience <= 0) ||
-            (tmp->c->o != NULL && tmp->c->o->expired) ||
-            (tmp->c->finish_eating)) {
+        if (tmp->c &&
+            ((check_patience && tmp->c->patience <= 0) ||
+             (tmp->c->o != NULL && tmp->c->o->expired) ||
+             (check_served && tmp->c->o != NULL && tmp->c->served) ||
+             (tmp->c->finish_eating))) {
             prev->next = tmp->next;
             free(tmp);
             tmp = prev->next;
@@ -302,14 +302,14 @@ void clean_queue(CustomerQueue* q, bool check_patience) {
             tmp = tmp->next;
         }
     }
-
     q->tail = prev;
     pthread_mutex_unlock(&q->lock);
 }
+
 void clean_queues(Waiter* wtr) {
-    clean_queue(wtr->arg->standing, true);       // patience matters
-    clean_queue(wtr->arg->seated, true);         // patience matters
-    clean_queue(wtr->arg->waiting_order, false); // only expiry matters
+    clean_queue(wtr->arg->standing,      true,  false); // patience matters
+    clean_queue(wtr->arg->seated,        true,  false); // patience matters
+    clean_queue(wtr->arg->waiting_order, false, true);  // expiry + served matter
 }
 /* --------------------------------------------------------------------------
  * waiter_loop — pops customers from the queue, unpacks their orders
