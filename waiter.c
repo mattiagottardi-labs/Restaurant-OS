@@ -259,7 +259,7 @@ void print_wtr(Waiter* wtr, char* activity) {
             break;
 
         case ENTERTAINING:
-            printf(MAGENTA "%s to entertain standing customers" RESET, activity, );
+            printf(MAGENTA "%s to entertain standing customers" RESET, activity);
 
             break;
     }
