@@ -275,6 +275,16 @@ float get_penalty(Cook* ck){
     return res;
 }
 
+void clean_tool(Tool* t, SimClock* sc, bool running) {
+    pthread_mutex_lock(&sc->lock);
+    for (int i = 0; i < t->clean_time; i++) {
+        if(!running) break;
+        pthread_cond_wait(&sc->tick_cv, &sc->lock);
+    }
+    pthread_mutex_unlock(&sc->lock);
+    t->dirty_usages = 0;
+}
+
 /* --------------------------------------------------------------------------
  * FSM STATES FUNCTIONS
  * -------------------------------------------------------------------------- */
@@ -379,16 +389,6 @@ void cook_completed(Cook* ck) {
     else {
         ck->future = SELECT_DISH;
     }
-}
-
-void clean_tool(Tool* t, SimClock* sc, bool running) {
-    pthread_mutex_lock(&sc->lock);
-    for (int i = 0; i < t->clean_time; i++) {
-        if(!running) break;
-        pthread_cond_wait(&sc->tick_cv, &sc->lock);
-    }
-    pthread_mutex_unlock(&sc->lock);
-    t->dirty_usages = 0;
 }
 
 void cook_cleaning(Cook* ck) {
